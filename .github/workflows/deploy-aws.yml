@@ -28,6 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: node --check scripts/interaction-coverage.cjs
       - run: npm run build
         env:
           VITE_BACKEND_MODE: aws
