@@ -417,7 +417,8 @@ export function TasksPage() {
   const [adding, setAdding] = useState(params.get('create') === 'true'),
     [view, setView] = useState('board'),
     [editing, setEditing] = useState<Task | null>(null),
-    [dragged, setDragged] = useState<string | null>(null);
+    [dragged, setDragged] = useState<string | null>(null),
+    [dropTarget, setDropTarget] = useState<Task['status'] | null>(null);
   const close = useCallback(() => {
     setAdding(false);
     setEditing(null);
@@ -429,61 +430,70 @@ export function TasksPage() {
     update((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, status } : t)) }));
     toast(`Task moved to ${status.toLowerCase()}.`);
   };
-  const renderTask = (task: Task) => (
-    <article
-      key={task.id}
-      className="task-card"
-      draggable
-      onDragStart={(e) => {
-        setDragged(task.id);
-        e.dataTransfer.setData('text/plain', task.id);
-      }}
-      onDragEnd={() => setDragged(null)}
-    >
-      <div className="task-top">
-        <Badge
-          tone={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'gold' : 'teal'}
-        >
-          {task.priority} priority
-        </Badge>
-        <button
-          className="plain-icon"
-          aria-label={`Edit ${task.title}`}
-          onClick={() => setEditing(task)}
-        >
-          <Icon name="Ellipsis" size={20} />
-        </button>
-      </div>
-      <h3>
-        <button className="plain-text" onClick={() => setEditing(task)}>
-          {task.title}
-        </button>
-      </h3>
-      <p>{task.description}</p>
-      <div className="task-meta">
-        <Avatar
-          name={task.assignee}
-          small
-          index={data.members.findIndex((m) => m.name === task.assignee)}
-        />
-        <span>{task.assignee.split(' ')[0]}</span>
-        <span>
-          <Icon name="CalendarDays" size={13} />
-          {date(task.due, { day: 'numeric', month: 'short' })}
-        </span>
-      </div>
-      <select
-        className="task-status-select"
-        aria-label={`Status for ${task.title}`}
-        value={task.status}
-        onChange={(e) => changeStatus(task.id, e.target.value as Task['status'])}
+  const renderTask = (task: Task) => {
+    const isOverdue = task.status !== 'Done' && new Date(task.due) < new Date();
+    const isBeingDragged = dragged === task.id;
+    return (
+      <article
+        key={task.id}
+        className={`task-card ${isBeingDragged ? 'is-dragging' : ''}`}
+        draggable
+        onDragStart={(e) => {
+          setDragged(task.id);
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', task.id);
+        }}
+        onDragEnd={() => {
+          setDragged(null);
+          setDropTarget(null);
+        }}
       >
-        {statuses.map((s) => (
-          <option key={s}>{s}</option>
-        ))}
-      </select>
-    </article>
-  );
+        <div className="task-top">
+          <Badge
+            tone={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'gold' : 'teal'}
+          >
+            {task.priority} priority
+          </Badge>
+          <button
+            className="plain-icon"
+            aria-label={`Edit ${task.title}`}
+            onClick={() => setEditing(task)}
+          >
+            <Icon name="Ellipsis" size={20} />
+          </button>
+        </div>
+        <h3>
+          <button className="plain-text" onClick={() => setEditing(task)}>
+            {task.title}
+          </button>
+        </h3>
+        <p>{task.description}</p>
+        <div className="task-meta">
+          <Avatar
+            name={task.assignee}
+            small
+            index={data.members.findIndex((m) => m.name === task.assignee)}
+          />
+          <span>{task.assignee.split(' ')[0]}</span>
+          <span className={isOverdue ? 'task-overdue' : ''}>
+            <Icon name="CalendarDays" size={13} />
+            {date(task.due, { day: 'numeric', month: 'short' })}
+            {isOverdue && ' (Overdue)'}
+          </span>
+        </div>
+        <select
+          className="task-status-select"
+          aria-label={`Status for ${task.title}`}
+          value={task.status}
+          onChange={(e) => changeStatus(task.id, e.target.value as Task['status'])}
+        >
+          {statuses.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </article>
+    );
+  };
   return (
     <>
       <PageHeader
@@ -547,42 +557,66 @@ export function TasksPage() {
       </div>
       {view === 'board' ? (
         <div className="kanban-board">
-          {statuses.map((status, i) => (
-            <section
-              key={status}
-              className={`kanban-column ${dragged ? 'drop-ready' : ''}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData('text/plain');
-                if (data.tasks.some((t) => t.id === id)) changeStatus(id, status);
-                setDragged(null);
-              }}
-            >
-              <div className="column-heading">
-                <span className={`legend-dot ${['gold', 'teal', 'green'][i]}`} />
-                <h2>{status}</h2>
-                <span className="column-count">
-                  {data.tasks.filter((t) => t.status === status).length}
-                </span>
-                <button
-                  className="plain-icon"
-                  aria-label={`Add ${status} task`}
-                  onClick={() => setAdding(true)}
-                >
-                  <Icon name="Plus" size={18} />
+          {statuses.map((status, i) => {
+            const isTarget = dropTarget === status;
+            return (
+              <section
+                key={status}
+                className={`kanban-column ${dragged ? 'drop-ready' : ''} ${isTarget ? 'is-drop-target' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dropTarget !== status) setDropTarget(status);
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  setDropTarget(status);
+                }}
+                onDragLeave={(e) => {
+                  // Only clear if leaving the column element itself
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                  if (dropTarget === status) setDropTarget(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData('text/plain') || dragged;
+                  if (id && data.tasks.some((t) => t.id === id)) {
+                    changeStatus(id, status);
+                  }
+                  setDragged(null);
+                  setDropTarget(null);
+                }}
+              >
+                <div className="column-heading">
+                  <span className={`legend-dot ${['gold', 'teal', 'green'][i]}`} />
+                  <h2>{status}</h2>
+                  <span className="column-count">
+                    {data.tasks.filter((t) => t.status === status).length}
+                  </span>
+                  <button
+                    className="plain-icon"
+                    aria-label={`Add ${status} task`}
+                    onClick={() => setAdding(true)}
+                  >
+                    <Icon name="Plus" size={18} />
+                  </button>
+                </div>
+                {data.tasks.filter((t) => t.status === status).map(renderTask)}
+                {isTarget && dragged && (
+                  <div className="kanban-drop-placeholder">
+                    <span>Drop here</span>
+                  </div>
+                )}
+                {!data.tasks.some((t) => t.status === status) && !isTarget && (
+                  <div className="empty-column">Drop a task here</div>
+                )}
+                <button className="add-task-inline" onClick={() => setAdding(true)}>
+                  <Icon name="Plus" size={16} />
+                  Add a task
                 </button>
-              </div>
-              {data.tasks.filter((t) => t.status === status).map(renderTask)}
-              {!data.tasks.some((t) => t.status === status) && (
-                <div className="empty-column">Drop a task here</div>
-              )}
-              <button className="add-task-inline" onClick={() => setAdding(true)}>
-                <Icon name="Plus" size={16} />
-                Add a task
-              </button>
-            </section>
-          ))}
+              </section>
+            );
+          })}
         </div>
       ) : (
         <div className="task-list-view">{data.tasks.map(renderTask)}</div>
