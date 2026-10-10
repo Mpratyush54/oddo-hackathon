@@ -132,6 +132,12 @@ export default function Workspace() {
     );
   if (!signedIn) return <Navigate to="/login" replace />;
   const club = clubs.find((c) => c.id === clubId)!;
+  const merchNavLabel = can('manage_inventory')
+    ? 'Merch stock'
+    : can('manage_orders')
+      ? 'Merch orders'
+      : 'Merchandise';
+  const merchNavIcon = can('manage_inventory') || can('manage_orders') ? 'Package' : 'ShoppingBag';
   const mainNav =
     role === 'college'
       ? [
@@ -139,7 +145,11 @@ export default function Workspace() {
           { to: '/app/college-clubs', label: 'Club registry', icon: 'UsersRound' },
           { to: '/app/club-summary', label: 'Selected club', icon: 'PanelsTopLeft' },
         ]
-      : operational.filter((n) => !n.permission || can(n.permission));
+      : operational
+          .filter((n) => !n.permission || can(n.permission))
+          .map((n) =>
+            n.to === '/app/merchandise' ? { ...n, label: merchNavLabel, icon: merchNavIcon } : n,
+          );
   const managementNav = mainNav.filter(
     (item) => !['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
   );
@@ -317,7 +327,7 @@ export default function Workspace() {
           if (!isDesktop()) setNavOpen(false);
         }}
       >
-        <Icon name={item.icon} />
+        <Icon name={item.icon} size={22} />
         <span>{item.label}</span>
         {item.to === '/app/announcements' && (
           <span className="nav-count">{data.announcements.length}</span>

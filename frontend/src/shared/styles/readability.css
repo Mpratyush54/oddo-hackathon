@@ -124,7 +124,7 @@ h3,
 }
 /* Desktop: toggleable sidebar (button only). Phone: overlay drawer + scrim. */
 .workspace-v2 {
-  --sidebar-width: 234px;
+  --sidebar-width: 252px;
   overflow-x: clip;
 }
 .workspace-v2 .main-shell {
@@ -182,7 +182,7 @@ h3,
 }
 .workspace-v2 .sidebar .nav-item {
   width: 100%;
-  min-height: 46px;
+  min-height: 50px;
   justify-content: flex-start;
 }
 .workspace-v2 .sidebar .org-switch {
@@ -379,7 +379,15 @@ h3,
 /* Phone: overlay drawer + scrim (outside tap closes). Desktop has no scrim. */
 @media (max-width: 768px) {
   .workspace-v2 {
-    --sidebar-width: min(300px, 86vw);
+    --sidebar-width: min(320px, 88vw);
+  }
+  .workspace-v2 .sidebar .nav-item {
+    min-height: 52px;
+    font-size: 16px;
+  }
+  .workspace-v2 .nav-section summary {
+    min-height: 52px;
+    font-size: 16px;
   }
   .workspace-v2 .main-shell,
   .workspace-v2.navigation-open .main-shell {

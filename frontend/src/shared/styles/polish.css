@@ -228,11 +228,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 15px;
-  font-size: 14px;
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #60736a;
   list-style: none;
+  border-radius: 12px;
 }
 .nav-section summary::-webkit-details-marker {
   display: none;
