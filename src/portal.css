@@ -445,6 +445,145 @@
 .portal-club > .badge {
   margin-bottom: 20px;
 }
+
+/* Issue #6: Visual Club Stories Cards */
+.club-stories-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+.club-story-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface, #ffffff);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.club-story-card:hover,
+.club-story-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 38px -10px rgba(15, 107, 102, 0.18);
+  border-color: rgba(15, 107, 102, 0.35);
+  outline: none;
+}
+.club-story-hero {
+  position: relative;
+  height: 200px;
+  width: 100%;
+  overflow: hidden;
+  background: #111e22;
+}
+.club-story-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.club-story-card:hover .club-story-image {
+  transform: scale(1.06);
+}
+.club-story-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 18, 21, 0.15) 0%, rgba(11, 18, 21, 0.65) 100%);
+}
+.club-category-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(11, 18, 21, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.club-story-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+}
+.club-story-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.club-story-meta h2 {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text, #163d33);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.club-cadence-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary, #0f6b66);
+  letter-spacing: 0.01em;
+}
+.club-story-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted, #526b62);
+  margin: 0 0 20px 0;
+  flex: 1;
+}
+.club-story-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: auto;
+}
+.club-stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #526b62);
+}
+
+[data-theme='dark'] .club-story-card {
+  background: var(--surface, #141f23);
+  border-color: var(--border, #22323a);
+}
+[data-theme='dark'] .club-story-card:hover {
+  box-shadow: 0 20px 38px -10px rgba(0, 0, 0, 0.5);
+  border-color: rgba(45, 212, 191, 0.4);
+}
+[data-theme='dark'] .club-story-meta h2 {
+  color: #f1f5f9;
+}
+[data-theme='dark'] .club-story-desc {
+  color: #94a3b8;
+}
+[data-theme='dark'] .club-cadence-badge {
+  color: #2dd4bf;
+}
+[data-theme='dark'] .club-stats-pill {
+  color: #94a3b8;
+}
+
 .portal-auth {
   min-height: 100vh;
   display: grid;
