@@ -618,14 +618,6 @@
   font-size: 14px;
   color: #506b57;
 }
-.portal-preview {
-  background: #fff;
-  border: 1px solid #dbe5d8;
-  border-radius: 17px;
-  box-shadow: 0 22px 70px #244c3322;
-  position: relative;
-  transform: rotate(-1.5deg);
-}
 .portal-preview-top {
   display: flex;
   justify-content: space-between;
@@ -759,28 +751,68 @@
   font-size: 14px;
   margin-top: 4px;
 }
+.portal-preview {
+  background: #fff;
+  border: 1px solid #dbe5d8;
+  border-radius: 17px;
+  box-shadow: 0 22px 70px #244c3322;
+  position: relative;
+  transform: perspective(1000px) rotateY(-3deg) rotateX(2deg) rotate(-1.5deg);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  animation: hero-mockup-float 6s ease-in-out infinite;
+}
+.portal-preview:hover {
+  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) rotate(0deg) translateY(-6px);
+  box-shadow: 0 30px 85px #244c3330;
+}
+@keyframes hero-mockup-float {
+  0%, 100% {
+    transform: perspective(1000px) rotateY(-3deg) rotateX(2deg) rotate(-1.5deg) translateY(0);
+  }
+  50% {
+    transform: perspective(1000px) rotateY(-1deg) rotateX(4deg) rotate(-0.5deg) translateY(-10px);
+  }
+}
 .portal-proof {
-  padding: 25px 50px;
-  display: flex;
-  justify-content: center;
-  gap: 48px;
-  align-items: center;
+  padding: 18px 0;
   background: #eff3ea;
   border-block: 1px solid #e3e9dc;
-  flex-wrap: wrap;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
-.portal-proof > span {
+.portal-proof-ticker {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 32px;
+  width: max-content;
+  white-space: nowrap;
+  animation: ticker-slide 30s linear infinite;
+}
+.portal-proof-ticker:hover {
+  animation-play-state: paused;
+}
+@keyframes ticker-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-label {
+  font-size: 13px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #0f6b66;
+}
+.ticker-divider {
+  color: #a3b89e;
+  font-weight: bold;
+}
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #72806a;
-}
-.portal-proof > span:first-child {
-  font-size: 14px;
-  letter-spacing: 1.7px;
-  font-weight: 700;
+  color: #556c5a;
 }
 .portal-feature-section {
   max-width: 1300px;

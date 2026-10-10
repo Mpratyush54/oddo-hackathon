@@ -20,6 +20,7 @@ import { useSession } from '../session';
 import '../portal.css';
 import { cancelEventTicket } from './Commerce';
 import { LandingEvents } from '../components/LandingEvents';
+import { Revealed } from '../components/PageMotion';
 
 const accentColor = (tone: string) =>
   ({ teal: 'var(--primary)', purple: 'var(--purple)', gold: 'var(--gold)' })[tone] ||
@@ -1271,14 +1272,26 @@ export function LandingPage() {
           </div>
         </div>
       </section>
-      <section className="portal-proof">
-        <span>ONE CONNECTED CAMPUS.</span>
-        {organizations.map((c) => (
-          <span key={c.id}>
-            <Icon name="Sprout" size={18} />
-            {c.name}
-          </span>
-        ))}
+      <section className="portal-proof" aria-label="Campus clubs ticker">
+        <div className="portal-proof-ticker">
+          <span className="ticker-label">ONE CONNECTED CAMPUS</span>
+          <span className="ticker-divider">·</span>
+          {organizations.map((c) => (
+            <span key={c.id} className="ticker-item">
+              <Icon name="Sprout" size={16} />
+              {c.name}
+            </span>
+          ))}
+          <span className="ticker-divider">·</span>
+          <span className="ticker-label">ONE CONNECTED CAMPUS</span>
+          <span className="ticker-divider">·</span>
+          {organizations.map((c) => (
+            <span key={`dup-${c.id}`} className="ticker-item">
+              <Icon name="Sprout" size={16} />
+              {c.name}
+            </span>
+          ))}
+        </div>
       </section>
       <LandingEvents />
       <section className="portal-feature-section" id="how-it-works">
@@ -1308,15 +1321,17 @@ export function LandingPage() {
               body: 'Dues, sales, receipts and approvals in a shared ledger. Close the semester with confidence.',
               label: 'FINANCE & TRUST',
             },
-          ].map((f) => (
-            <article key={f.title}>
-              <span className="icon-tile">
-                <Icon name={f.icon} size={26} />
-              </span>
-              <small>{f.label}</small>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-            </article>
+          ].map((f, i) => (
+            <Revealed key={f.title} delay={i * 80}>
+              <article>
+                <span className="icon-tile">
+                  <Icon name={f.icon} size={26} />
+                </span>
+                <small>{f.label}</small>
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
+              </article>
+            </Revealed>
           ))}
         </div>
       </section>
