@@ -797,4 +797,109 @@
   background: #fffbeb;
 }
 
+/* ==========================================================================
+   Issue #24: Dark Mode Theme & Tokens
+   ========================================================================== */
+[data-theme="dark"],
+body.dark-theme {
+  --primary: #2dd4bf;
+  --primary-700: #14b8a6;
+  --primary-50: #0f2d2a;
+  --primary-100: #134e4a;
+  --text-strong: #f1f5f9;
+  --text-muted: #94a3b8;
+  --surface: #141f23;
+  --border: #22323a;
+  --bg-page: #0b1215;
+  --bg-sidebar: #0f181c;
+  --shadow: 0 10px 36px rgba(0, 0, 0, 0.55);
+  color: #e2ede7;
+  background-color: #0b1215;
+}
+
+[data-theme="dark"] .app-shell,
+[data-theme="dark"] .main-shell {
+  background-color: #0b1215;
+  color: #e2ede7;
+}
+
+[data-theme="dark"] .sidebar {
+  background-color: #0f181c;
+  border-right-color: #22323a;
+}
+
+[data-theme="dark"] .sidebar-fixed-bottom {
+  background-color: #0f181c;
+  border-top-color: #22323a;
+}
+
+[data-theme="dark"] .topbar {
+  background: rgba(15, 24, 28, 0.88);
+  border-bottom-color: #22323a;
+}
+
+[data-theme="dark"] .workspace-home {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .scanner-card,
+[data-theme="dark"] .module-card,
+[data-theme="dark"] .member-card-crafted,
+[data-theme="dark"] .project-wall-card,
+[data-theme="dark"] .bulletin-post-card,
+[data-theme="dark"] .stat-card {
+  background-color: #141f23;
+  border-color: #22323a;
+  color: #e2ede7;
+}
+
+[data-theme="dark"] .nav-item {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-item:hover {
+  background: rgba(45, 212, 191, 0.08);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .nav-item.active {
+  background: rgba(45, 212, 191, 0.14);
+  border-color: rgba(45, 212, 191, 0.25);
+  color: #2dd4bf;
+}
+
+[data-theme="dark"] .global-search input,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #0f181c;
+  border-color: #22323a;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .table-scroll table th {
+  background-color: #101a1e;
+  color: #94a3b8;
+  border-bottom-color: #22323a;
+}
+
+[data-theme="dark"] .table-scroll table td {
+  border-bottom-color: #1c2b32;
+  color: #e2ede7;
+}
+
+[data-theme="dark"] .table-scroll table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .theme-toggle {
+  color: #e2ede7;
+}
+
+[data-theme="dark"] .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+
 
