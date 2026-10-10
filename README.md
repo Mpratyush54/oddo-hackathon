@@ -86,6 +86,25 @@ Email is prepared only; no email provider or automated delivery schedule is conf
 
 API tests cover JWT/CSRF/session rotation and revocation, role isolation, concurrency, authoritative pricing, waitlist offers, private data filtering, expense review, and persistent WhatsApp timeout deduplication/signatures.
 
+### Browser UI coverage
+
+The Playwright UI audit visits the public routes and the role-specific workspace routes for admin, organizer, treasurer, member, and college users. On each route it inventories visible buttons, links, inputs, selects, forms, tabs, and tables; checks accessible names and table column consistency; probes safe button and internal-link interactions; and fills/toggles fields without submitting forms.
+
+Buttons that submit forms or represent destructive, business-data, or provider actions are listed as requiring a dedicated workflow instead of being blindly clicked. Outbound links and provider calls are blocked by the UI audit. The test target is restricted to localhost unless a developer explicitly opts into a remote target.
+
+Install Playwright once, start the labelled demo app, then run the browser suite from a second terminal:
+
+    npm install --no-save --package-lock=false playwright@1.64.0
+    npx playwright install chromium
+    npm run dev:demo
+
+In a second terminal:
+
+    npm run test:browser
+
+The browser suite runs the existing interaction smoke tests and the route-wide UI audit. The detailed control inventory and route-level failures are written to `artifacts/ui-coverage.json`. Run only the broad inventory with `npm run test:ui`. CI installs Chromium and runs the same suite before any deployment.
+
+
     node scripts/backend-smoke.cjs
 
 The AWS/browser smoke test creates a synthetic account, validates signup/login, joining, an idempotent booking, a private receipt upload and expense, and session refresh/logout. It removes only its synthetic account/business records/receipt afterward, retaining the audit history. The Playwright package location can be overridden with PLAYWRIGHT_MODULE. It sends no WhatsApp messages and makes no AI requests.
