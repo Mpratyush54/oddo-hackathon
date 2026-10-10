@@ -12,9 +12,8 @@ import { roleLabels, useSession } from '../../features/auth/session';
 import { backendPost, cloudMode } from '../../shared/api/client';
 import type { Role } from '../../features/auth/session';
 import { AdminDashboard } from '../../features/admin/pages/Dashboard';
-import { UsersPage } from '../../features/admin/pages/UsersPage';
 import { EmailVerificationNotice } from '../../features/auth/EmailVerificationNotice';
-import { MembersPage } from '../../features/membership/pages/MembersPage';
+import { PeoplePage } from '../../features/membership/pages/PeoplePage';
 import { TasksPage } from '../../features/tasks/pages/TasksPage';
 import { EventsPage } from '../../features/events/pages/EventsPage';
 import { CheckoutPage } from '../../features/commerce/pages/CheckoutPage';
@@ -37,7 +36,7 @@ import type { NavItem } from './navigation';
 import { operational, personal } from './navigation';
 import { Permission, Unauthorized } from '../routes/Permission';
 import { PersonalTasks } from '../../features/tasks/pages/MyTasks';
-import { AuditPage } from '../../features/audit/pages/AuditPage';
+import { actionLabels, AuditPage } from '../../features/audit/pages/AuditPage';
 import { CollegeRegistry } from '../../features/college/pages/Registry';
 import { ClubSummary } from '../../features/college/pages/ClubSummary';
 
@@ -70,8 +69,17 @@ export default function Workspace() {
   useEffect(() => {
     setMenu(null);
     setSearch('');
+    setNavOpen(false);
     window.scrollTo(0, 0);
   }, [location.pathname, clubId, role]);
+  useEffect(() => {
+    if (!navOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [navOpen]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -152,28 +160,131 @@ export default function Workspace() {
     );
   });
   const unread = visibleNotifications.filter((n) => !n.read).length;
-  const results = [...mainNav, ...myNav, ...tools]
-    .map((n) => ({ title: n.label, to: n.to, icon: n.icon, meta: 'Workspace' }))
-    .concat(
-      role === 'college'
-        ? []
-        : data.events.map((e) => ({
-            title: e.title,
-            to: `/app/events/${e.id}`,
-            icon: 'CalendarDays',
-            meta: 'Event',
-          })),
-      can('manage_members')
-        ? data.members.map((m) => ({
-            title: m.name,
-            to: `/app/members?q=${encodeURIComponent(m.name)}`,
-            icon: 'UserRound',
-            meta: 'Member',
-          }))
-        : [],
-    )
-    .filter((r) => r.title.toLowerCase().includes(search.toLowerCase()))
-    .slice(0, 7);
+  const searchQuery = search.trim().toLowerCase();
+  type SearchHit = { id: string; title: string; to: string; icon: string; meta: string; hint?: string };
+  const results: SearchHit[] = (() => {
+    if (!searchQuery) return [];
+    const hits: SearchHit[] = [];
+    const push = (hit: SearchHit) => {
+      const hay = `${hit.title} ${hit.meta} ${hit.hint || ''}`.toLowerCase();
+      if (hay.includes(searchQuery)) hits.push(hit);
+    };
+    [...mainNav, ...myNav, ...tools].forEach((n) =>
+      push({ id: `page-${n.to}`, title: n.label, to: n.to, icon: n.icon, meta: 'Page' }),
+    );
+    if (role !== 'college') {
+      data.events.forEach((e) =>
+        push({
+          id: `event-${e.id}`,
+          title: e.title,
+          to: `/app/events/${e.id}`,
+          icon: 'CalendarDays',
+          meta: 'Event',
+          hint: `${e.venue} ${e.category} ${e.date}`,
+        }),
+      );
+      data.products.forEach((p) =>
+        push({
+          id: `product-${p.id}`,
+          title: p.name,
+          to: '/app/merchandise',
+          icon: 'ShoppingBag',
+          meta: 'Product',
+          hint: p.type,
+        }),
+      );
+      data.announcements.forEach((a) =>
+        push({
+          id: `announcement-${a.id}`,
+          title: a.title,
+          to: '/app/announcements',
+          icon: 'Megaphone',
+          meta: 'Announcement',
+          hint: a.body?.slice(0, 80),
+        }),
+      );
+      data.tickets
+        .filter((t) => t.email.toLowerCase() === user.email.toLowerCase())
+        .forEach((t) => {
+          const eventTitle = data.events.find((e) => e.id === t.eventId)?.title || t.id;
+          push({
+            id: `ticket-${t.id}`,
+            title: eventTitle,
+            to: '/app/my-tickets',
+            icon: 'Ticket',
+            meta: 'My ticket',
+            hint: t.id,
+          });
+        });
+      data.orders
+        .filter(
+          (o) =>
+            o.email?.toLowerCase() === user.email.toLowerCase() ||
+            o.name === user.name ||
+            can('manage_orders') ||
+            can('manage_inventory'),
+        )
+        .forEach((o) =>
+          push({
+            id: `order-${o.id}`,
+            title: o.id,
+            to: can('manage_orders') || can('manage_inventory') ? '/app/merchandise' : '/app/my-orders',
+            icon: 'Package',
+            meta: 'Order',
+            hint: `${o.name} ${o.email || ''} ${o.size || ''}`,
+          }),
+        );
+      data.tasks
+        .filter((t) => t.assignee === user.name || can('manage_tasks'))
+        .forEach((t) =>
+          push({
+            id: `task-${t.id}`,
+            title: t.title,
+            to: can('manage_tasks') ? '/app/tasks' : '/app/my-tasks',
+            icon: 'ListTodo',
+            meta: 'Task',
+            hint: `${t.assignee} ${t.status}`,
+          }),
+        );
+    }
+    if (can('manage_members')) {
+      data.members.forEach((m) =>
+        push({
+          id: `member-${m.id}`,
+          title: m.name,
+          to: `/app/members?q=${encodeURIComponent(m.name)}`,
+          icon: 'UserRound',
+          meta: 'Member',
+          hint: `${m.email} ${m.course} ${m.status}`,
+        }),
+      );
+    }
+    if (can('view_finance')) {
+      data.transactions.forEach((t) =>
+        push({
+          id: `tx-${t.id}`,
+          title: t.title,
+          to: '/app/finance',
+          icon: 'Wallet',
+          meta: 'Finance',
+          hint: `${t.category} ${t.status} ${t.id}`,
+        }),
+      );
+    }
+    if (can('audit')) {
+      data.audit.forEach((a) =>
+        push({
+          id: `audit-${a.id}`,
+          title: actionLabels[a.action] || a.action,
+          to: `/app/audit?q=${encodeURIComponent(a.actor || a.detail || a.action)}`,
+          icon: 'ShieldCheck',
+          meta: 'Audit',
+          hint: `${a.actor} ${a.detail} ${a.entity}`,
+        }),
+      );
+    }
+    return hits.slice(0, 12);
+  })();
   const renderNav = (items: NavItem[]) =>
     items.map((item) => (
       <NavLink
@@ -182,6 +293,7 @@ export default function Workspace() {
         to={item.to}
         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         title={item.label}
+        onClick={() => setNavOpen(false)}
       >
         <Icon name={item.icon} />
         <span>{item.label}</span>
@@ -201,6 +313,14 @@ export default function Workspace() {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
+      {navOpen && (
+        <button
+          type="button"
+          className="nav-scrim"
+          aria-label="Close navigation"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
       <aside id="workspace-navigation" className={`sidebar ${navOpen ? 'is-open' : ''}`}>
         <div className="sidebar-fixed-top">
           <div className="sidebar-brand">
@@ -349,29 +469,35 @@ export default function Workspace() {
             <input
               ref={searchRef}
               aria-label="Search your workspace"
-              placeholder="Search your workspace..."
+              placeholder="Search people, events, orders, pages…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && results[0]) navigate(results[0].to);
+                if (e.key === 'Enter' && results[0]) {
+                  navigate(results[0].to);
+                  setSearch('');
+                }
               }}
             />
             <kbd>Ctrl K</kbd>
-            {search && (
+            {searchQuery && (
               <div className="search-results">
                 {results.length ? (
                   results.map((r) => (
-                    <Link to={r.to} key={r.to}>
+                    <Link to={r.to} key={r.id} onClick={() => setSearch('')}>
                       <Icon name={r.icon} size={18} />
                       <span>
                         {r.title}
-                        <small>{r.meta}</small>
+                        <small>
+                          {r.meta}
+                          {r.hint ? ` · ${r.hint}` : ''}
+                        </small>
                       </span>
                       <Icon name="ArrowUpRight" size={15} />
                     </Link>
                   ))
                 ) : (
-                  <p>No matching records.</p>
+                  <p>No matching records across the workspace.</p>
                 )}
               </div>
             )}
@@ -563,11 +689,7 @@ export default function Workspace() {
           <Routes>
             <Route
               path="users"
-              element={
-                <Permission permission="manage_members">
-                  <UsersPage key={clubId} />
-                </Permission>
-              }
+              element={<Navigate to="/app/members?view=access" replace />}
             />
             <Route
               index
@@ -585,7 +707,7 @@ export default function Workspace() {
               path="members"
               element={
                 <Permission permission="manage_members">
-                  <MembersPage />
+                  <PeoplePage />
                 </Permission>
               }
             />

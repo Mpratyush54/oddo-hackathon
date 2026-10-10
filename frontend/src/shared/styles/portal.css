@@ -172,6 +172,44 @@
 .member-card-face {
   position: relative;
 }
+.member-card-render-wrap {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.member-card-render {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  aspect-ratio: 720 / 420;
+  border-radius: 22px;
+  box-shadow: 0 18px 40px #143f3429;
+}
+.member-card-placeholder {
+  display: grid;
+  gap: 10px;
+  place-items: start;
+  min-height: 240px;
+  max-width: 720px;
+  padding: 36px 32px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #143f34, #0e635b);
+  color: #d9eae1;
+  box-shadow: 0 18px 40px #143f3429;
+}
+.member-card-placeholder strong {
+  color: #fff;
+  font-size: 22px;
+}
+.member-card-placeholder p {
+  margin: 0;
+  max-width: 36ch;
+  line-height: 1.55;
+  color: #a4c9b6;
+}
 .member-card-qr-empty {
   width: 150px;
   height: 150px;
@@ -227,33 +265,6 @@
 @media (max-width: 900px) {
   .member-card-layout {
     grid-template-columns: 1fr;
-  }
-}
-@media print {
-  body.printing-member-card .sidebar,
-  body.printing-member-card .topbar,
-  body.printing-member-card .mobile-quick-nav,
-  body.printing-member-card .page-heading,
-  body.printing-member-card .member-card-aside,
-  body.printing-member-card .info-banner,
-  body.printing-member-card .email-verification-notice {
-    display: none !important;
-  }
-  body.printing-member-card .main-shell {
-    margin: 0 !important;
-  }
-  body.printing-member-card .content {
-    padding: 0 !important;
-  }
-  body.printing-member-card .member-card-layout {
-    display: block;
-    max-width: none;
-  }
-  body.printing-member-card .member-card-face {
-    break-inside: avoid;
-    box-shadow: none;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 }
 .portal-note {

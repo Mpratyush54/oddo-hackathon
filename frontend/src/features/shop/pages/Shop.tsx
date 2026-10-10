@@ -10,7 +10,7 @@ import { Logo } from '../../../shared/ui/Logo';
 import { Modal } from '../../../shared/ui/Modal';
 import { ProductArt } from '../../../shared/ui/ProductArt';
 import { SearchField } from '../../../shared/ui/SearchField';
-import { date, exportCSV, exportInvoicePdf, money, today } from '../../../shared/utils/format';
+import { date, exportCSV, exportInvoicePdf, money, moneyPdf, today } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { OrderStatus, Product, Store } from '../../../shared/types/domain';
 const orderStatuses: OrderStatus[] = ['Placed', 'Ready for pickup', 'Picked up', 'Cancelled'];
@@ -554,16 +554,22 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                                     reference: o.id,
                                     customer: o.name,
                                     email: o.email,
+                                    items: [
+                                      {
+                                        description: productName,
+                                        detail: `Size: ${o.size}`,
+                                        quantity: 1,
+                                        amount: moneyPdf(o.amount),
+                                      },
+                                    ],
                                     lines: [
-                                      { label: 'Item', value: productName },
-                                      { label: 'Size', value: o.size },
                                       { label: 'Status', value: status },
                                       ...(o.promoCode
                                         ? [{ label: 'Promo', value: o.promoCode }]
                                         : []),
-                                      { label: 'Payment', value: 'Demo payment — no money charged' },
                                     ],
-                                    total: money(o.amount),
+                                    total: moneyPdf(o.amount),
+                                    note: 'Demo payment - no money charged.',
                                   })
                                 }
                               >
@@ -1146,13 +1152,16 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                     reference: receipt.refs.join(', '),
                     customer: user.name,
                     email: user.email,
-                    lines: [
-                      { label: 'Item', value: receipt.name },
-                      { label: 'Quantity', value: String(receipt.quantity) },
-                      { label: 'Size', value: receipt.size },
-                      { label: 'Payment', value: 'Demo payment — no money charged' },
+                    items: [
+                      {
+                        description: receipt.name,
+                        detail: `Size: ${receipt.size}`,
+                        quantity: receipt.quantity,
+                        amount: moneyPdf(receipt.amount),
+                      },
                     ],
-                    total: money(receipt.amount),
+                    total: moneyPdf(receipt.amount),
+                    note: 'Demo payment - no money charged.',
                   })
                 }
               >

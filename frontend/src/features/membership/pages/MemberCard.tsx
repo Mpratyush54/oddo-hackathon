@@ -1,10 +1,8 @@
-import { useRef, useState } from 'react';
-import QRCode from 'qrcode';
+import { useEffect, useState } from 'react';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
-import { Logo } from '../../../shared/ui/Logo';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { date, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
@@ -12,112 +10,21 @@ import { useSession } from '../../auth/session';
 import { cloudMode } from '../../../shared/api/client';
 import '../../../shared/styles/portal.css';
 import '../../landing/styles/landing.css';
-import { QR } from '../../../shared/components/QRCode';
 import { usePersonal } from '../../account/hooks/usePersonal';
-
-async function downloadCardPng(input: {
-  clubName: string;
-  name: string;
-  course: string;
-  memberId: string;
-  expires: string;
-  valid: boolean;
-  qrPayload: string;
-}) {
-  const width = 720;
-  const height = 420;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not create card image.');
-
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#143f34');
-  gradient.addColorStop(1, '#0e635b');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.fillStyle = '#e6c777';
-  ctx.font = '700 28px Georgia, "Times New Roman", serif';
-  ctx.fillText('skyline.', 36, 52);
-
-  ctx.fillStyle = '#a4c9b6';
-  ctx.font = '600 13px system-ui, sans-serif';
-  ctx.fillText('VOLUNTEER MEMBERSHIP', 480, 48);
-  ctx.fillText(input.clubName.toUpperCase(), 36, 96);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '700 36px system-ui, sans-serif';
-  ctx.fillText(input.name.slice(0, 28), 36, 148);
-
-  ctx.fillStyle = '#d9eae1';
-  ctx.font = '500 18px system-ui, sans-serif';
-  ctx.fillText(input.course.slice(0, 40), 36, 182);
-
-  ctx.fillStyle = '#a4c9b6';
-  ctx.font = '500 14px system-ui, sans-serif';
-  ctx.fillText(input.valid ? 'Valid membership' : 'Membership pending', 36, 230);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '600 16px ui-monospace, monospace';
-  ctx.fillText(input.memberId, 36, 258);
-  ctx.fillStyle = '#a4c9b6';
-  ctx.font = '500 14px system-ui, sans-serif';
-  ctx.fillText(`Expires ${input.expires}`, 36, 284);
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.beginPath();
-  ctx.moveTo(36, 330);
-  ctx.lineTo(width - 36, 330);
-  ctx.stroke();
-  ctx.fillStyle = '#a4c9b6';
-  ctx.fillText('Belong here. Build together.', 36, 368);
-
-  const qrUrl = await QRCode.toDataURL(input.qrPayload, {
-    width: 180,
-    margin: 1,
-    color: { dark: '#123f38', light: '#ffffff' },
-  });
-  const qrImage = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Could not render QR code.'));
-    img.src = qrUrl;
-  });
-  ctx.fillStyle = '#ffffff';
-  roundRect(ctx, width - 230, 120, 194, 194, 16);
-  ctx.fill();
-  ctx.drawImage(qrImage, width - 220, 130, 174, 174);
-
-  const link = document.createElement('a');
-  link.href = canvas.toDataURL('image/png');
-  link.download = `${input.memberId || 'skyline'}-membership-card.png`;
-  link.click();
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
+import {
+  downloadMembershipCard,
+  printMembershipCardImage,
+  renderMembershipCardCanvas,
+} from '../utils/renderMembershipCard';
 
 export function MemberCard() {
   const { user, member, data } = usePersonal();
   const { update, toast } = useStore();
   const { clubs, clubId, can } = useSession();
-  const cardRef = useRef<HTMLElement>(null);
   const [saving, setSaving] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewBusy, setPreviewBusy] = useState(false);
   const clubName = clubs.find((c) => c.id === clubId)?.name || 'Skyline';
   const valid =
     !!member &&
@@ -126,6 +33,50 @@ export function MemberCard() {
   const needsDues = !!member && (!valid || member.status === 'Expiring');
   const featuredProduct = data.products.find((p) => Object.values(p.stock).some((n) => n > 0));
   const qrPayload = member ? `SKYLINE:MEMBER:${clubId}:${member.id}` : '';
+
+  const cardInput = member
+    ? {
+        clubName,
+        name: user.name,
+        course: member.course || 'Campus volunteer',
+        memberId: member.id,
+        role: member.role || 'Volunteer',
+        expires: date(member.expires),
+        valid,
+        qrPayload,
+      }
+    : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!cardInput) {
+      setPreviewUrl('');
+      return;
+    }
+    setPreviewBusy(true);
+    void renderMembershipCardCanvas(cardInput)
+      .then((result) => {
+        if (!cancelled) setPreviewUrl(result.dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewUrl('');
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    cardInput?.clubName,
+    cardInput?.name,
+    cardInput?.course,
+    cardInput?.memberId,
+    cardInput?.role,
+    cardInput?.expires,
+    cardInput?.valid,
+    cardInput?.qrPayload,
+  ]);
 
   const activateMembership = () => {
     if (!member) return;
@@ -139,7 +90,12 @@ export function MemberCard() {
       ...d,
       members: d.members.map((m) =>
         m.id === member.id
-          ? { ...m, status: 'Active' as const, expires: '2027-07-31', role: m.role === 'Member' ? 'Volunteer' : m.role }
+          ? {
+              ...m,
+              status: 'Active' as const,
+              expires: '2027-07-31',
+              role: m.role === 'Member' ? 'Volunteer' : m.role,
+            }
           : m,
       ),
       transactions: [
@@ -159,21 +115,15 @@ export function MemberCard() {
   };
 
   const saveCard = async () => {
-    if (!member) {
+    if (!cardInput) {
       toast('Join the club first to save your card.');
       return;
     }
     setSaving(true);
     try {
-      await downloadCardPng({
-        clubName,
-        name: user.name,
-        course: member.course || 'Campus volunteer',
-        memberId: member.id,
-        expires: date(member.expires),
-        valid,
-        qrPayload,
-      });
+      const { blob, dataUrl } = await renderMembershipCardCanvas(cardInput);
+      setPreviewUrl(dataUrl);
+      downloadMembershipCard(blob, cardInput.memberId);
       toast('Membership card saved as PNG.');
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Could not save the card.');
@@ -182,18 +132,21 @@ export function MemberCard() {
     }
   };
 
-  const printCard = () => {
-    if (!member) {
+  const printCard = async () => {
+    if (!cardInput) {
       toast('Join the club first to print your card.');
       return;
     }
-    document.body.classList.add('printing-member-card');
-    const cleanup = () => {
-      document.body.classList.remove('printing-member-card');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    window.setTimeout(() => window.print(), 50);
+    setPrinting(true);
+    try {
+      const { dataUrl } = await renderMembershipCardCanvas(cardInput);
+      setPreviewUrl(dataUrl);
+      printMembershipCardImage(dataUrl);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not print the card.');
+    } finally {
+      setPrinting(false);
+    }
   };
 
   return (
@@ -205,44 +158,38 @@ export function MemberCard() {
       />
 
       <div className="member-card-layout">
-        <section className="portal-digital-card member-card-face" ref={cardRef}>
-          <div className="portal-card-top">
-            <Logo to="/app/my-card" />
-            <span>VOLUNTEER CARD</span>
-          </div>
-          <span className="portal-card-label">{clubName}</span>
-          <h2>{user.name}</h2>
-          <p>{member?.course || 'Campus volunteer'}</p>
-          <div className="portal-card-qr">
-            {member ? (
-              <QR value={qrPayload} />
-            ) : (
-              <div className="member-card-qr-empty" aria-hidden="true">
-                <Icon name="UserRoundPlus" size={48} />
-              </div>
-            )}
-            <div>
-              <Badge tone={valid ? 'teal' : member ? 'gold' : 'neutral'}>
-                {valid ? 'Valid membership' : member ? 'Pending activation' : 'Not enrolled'}
-              </Badge>
-              <strong>{member?.id || 'Join to get an ID'}</strong>
-              <small>
-                {member
-                  ? `${member.role || 'Volunteer'} · Expires ${date(member.expires)}`
-                  : 'No membership on this club yet'}
-              </small>
+        <section className="member-card-face member-card-render-wrap">
+          {previewUrl ? (
+            <img
+              className="member-card-render"
+              src={previewUrl}
+              alt={`${user.name} membership card`}
+              width={720}
+              height={420}
+            />
+          ) : (
+            <div className="member-card-placeholder">
+              <Icon name="BadgeCheck" size={36} />
+              <strong>{previewBusy ? 'Rendering your card…' : 'No membership yet'}</strong>
+              <p>
+                {previewBusy
+                  ? 'Building a device-independent card image.'
+                  : 'Join the club to generate your membership card.'}
+              </p>
+              {!member && (
+                <Badge tone="neutral">Not enrolled</Badge>
+              )}
             </div>
-          </div>
-          <div className="portal-card-footer">
-            <span>Belong here. Build together.</span>
-            <Icon name="ShieldCheck" size={22} />
-          </div>
+          )}
         </section>
 
         <aside className="member-card-aside">
           <section className="member-card-panel">
             <h3>Save or print</h3>
-            <p>Download a PNG for your camera roll, or print a clean card without the sidebar.</p>
+            <p>
+              Preview, download, and print all use the same fixed canvas image — identical on every
+              phone and laptop.
+            </p>
             <div className="member-card-actions">
               <Button icon="Download" disabled={!member || saving} onClick={() => void saveCard()}>
                 {saving ? 'Saving…' : 'Save card PNG'}
@@ -250,10 +197,10 @@ export function MemberCard() {
               <Button
                 variant="secondary"
                 icon="FileCheck2"
-                disabled={!member}
-                onClick={printCard}
+                disabled={!member || printing}
+                onClick={() => void printCard()}
               >
-                Print card
+                {printing ? 'Preparing…' : 'Print card'}
               </Button>
             </div>
           </section>

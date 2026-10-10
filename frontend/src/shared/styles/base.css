@@ -1531,6 +1531,9 @@ strong {
   padding: 3px;
   gap: 2px;
 }
+.people-view-tabs {
+  margin-bottom: 22px;
+}
 .segmented button {
   display: flex;
   align-items: center;
@@ -2984,15 +2987,85 @@ tbody tr:hover {
   grid-template-columns: 200px minmax(0, 650px);
   gap: 25px;
 }
-.settings-layout-embedded {
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: 18px;
+.settings-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-.settings-layout-embedded .settings-card {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+.settings-sheet-tabs {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 4px;
+}
+.settings-sheet-tabs button {
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+.settings-sheet-panel {
+  min-width: 0;
+}
+.settings-panel-head {
+  margin-bottom: 4px;
+}
+.settings-panel-head h3 {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-strong, #1f3329);
+}
+.settings-panel-head p {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.settings-switch-list .switch-row:first-child {
+  padding-top: 14px;
+}
+.settings-switch-list .switch-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 8px;
+}
+.settings-quiet-note {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.settings-password-form {
+  display: grid;
+  gap: 14px;
+  margin: 8px 0 4px;
+}
+.settings-password-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.settings-password-form input {
+  width: 100%;
+}
+.settings-integration-list .integration-setting {
+  padding: 14px 0;
+}
+.settings-sheet .profile-avatar {
+  margin: 16px 0 12px;
+}
+.settings-sheet .profile-avatar .avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 16px;
+}
+.settings-sheet .form-footer {
+  margin-top: 8px;
+}
+.modal.wide:has(.settings-sheet) {
+  width: 520px;
 }
 .settings-nav {
   display: flex;
@@ -3043,16 +3116,18 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 24px 0;
+  padding: 18px 0;
   border-bottom: 1px solid var(--border);
 }
 .switch-row strong {
   font-size: 14px;
+  color: var(--text-strong, #1f3329);
 }
 .switch-row p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
-  margin-top: 5px;
+  margin-top: 3px;
+  line-height: 1.45;
 }
 .switch {
   width: 40px;

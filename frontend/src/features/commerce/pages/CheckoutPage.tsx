@@ -10,7 +10,7 @@ import { LinkButton } from '../../../shared/ui/LinkButton';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { ProductArt } from '../../../shared/ui/ProductArt';
 import { formValues } from '../../../shared/ui/formValues';
-import { date, exportInvoicePdf, money, today, uid } from '../../../shared/utils/format';
+import { date, exportInvoicePdf, money, moneyPdf, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
 import { backendPost, cloudMode } from '../../../shared/api/client';
@@ -66,14 +66,20 @@ export function CheckoutPage() {
       reference: result.id,
       customer: result.name,
       email,
-      lines: [
-        { label: 'Item', value: event?.title || product?.name || 'Order' },
-        ...(result.ticket
-          ? [{ label: 'Ticket ID', value: result.id }]
-          : [{ label: 'Size', value: size || '—' }]),
-        { label: 'Payment', value: 'Demo payment — no money charged' },
+      items: [
+        {
+          description: event?.title || product?.name || 'Order',
+          detail: result.ticket
+            ? `Ticket ID: ${result.id}`
+            : size
+              ? `Size: ${size}`
+              : undefined,
+          quantity: 1,
+          amount: moneyPdf(result.amount),
+        },
       ],
-      total: money(result.amount),
+      total: moneyPdf(result.amount),
+      note: 'Demo payment - no money charged.',
     });
   };
   if (event && eventPhase(event) === 'past' && !result)

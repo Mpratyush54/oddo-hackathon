@@ -116,12 +116,7 @@ export function PersonalProfile() {
       </div>
       <NotificationPreferences />
       {settingsOpen && (
-        <Modal
-          title="Account settings"
-          description="Preferences, sign-in, and workspace export."
-          onClose={closeSettings}
-          wide
-        >
+        <Modal title="Account settings" onClose={closeSettings} wide>
           <AccountSettings embedded />
         </Modal>
       )}

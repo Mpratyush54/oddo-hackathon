@@ -4,7 +4,7 @@ import { Empty } from '../../../shared/ui/Empty';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { PageHeader } from '../../../shared/ui/PageHeader';
-import { date, exportInvoicePdf, money } from '../../../shared/utils/format';
+import { date, exportInvoicePdf, money, moneyPdf } from '../../../shared/utils/format';
 import '../../../shared/styles/portal.css';
 import '../../landing/styles/landing.css';
 import { usePersonal } from '../../account/hooks/usePersonal';
@@ -62,14 +62,20 @@ export function MyOrders() {
                       reference: o.id,
                       customer: o.name || user.name,
                       email: o.email || user.email,
+                      items: [
+                        {
+                          description: productName,
+                          detail: `Size: ${o.size}`,
+                          quantity: 1,
+                          amount: moneyPdf(o.amount),
+                        },
+                      ],
                       lines: [
-                        { label: 'Item', value: productName },
-                        { label: 'Size', value: o.size },
                         { label: 'Status', value: status },
                         ...(o.promoCode ? [{ label: 'Promo', value: o.promoCode }] : []),
-                        { label: 'Payment', value: 'Demo payment — no money charged' },
                       ],
-                      total: money(o.amount),
+                      total: moneyPdf(o.amount),
+                      note: 'Demo payment - no money charged.',
                     })
                   }
                 >
