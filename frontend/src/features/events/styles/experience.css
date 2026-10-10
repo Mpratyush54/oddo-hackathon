@@ -148,7 +148,7 @@
 .experience-photo-count {
   position: absolute;
   right: 18px;
-  bottom: 20px;
+  top: 20px;
   background: #ffffffef;
   color: #345747;
   display: flex;
@@ -851,7 +851,7 @@
   }
   .experience-photo-count {
     right: 14px;
-    bottom: 13px;
+    top: 14px;
   }
   .experience-image-note {
     font-size: 14px !important;
