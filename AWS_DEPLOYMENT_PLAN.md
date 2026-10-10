@@ -6,6 +6,8 @@ Updated 10 October 2026.
 
 The backend is our own Node.js/Express application in .js files. Authentication is fully custom JWT authentication; Cognito is not used. The React frontend is connected to authenticated APIs and shared DynamoDB data. The original persona demo remains available locally through npm run dev:demo.
 
+The codebase now has separate feature-organized `frontend/` and `backend/` trees. Backend routes/controllers, JWT/password services, business action modules, repositories and runtime database schemas have distinct responsibilities. Database records are validated before writes; the generated contract is `backend/database/schema.json`. See [architecture](docs/ARCHITECTURE.md) and [database schema](docs/DATABASE.md). Automatic GitHub deployments run schema consistency/fixture checks alongside API tests and the frontend build.
+
 ## Live deployment
 
 Website and API base: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com

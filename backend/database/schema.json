@@ -1,0 +1,1598 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/accountRecord"
+    },
+    {
+      "$ref": "#/$defs/profileRecord"
+    },
+    {
+      "$ref": "#/$defs/accessRecord"
+    },
+    {
+      "$ref": "#/$defs/sessionRecord"
+    },
+    {
+      "$ref": "#/$defs/refreshRecord"
+    },
+    {
+      "$ref": "#/$defs/stateRecord"
+    },
+    {
+      "$ref": "#/$defs/auditRecord"
+    },
+    {
+      "$ref": "#/$defs/deliveryRecord"
+    },
+    {
+      "$ref": "#/$defs/requestRecord"
+    },
+    {
+      "$ref": "#/$defs/counterRecord"
+    },
+    {
+      "$ref": "#/$defs/messageMappingRecord"
+    },
+    {
+      "$ref": "#/$defs/messageStatusRecord"
+    }
+  ],
+  "$defs": {
+    "accountRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^ACCOUNT#[a-f0-9]{64}$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "ACCOUNT"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "passwordHash": {
+          "type": "string",
+          "pattern": "^scrypt:32768:8:1:[a-f0-9]{32}:[a-f0-9]{128}$"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "id",
+        "passwordHash"
+      ],
+      "additionalProperties": false
+    },
+    "__schema0": {
+      "type": "number",
+      "const": 1
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 250
+    },
+    "profileRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^USER#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "PROFILE"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "emailVerified": {
+          "type": "boolean"
+        },
+        "sessionVersion": {
+          "minimum": 1,
+          "$ref": "#/$defs/__schema3"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "disabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "id",
+        "name",
+        "email",
+        "emailVerified",
+        "sessionVersion",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema2": {
+      "type": "string",
+      "maxLength": 254,
+      "format": "email",
+      "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+    },
+    "__schema3": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema4": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "accessRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^USER#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "pattern": "^ACCESS#.+$"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "clubId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "organizer",
+            "treasurer",
+            "admin",
+            "college"
+          ]
+        },
+        "collegeId": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "clubId",
+        "role"
+      ],
+      "additionalProperties": false
+    },
+    "sessionRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^SESSION#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "SESSION"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "sessionVersion": {
+          "minimum": 1,
+          "$ref": "#/$defs/__schema3"
+        },
+        "csrfToken": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/__schema5"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "userId",
+        "sessionVersion",
+        "csrfToken",
+        "revoked",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema5": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "refreshRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^REFRESH#[a-f0-9]{64}$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "REFRESH"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/__schema5"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "userId",
+        "sessionId",
+        "revoked",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "stateRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "sk": {
+          "type": "string",
+          "const": "STATE"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "version": {
+          "minimum": 1,
+          "$ref": "#/$defs/__schema3"
+        },
+        "data": {
+          "$ref": "#/$defs/clubData"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "version",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "string",
+      "pattern": "^COLLEGE#[^#]+#CLUB#[^#]+$"
+    },
+    "clubData": {
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/member"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/product"
+          }
+        },
+        "tickets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ticket"
+          }
+        },
+        "orders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/order"
+          }
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transaction"
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/task"
+          }
+        },
+        "announcements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/announcement"
+          }
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/notification"
+          }
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/delivery"
+          }
+        },
+        "audit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/audit"
+          }
+        },
+        "waitlist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/waitlist"
+          }
+        },
+        "pointLedger": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          }
+        },
+        "promos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/promo"
+          }
+        },
+        "eventReviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/review"
+          }
+        },
+        "profile": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "#/$defs/__schema7"
+            },
+            "email": {
+              "$ref": "#/$defs/__schema7"
+            },
+            "role": {
+              "$ref": "#/$defs/__schema7"
+            }
+          },
+          "required": [
+            "name",
+            "email",
+            "role"
+          ]
+        },
+        "preferences": {
+          "$ref": "#/$defs/__schema10"
+        }
+      },
+      "required": [
+        "members",
+        "events",
+        "products",
+        "tickets",
+        "orders",
+        "transactions",
+        "tasks",
+        "announcements",
+        "notifications",
+        "deliveries",
+        "audit",
+        "waitlist",
+        "pointLedger",
+        "promos"
+      ],
+      "additionalProperties": false
+    },
+    "member": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "course": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Pending",
+            "Expiring",
+            "Expired"
+          ]
+        },
+        "joined": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "expires": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "role": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^(\\+[1-9][0-9]{6,14})?$"
+        },
+        "whatsappOptIn": {
+          "type": "boolean"
+        },
+        "consentUpdatedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "participationPoints": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "volunteerPoints": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "contributionPoints": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "preferences": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "readNotificationIds": {
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "duesWaived": {
+          "type": "boolean"
+        },
+        "enrollmentSource": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "course",
+        "status",
+        "joined",
+        "expires",
+        "role"
+      ],
+      "additionalProperties": false
+    },
+    "__schema7": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "__schema8": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+    },
+    "__schema9": {
+      "type": "number",
+      "minimum": 0
+    },
+    "__schema10": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "boolean"
+        },
+        "renewals": {
+          "type": "boolean"
+        },
+        "weekly": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "email",
+        "renewals",
+        "weekly"
+      ]
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "$ref": "#/$defs/__schema3"
+        },
+        "sold": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "price": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "memberPrice": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "venue": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "category": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "description": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "image": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "budget": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "gallery": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema7"
+          }
+        },
+        "recap": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "endDate": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "endTime": {
+          "type": "string",
+          "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "date",
+        "time",
+        "capacity",
+        "sold",
+        "price",
+        "memberPrice"
+      ],
+      "additionalProperties": false
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "type": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "price": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "memberPrice": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "stock": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema3"
+          }
+        },
+        "color": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "image": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "price",
+        "memberPrice",
+        "stock"
+      ],
+      "additionalProperties": false
+    },
+    "ticket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "member": {
+          "type": "boolean"
+        },
+        "checkedIn": {
+          "type": "boolean"
+        },
+        "amount": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Confirmed",
+            "Cancelled"
+          ]
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "cancelledAt": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "checkedInAt": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "eventId",
+        "name",
+        "email",
+        "member",
+        "checkedIn",
+        "amount"
+      ],
+      "additionalProperties": false
+    },
+    "order": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "productId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "size": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "amount": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "promoCode": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "quantity": {
+          "minimum": 1,
+          "$ref": "#/$defs/__schema3"
+        },
+        "subtotal": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "discount": {
+          "$ref": "#/$defs/__schema9"
+        }
+      },
+      "required": [
+        "id",
+        "productId",
+        "name",
+        "size",
+        "amount",
+        "date"
+      ],
+      "additionalProperties": false
+    },
+    "transaction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "category": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Completed",
+            "Pending",
+            "Rejected"
+          ]
+        },
+        "receipt": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "receiptKey": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "receiptData": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "reviewedBy": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "reviewedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "rejectionReason": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "ticketId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "orderId": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "amount",
+        "date",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "description": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "assignee": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "assigneeId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "due": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "To do",
+            "In progress",
+            "Done"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "assignee",
+        "due",
+        "priority",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "announcement": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "body": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "audience": {
+          "type": "string",
+          "enum": [
+            "All members",
+            "Active members",
+            "Volunteers",
+            "Pending dues",
+            "Renewing soon"
+          ]
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "author": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "authorId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "read": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "email": {
+          "type": "boolean"
+        },
+        "whatsapp": {
+          "type": "boolean"
+        },
+        "recipients": {
+          "$ref": "#/$defs/__schema3"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "body",
+        "audience",
+        "date",
+        "author",
+        "read",
+        "email"
+      ],
+      "additionalProperties": false
+    },
+    "notification": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "body": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "to": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "audience": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "body",
+        "date",
+        "read",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "delivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "announcementId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "channel": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "recipient": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "status": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "actor": {
+          "$ref": "#/$defs/__schema13"
+        },
+        "providerStatus": {
+          "$ref": "#/$defs/__schema14"
+        },
+        "providerTimestamp": {
+          "$ref": "#/$defs/__schema15"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema16"
+        }
+      },
+      "required": [
+        "id",
+        "announcementId",
+        "channel",
+        "recipient",
+        "status",
+        "date",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "__schema11": {
+      "type": "string",
+      "enum": [
+        "Email",
+        "WhatsApp",
+        "In-app"
+      ]
+    },
+    "__schema12": {
+      "type": "string",
+      "enum": [
+        "Prepared",
+        "Sent",
+        "Failed",
+        "Unknown"
+      ]
+    },
+    "__schema13": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "__schema14": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "sent",
+        "delivered",
+        "read",
+        "failed"
+      ]
+    },
+    "__schema15": {
+      "$ref": "#/$defs/__schema3"
+    },
+    "__schema16": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema17"
+        },
+        "actor": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "action": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "clubId": {
+          "$ref": "#/$defs/__schema18"
+        },
+        "collegeId": {
+          "$ref": "#/$defs/__schema19"
+        },
+        "entity": {
+          "$ref": "#/$defs/__schema20"
+        },
+        "entityId": {
+          "$ref": "#/$defs/__schema21"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "actor",
+        "action",
+        "date",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "__schema17": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "__schema18": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "__schema19": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "__schema20": {
+      "$ref": "#/$defs/__schema7"
+    },
+    "__schema21": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "waitlist": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "name": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "joined": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Waiting",
+            "Promoted",
+            "Booked"
+          ]
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "promotedAt": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "eventId",
+        "name",
+        "email",
+        "joined",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "point": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "memberId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "participation",
+            "volunteer",
+            "contribution"
+          ]
+        },
+        "points": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "reason": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "orderId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "taskId": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "id",
+        "memberId",
+        "kind",
+        "points",
+        "reason",
+        "date"
+      ],
+      "additionalProperties": false
+    },
+    "promo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{4,16}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "fixed"
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "redemptions": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "maxRedemptions": {
+          "minimum": 1,
+          "$ref": "#/$defs/__schema3"
+        },
+        "memberOnly": {
+          "type": "boolean"
+        },
+        "minSubtotal": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "expires": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "description": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "type",
+        "value",
+        "active",
+        "redemptions"
+      ],
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "authorId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "authorName": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "rating": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "$ref": "#/$defs/__schema3"
+        },
+        "comment": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "eventId",
+        "authorId",
+        "authorName",
+        "rating",
+        "comment",
+        "date"
+      ],
+      "additionalProperties": false
+    },
+    "auditRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema17"
+        },
+        "actor": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "action": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "clubId": {
+          "$ref": "#/$defs/__schema18"
+        },
+        "collegeId": {
+          "$ref": "#/$defs/__schema19"
+        },
+        "entity": {
+          "$ref": "#/$defs/__schema20"
+        },
+        "entityId": {
+          "$ref": "#/$defs/__schema21"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "pk": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "sk": {
+          "type": "string",
+          "pattern": "^AUDIT#.+$"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "actor",
+        "action",
+        "date",
+        "detail",
+        "pk",
+        "sk"
+      ],
+      "additionalProperties": false
+    },
+    "deliveryRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "announcementId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "channel": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "recipient": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "status": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "actor": {
+          "$ref": "#/$defs/__schema13"
+        },
+        "providerStatus": {
+          "$ref": "#/$defs/__schema14"
+        },
+        "providerTimestamp": {
+          "$ref": "#/$defs/__schema15"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "pk": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "sk": {
+          "type": "string",
+          "pattern": "^DELIVERY#.+$"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "id",
+        "announcementId",
+        "channel",
+        "recipient",
+        "status",
+        "date",
+        "detail",
+        "pk",
+        "sk"
+      ],
+      "additionalProperties": false
+    },
+    "requestRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "sk": {
+          "type": "string",
+          "pattern": "^REQUEST#[^#]+#[^#]+$"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "result": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema22"
+          }
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/__schema5"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "fingerprint",
+        "result",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema22": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema22"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema22"
+          }
+        }
+      ]
+    },
+    "counterRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^LIMIT#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "COUNT"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "count": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/__schema5"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "count",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "messageMappingRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^MESSAGE#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "DELIVERY"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "deliveryPk": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "deliverySk": {
+          "type": "string",
+          "pattern": "^DELIVERY#.+$"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "deliveryPk",
+        "deliverySk"
+      ],
+      "additionalProperties": false
+    },
+    "messageStatusRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "pattern": "^MESSAGE#.+$"
+        },
+        "sk": {
+          "type": "string",
+          "const": "STATUS"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "providerStatus": {
+          "type": "string",
+          "enum": [
+            "sent",
+            "delivered",
+            "read",
+            "failed"
+          ]
+        },
+        "providerTimestamp": {
+          "$ref": "#/$defs/__schema3"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "providerStatus",
+        "providerTimestamp"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "title": "Skyline DynamoDB record schema",
+  "description": "Version 1. Runtime validation additionally enforces identity/key consistency, unique entity IDs, event capacity and percentage discount bounds. See docs/DATABASE.md.",
+  "x-schema-version": 1
+}

@@ -1,7 +1,9 @@
+import { marshall } from '@aws-sdk/util-dynamodb';
+import { parseDatabaseRecord } from '../backend/src/database/schemas/index.js';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { accountKey } from '../server/auth.js';
+import { accountKey } from '../backend/src/modules/auth/index.js';
 
 const [email, clubId, role] = process.argv.slice(2);
 if (
@@ -43,13 +45,17 @@ mkdirSync('.aws-build', { recursive: true });
 const file = path.resolve('.aws-build/role.json');
 writeFileSync(
   file,
-  JSON.stringify({
-    pk: { S: `USER#${account.id.S}` },
-    sk: { S: `ACCESS#${clubId}` },
-    clubId: { S: clubId },
-    role: { S: role },
-    collegeId: { S: 'skyline-campus' },
-  }),
+  JSON.stringify(
+    marshall(
+      parseDatabaseRecord({
+        pk: `USER#${account.id.S}`,
+        sk: `ACCESS#${clubId}`,
+        clubId,
+        role,
+        collegeId: 'skyline-campus',
+      }),
+    ),
+  ),
 );
 try {
   aws(['dynamodb', 'put-item', '--table-name', deployment.DataTable, '--item', `file://${file}`]);

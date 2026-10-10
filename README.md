@@ -4,6 +4,8 @@ React + TypeScript frontend with a custom Node.js/Express backend written in sta
 
 Live AWS deployment: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com
 
+Source code is separated into `frontend/` and `backend/`, organized by feature. See [project architecture](docs/ARCHITECTURE.md) and [database design](docs/DATABASE.md). Runtime schemas are in `backend/src/database/schemas/`; the generated database contract is [backend/database/schema.json](backend/database/schema.json). Repositories validate records before database writes.
+
 ## Run locally
 
     npm install

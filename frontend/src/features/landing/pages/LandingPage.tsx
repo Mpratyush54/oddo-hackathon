@@ -1,0 +1,250 @@
+import { useRef } from 'react';
+import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import { Avatar } from '../../../shared/ui/Avatar';
+import { Icon } from '../../../shared/ui/Icon';
+import { LinkButton } from '../../../shared/ui/LinkButton';
+import { date } from '../../../shared/utils/format';
+import { useStore } from '../../../app/state/StoreProvider';
+import '../../../shared/styles/portal.css';
+import '../styles/landing.css';
+import { LandingEvents } from '../../events/components/LandingEvents';
+import { Revealed } from '../../../shared/components/PageMotion';
+import { roles } from '../../auth/config/roles';
+import { PublicNav, PublicFooter } from '../../../shared/layout/PublicLayout';
+
+export const mosaicExtras = [
+  {
+    image:
+      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80',
+    club: 'SKYLINE',
+    title: 'NIGHT STAGE',
+    tag: 'MUSIC',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
+    club: 'CANVAS',
+    title: 'OPEN MIC',
+    tag: 'CULTURE',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=900&q=80',
+    club: 'CODECRAFT',
+    title: 'BUILDERS',
+    tag: 'TECH',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
+    club: 'SKYLINE',
+    title: 'CAMPUS',
+    tag: 'COMMUNITY',
+    year: '2026',
+  },
+];
+
+export function LandingPage() {
+  const { allClubs, organizations } = useStore();
+  const afterRef = useRef<HTMLDivElement>(null);
+  const mosaic = [
+    ...organizations.flatMap((org) =>
+      (allClubs[org.id]?.events || []).map((event) => ({
+        id: `${org.id}-${event.id}`,
+        href: `/e/${org.id}/${event.id}`,
+        image: event.image,
+        club: org.name.split(' ')[0].toUpperCase(),
+        title: event.title.split(' ').slice(0, 2).join(' ').toUpperCase(),
+        tag: event.category.toUpperCase(),
+        year: event.date.slice(0, 4),
+      })),
+    ),
+    ...mosaicExtras.map((item, i) => ({
+      id: `extra-${i}`,
+      href: '/events',
+      ...item,
+    })),
+  ].slice(0, 14);
+
+  return (
+    <div className="portal-public landing-root">
+      <section className="landing-stage" aria-label="Skyline home">
+        <PublicNav className="landing-stage-nav" />
+        <div className="landing-mosaic-viewport" aria-hidden="true">
+          <div className="landing-mosaic">
+            {mosaic.map((card, i) => (
+              <Link
+                key={card.id}
+                to={card.href}
+                className="landing-mosaic-card"
+                style={{ '--pop-delay': `${Math.min(420, i * 35)}ms` } as CSSProperties}
+                tabIndex={-1}
+              >
+                <img src={card.image} alt="" loading={i < 6 ? 'eager' : 'lazy'} />
+                <div className="landing-mosaic-meta">
+                  <span className="tl">{card.club}</span>
+                  <span className="tr">{card.title}</span>
+                  <span className="bl">{card.tag}</span>
+                  <span className="br">{card.year}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="landing-stage-veil" />
+        <div className="landing-stage-copy">
+          <div className="landing-stage-panel">
+            <span className="landing-stage-kicker">
+              <span className="live-dot" /> The student community operating system
+            </span>
+            <h1 className="landing-stage-headline">
+              Less chasing.
+              <br />
+              More <em>belonging.</em>
+            </h1>
+            <p className="landing-stage-lede">
+              Events worth showing up for. People worth knowing. Money everyone can account for. Run
+              your whole student organization in one thoughtful space.
+            </p>
+            <div className="landing-stage-actions">
+              <LinkButton to="/events" icon="ArrowRight">
+                Browse campus events
+              </LinkButton>
+              <LinkButton to="/clubs" variant="secondary">
+                Find your community
+              </LinkButton>
+            </div>
+            <div className="landing-stage-caption">
+              <div className="avatar-stack">
+                {['Alex Morgan', 'Priya Sharma', 'Jordan Lee', 'Aisha Patel'].map((n, i) => (
+                  <Avatar key={n} name={n} index={i} small />
+                ))}
+              </div>
+              <span>
+                Built for busy students.
+                <br />
+                <strong>Every role has a place.</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="landing-stage-scroll"
+          onClick={() => afterRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          Scroll to explore
+          <Icon name="ChevronDown" size={18} />
+        </button>
+      </section>
+
+      <div className="landing-after-stage" ref={afterRef}>
+        <Revealed>
+          <section className="portal-proof">
+            <span>ONE CONNECTED CAMPUS.</span>
+            {organizations.map((c) => (
+              <span key={c.id}>
+                <Icon name="Sprout" size={18} />
+                {c.name}
+              </span>
+            ))}
+          </section>
+        </Revealed>
+        <LandingEvents />
+        <Revealed>
+          <section className="portal-feature-section" id="how-it-works">
+            <span className="portal-kicker">EVERYTHING YOUR CLUB NEEDS</span>
+            <h2>
+              Good things happen
+              <br />
+              when everything comes together.
+            </h2>
+            <div className="portal-features">
+              {[
+                {
+                  icon: 'UsersRound',
+                  title: 'A home for your people',
+                  body: 'Membership, renewals, digital cards and student benefits. Know who belongs and help them feel it.',
+                  label: 'MEMBERSHIP',
+                },
+                {
+                  icon: 'Ticket',
+                  title: 'From idea to a full room',
+                  body: 'Member pricing, capacity, digital tickets and quick check-in. Give every event a strong start.',
+                  label: 'EVENTS & EXPERIENCES',
+                },
+                {
+                  icon: 'Wallet',
+                  title: 'Money that makes sense',
+                  body: 'Dues, sales, receipts and approvals in a shared ledger. Close the semester with confidence.',
+                  label: 'FINANCE & TRUST',
+                },
+              ].map((f, i) => (
+                <Revealed key={f.title} delay={i * 70} pop as="article">
+                  <span className="icon-tile">
+                    <Icon name={f.icon} size={26} />
+                  </span>
+                  <small>{f.label}</small>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </Revealed>
+              ))}
+            </div>
+          </section>
+        </Revealed>
+        <Revealed>
+          <section className="portal-roles-section">
+            <div>
+              <span className="portal-kicker">THE RIGHT VIEW FOR EVERY RESPONSIBILITY</span>
+              <h2>
+                One campus.
+                <br />
+                Five ways to make it better.
+              </h2>
+              <p>
+                Students need their next ticket. Treasurers need their next approval. College teams
+                need the bigger picture. Skyline gives each person a useful starting point.
+              </p>
+              <LinkButton to="/login" icon="ArrowRight">
+                Try a different perspective
+              </LinkButton>
+            </div>
+            <div className="portal-role-list">
+              {roles.map((r, i) => (
+                <Revealed key={r.role} delay={i * 50} pop>
+                  <Link to="/login">
+                    <span>0{i + 1}</span>
+                    <Icon name={r.icon} />
+                    <div>
+                      <strong>{r.title}</strong>
+                      <small>{r.text}</small>
+                    </div>
+                    <Icon name="ArrowUpRight" size={20} />
+                  </Link>
+                </Revealed>
+              ))}
+            </div>
+          </section>
+        </Revealed>
+        <Revealed>
+          <section className="portal-public-cta">
+            <span className="portal-kicker">MAKE THIS SEMESTER COUNT</span>
+            <h2>
+              Your next big thing
+              <br />
+              starts with your people.
+            </h2>
+            <LinkButton to="/login" icon="ArrowRight">
+              Step into Skyline
+            </LinkButton>
+          </section>
+        </Revealed>
+        <PublicFooter />
+      </div>
+    </div>
+  );
+}

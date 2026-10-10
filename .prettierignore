@@ -2,3 +2,5 @@ dist
 node_modules
 artifacts
 package-lock.json
+backend/database/schema.json
+backend/data/seed.json

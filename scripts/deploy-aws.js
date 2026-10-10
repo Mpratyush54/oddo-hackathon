@@ -1,3 +1,4 @@
+import { parseDatabaseRecord } from '../backend/src/database/schemas/index.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile, unlink, readdir, cp } from 'node:fs/promises';
@@ -5,7 +6,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import path from 'node:path';
 import { zipSync } from 'fflate';
 import { template, apiHostingTemplate } from '../infra/template.js';
-import { loadLocalEnvironment } from '../server/api.js';
+import { loadLocalEnvironment } from '../backend/src/config/environment.js';
 
 const exec = promisify(execFile);
 // API hosting works with this account. CloudFront is an explicit opt-in after account verification.
@@ -115,13 +116,21 @@ try {
 console.log('Provider credentials and JWT signing key saved in AWS Secrets Manager.');
 await exec(process.execPath, ['scripts/build-backend.js'], { maxBuffer: 10 * 1024 * 1024 });
 if (apiHosting) {
-  await exec(process.execPath, ['node_modules/typescript/bin/tsc', '-b'], {
-    maxBuffer: 1024 * 1024,
-  });
-  await exec(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], {
-    env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  await exec(
+    process.execPath,
+    ['node_modules/typescript/bin/tsc', '-b', 'frontend/tsconfig.json'],
+    {
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  await exec(
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', 'build', '--config', 'frontend/vite.config.ts'],
+    {
+      env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
   await cp('dist', '.aws-build/package/static', { recursive: true });
 }
 const zip = path.resolve('.aws-build/backend.zip');
@@ -186,7 +195,7 @@ const firstOrigin = outputs.WebsiteUrl || 'https://deployment-pending.invalid';
 await deploy(firstOrigin);
 if (firstOrigin !== outputs.WebsiteUrl && !process.argv.includes('--skip-origin-update'))
   await deploy(outputs.WebsiteUrl);
-const seed = JSON.parse(await readFile('server/seed.json', 'utf8'));
+const seed = JSON.parse(await readFile('backend/data/seed.json', 'utf8'));
 for (const [id, data] of Object.entries(seed.clubs)) {
   const itemPath = path.resolve(`.aws-build/seed-${id}.json`);
   await writeFile(
@@ -204,7 +213,12 @@ for (const [id, data] of Object.entries(seed.clubs)) {
     itemPath,
     JSON.stringify(
       marshall(
-        { pk: `COLLEGE#skyline-campus#CLUB#${id}`, sk: 'STATE', version: 1, data },
+        parseDatabaseRecord({
+          pk: `COLLEGE#skyline-campus#CLUB#${id}`,
+          sk: 'STATE',
+          version: 1,
+          data,
+        }),
         { removeUndefinedValues: true },
       ),
     ),
@@ -230,13 +244,21 @@ await writeFile(
 );
 if (!process.argv.includes('--infra-only')) {
   console.log('Building the frontend with the custom JWT backend enabled.');
-  const result = await exec(process.execPath, ['node_modules/typescript/bin/tsc', '-b'], {
-    maxBuffer: 1024 * 1024,
-  });
-  await exec(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], {
-    env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  const result = await exec(
+    process.execPath,
+    ['node_modules/typescript/bin/tsc', '-b', 'frontend/tsconfig.json'],
+    {
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  await exec(
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', 'build', '--config', 'frontend/vite.config.ts'],
+    {
+      env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
   await aws(
     [
       's3',

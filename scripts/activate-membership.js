@@ -1,10 +1,16 @@
+import { parseDatabaseRecord } from '../backend/src/database/schemas/index.js';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
-import { accountKey } from '../server/auth.js';
-import { applyAction } from '../server/domain.js';
-import { clubKey, dateToday, timestamp, recordId } from '../server/repository.js';
+import { accountKey } from '../backend/src/modules/auth/index.js';
+import { applyAction } from '../backend/src/modules/clubs/club.service.js';
+import {
+  clubKey,
+  dateToday,
+  timestamp,
+  recordId,
+} from '../backend/src/database/repositories/index.js';
 
 const [email, clubId = 'skyline'] = process.argv.slice(2);
 if (!email || !['skyline', 'codecraft', 'canvas'].includes(clubId))
@@ -71,10 +77,9 @@ const transaction = [
   {
     Put: {
       TableName: deployment.DataTable,
-      Item: marshall(
-        { ...current, version: current.version + 1, data },
-        { removeUndefinedValues: true },
-      ),
+      Item: marshall(parseDatabaseRecord({ ...current, version: current.version + 1, data }), {
+        removeUndefinedValues: true,
+      }),
       ConditionExpression: '#version = :previous',
       ExpressionAttributeNames: { '#version': 'version' },
       ExpressionAttributeValues: { ':previous': { N: String(current.version) } },
@@ -83,7 +88,9 @@ const transaction = [
   {
     Put: {
       TableName: deployment.DataTable,
-      Item: marshall({ pk: current.pk, sk: `AUDIT#${audit.date}#${audit.id}`, ...audit }),
+      Item: marshall(
+        parseDatabaseRecord({ pk: current.pk, sk: `AUDIT#${audit.date}#${audit.id}`, ...audit }),
+      ),
       ConditionExpression: 'attribute_not_exists(pk)',
     },
   },

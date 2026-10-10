@@ -27,7 +27,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run test:api
+      - run: npm test
       - run: npm run build
         env:
           VITE_BACKEND_MODE: aws

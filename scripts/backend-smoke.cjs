@@ -32,6 +32,7 @@ function aws(args) {
 
 (async () => {
   const { marshall, unmarshall } = await import('@aws-sdk/util-dynamodb');
+  const { parseDatabaseRecord } = await import('../backend/src/database/schemas/index.js');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage(),
@@ -180,7 +181,10 @@ function aws(args) {
         const previousVersion = item.version;
         item.version++;
         const file = path.resolve('.aws-build/qa-cleanup.json');
-        writeFileSync(file, JSON.stringify(marshall(item, { removeUndefinedValues: true })));
+        writeFileSync(
+          file,
+          JSON.stringify(marshall(parseDatabaseRecord(item), { removeUndefinedValues: true })),
+        );
         try {
           aws([
             'dynamodb',

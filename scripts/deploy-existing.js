@@ -38,11 +38,17 @@ if (outputs.DistributionId || outputs.BackendFunction !== `${stack}-backend`)
   throw new Error('This updater requires the existing API Gateway hosting stack.');
 await mkdir('.aws-build', { recursive: true });
 await exec(process.execPath, ['scripts/build-backend.js'], { maxBuffer: 10 * 1024 * 1024 });
-await exec(process.execPath, ['node_modules/typescript/bin/tsc', '-b'], { maxBuffer: 1024 * 1024 });
-await exec(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], {
-  maxBuffer: 10 * 1024 * 1024,
-  env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
+await exec(process.execPath, ['node_modules/typescript/bin/tsc', '-b', 'frontend/tsconfig.json'], {
+  maxBuffer: 1024 * 1024,
 });
+await exec(
+  process.execPath,
+  ['node_modules/vite/bin/vite.js', 'build', '--config', 'frontend/vite.config.ts'],
+  {
+    maxBuffer: 10 * 1024 * 1024,
+    env: { ...process.env, VITE_BACKEND_MODE: 'aws', VITE_API_URL: '/api' },
+  },
+);
 await cp('dist', '.aws-build/package/static', { recursive: true });
 const files = {};
 async function collect(directory, prefix = '') {

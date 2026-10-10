@@ -1,11 +1,12 @@
+import { parseDatabaseRecord } from '../backend/src/database/schemas/index.js';
 import { build } from 'esbuild';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 await mkdir('.aws-build', { recursive: true });
 await build({
-  entryPoints: ['src/store.tsx'],
+  entryPoints: ['frontend/src/demo/data/clubs.ts'],
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -39,11 +40,23 @@ const clubs = Object.fromEntries(
     return [club.id, data];
   }),
 );
+for (const [clubId, data] of Object.entries(clubs))
+  parseDatabaseRecord({
+    pk: `COLLEGE#skyline-campus#CLUB#${clubId}`,
+    sk: 'STATE',
+    version: 1,
+    data,
+  });
 const seed = JSON.stringify({ organizations, clubs }, null, 2);
-await writeFile('server/seed.json', seed);
-await mkdir('.aws-build/package', { recursive: true });
+await writeFile('backend/data/seed.json', seed);
+const buildRoot = path.resolve('.aws-build');
+const packageDirectory = path.resolve(buildRoot, 'package');
+if (path.dirname(packageDirectory) !== buildRoot || path.basename(packageDirectory) !== 'package')
+  throw new Error('Unexpected backend package directory.');
+await rm(packageDirectory, { recursive: true, force: true });
+await mkdir(packageDirectory, { recursive: true });
 await build({
-  entryPoints: ['server/lambda.js'],
+  entryPoints: ['backend/src/entrypoints/lambda.js'],
   bundle: true,
   platform: 'node',
   target: 'node22',

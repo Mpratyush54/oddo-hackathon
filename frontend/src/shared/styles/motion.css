@@ -1,0 +1,237 @@
+/* Small, finite navigation motion. This strip is decorative, not network progress. */
+.page-motion {
+  min-width: 0;
+}
+
+.route-change-cue {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  height: 2px;
+  pointer-events: none;
+  background: #6ebca3;
+  transform-origin: left;
+  animation: route-cue 240ms ease-out both;
+}
+
+.page-motion-content {
+  min-width: 0;
+  animation: page-arrive 220ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.page-motion h1:focus {
+  outline: none;
+}
+
+.motion-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.motion-reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    transform 420ms cubic-bezier(0.16, 0.84, 0.28, 1),
+    opacity 320ms ease;
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: transform, opacity;
+}
+
+/* Soft rise — default for sections and dense content. */
+.motion-reveal.reveal-ready {
+  opacity: 0.55;
+  transform: translateY(18px) scale(0.985);
+}
+
+.motion-reveal.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Pop — card grids and hero tiles. */
+.motion-reveal.pop.reveal-ready {
+  opacity: 0.35;
+  transform: translateY(28px) scale(0.94);
+}
+
+.motion-reveal.pop.reveal-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.motion-stagger > .motion-reveal {
+  min-width: 0;
+}
+
+.page-motion .button,
+.page-motion .icon-button,
+.page-motion .sidebar nav a,
+.page-motion .sidebar-scroll a {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.page-motion .event-card,
+.page-motion .public-club-card,
+.page-motion .interactive-card {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.page-motion .club-popover,
+.page-motion .notification-popover,
+.page-motion .account-popover {
+  transform-origin: top right;
+  animation: popover-arrive 150ms ease-out both;
+}
+
+.modal-backdrop {
+  animation: backdrop-arrive 140ms ease-out both;
+}
+
+.modal-backdrop .modal {
+  animation: dialog-arrive 180ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .page-motion .button:not(:disabled):hover,
+  .page-motion .icon-button:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  .page-motion .button:not(:disabled):active {
+    transform: translateY(0);
+  }
+
+  .page-motion .event-card:hover,
+  .page-motion .public-club-card:hover,
+  .page-motion .interactive-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 26px rgb(32 66 51 / 8%);
+  }
+
+  .page-motion .sidebar nav a:hover,
+  .page-motion .sidebar-scroll a:hover {
+    transform: translateX(2px);
+  }
+}
+
+/* Apply this opt-in class only to a decorative preview, never a working form. */
+.portal-preview.motion-float {
+  animation: preview-float 5s ease-in-out 2;
+}
+
+@keyframes page-arrive {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes route-cue {
+  0% {
+    transform: scaleX(0.08);
+    opacity: 0.7;
+  }
+  65% {
+    transform: scaleX(0.85);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes popover-arrive {
+  from {
+    opacity: 0.8;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes backdrop-arrive {
+  from {
+    background-color: rgb(15 34 27 / 0%);
+  }
+}
+
+@keyframes dialog-arrive {
+  from {
+    opacity: 0.9;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes preview-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-change-cue {
+    display: none;
+  }
+
+  .page-motion-content,
+  .page-motion .club-popover,
+  .page-motion .notification-popover,
+  .page-motion .account-popover,
+  .modal-backdrop,
+  .modal-backdrop .modal,
+  .portal-preview.motion-float {
+    animation: none;
+  }
+
+  .motion-reveal,
+  .motion-reveal.reveal-ready,
+  .motion-reveal.reveal-in,
+  .motion-reveal.pop.reveal-ready,
+  .motion-reveal.pop.reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .page-motion .button,
+  .page-motion .icon-button,
+  .page-motion .sidebar nav a,
+  .page-motion .sidebar-scroll a,
+  .page-motion .event-card,
+  .page-motion .public-club-card,
+  .page-motion .interactive-card {
+    transition: none;
+    transform: none !important;
+  }
+}
