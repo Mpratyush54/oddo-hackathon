@@ -111,45 +111,45 @@ export function ContributionsPage() {
       </div>
 
       <div className="contributions-layout">
-        <Revealed as="section" className="card table-card">
+        <Revealed as="section" className="card timeline-card">
           <CardHeader
-            title="Your recent activity"
-            subtitle="Earned from check-ins, volunteer work, and shop orders."
+            title="Activity Timeline"
+            subtitle="Points earned from check-ins, volunteer work, and shop orders."
           />
           {myLedger.length ? (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>When</th>
-                    <th>Kind</th>
-                    <th>Reason</th>
-                    <th className="numeric">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myLedger.slice(0, 20).map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{date(entry.date)}</td>
-                      <td>
-                        <Badge
-                          tone={
-                            entry.kind === 'volunteer'
-                              ? 'purple'
-                              : entry.kind === 'contribution'
-                                ? 'gold'
-                                : 'teal'
-                          }
-                        >
-                          {entry.kind}
-                        </Badge>
-                      </td>
-                      <td>{entry.reason}</td>
-                      <td className="numeric">+{entry.points}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="contributions-timeline">
+              {myLedger.slice(0, 15).map((entry, idx) => (
+                <div className="contribution-timeline-item" key={entry.id}>
+                  <div className="timeline-date-badge">
+                    <strong>{new Date(`${entry.date}T12:00:00`).getDate()}</strong>
+                    <small>{date(entry.date, { month: 'short' }).toUpperCase()}</small>
+                  </div>
+                  <div className="timeline-bullet-track">
+                    <span className={`timeline-dot ${entry.kind}`} />
+                    {idx !== myLedger.slice(0, 15).length - 1 && <span className="timeline-connector" />}
+                  </div>
+                  <div className="timeline-item-content">
+                    <div className="timeline-item-header">
+                      <strong>{entry.reason}</strong>
+                      <span className="points-award-pill">+{entry.points} pts</span>
+                    </div>
+                    <div className="timeline-item-footer">
+                      <Badge
+                        tone={
+                          entry.kind === 'volunteer'
+                            ? 'purple'
+                            : entry.kind === 'contribution'
+                              ? 'gold'
+                              : 'teal'
+                        }
+                      >
+                        {entry.kind}
+                      </Badge>
+                      <small>{date(entry.date, { weekday: 'short', month: 'short', day: 'numeric' })}</small>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <Empty
@@ -159,102 +159,79 @@ export function ContributionsPage() {
           )}
         </Revealed>
 
-        <Revealed delay={80} as="section" className="card table-card">
+        <Revealed delay={80} as="section" className="card promo-artifacts-card">
           <CardHeader
-            title="Active promo codes"
-            subtitle="Try WELCOME10, MEMBER50, or CAMPUS100 at merchandise checkout."
+            title="Promo Vouchers & Passes"
+            subtitle="Apply at merchandise checkout for exclusive discounts."
           />
           {promos.length ? (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Offer</th>
-                    <th>Rules</th>
-                    <th>Uses</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promos.map((promo) => (
-                    <tr key={promo.id}>
-                      <td>
-                        <strong>{promo.code}</strong>
-                        <small className="cell-subtext">{promo.description}</small>
-                      </td>
-                      <td>
+            <div className="promo-ticket-grid">
+              {promos.map((promo) => (
+                <article className={`promo-ticket-artifact ${promo.active ? 'active' : 'paused'}`} key={promo.id}>
+                  <div className="promo-ticket-stub">
+                    <span className="promo-stub-code">{promo.code}</span>
+                    <span className="promo-stub-notch left" />
+                    <span className="promo-stub-notch right" />
+                  </div>
+                  <div className="promo-ticket-body">
+                    <div className="promo-ticket-offer">
+                      <strong>
                         {promo.type === 'percent'
-                          ? `${promo.value}% off`
-                          : `${money(promo.value)} off`}
-                      </td>
-                      <td>
-                        {promo.memberOnly ? 'Members only' : 'Everyone'}
-                        {promo.minSubtotal
-                          ? ` · min ${money(promo.minSubtotal)}`
-                          : ''}
-                      </td>
-                      <td>
-                        {promo.redemptions}
-                        {promo.maxRedemptions != null ? ` / ${promo.maxRedemptions}` : ''}
-                      </td>
-                      <td>
-                        <Badge tone={promo.active ? 'green' : 'neutral'}>
-                          {promo.active ? 'Active' : 'Paused'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          ? `${promo.value}% OFF`
+                          : `${money(promo.value)} OFF`}
+                      </strong>
+                      <Badge tone={promo.active ? 'green' : 'neutral'}>
+                        {promo.active ? 'Active' : 'Paused'}
+                      </Badge>
+                    </div>
+                    <p className="promo-ticket-desc">{promo.description}</p>
+                    <div className="promo-ticket-meta">
+                      <span>{promo.memberOnly ? '★ Members only' : 'Open to everyone'}</span>
+                      {promo.minSubtotal ? <span>Min {money(promo.minSubtotal)}</span> : null}
+                      <span>{promo.redemptions}{promo.maxRedemptions != null ? `/${promo.maxRedemptions}` : ''} redeemed</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
           ) : (
-            <Empty title="No promo codes yet" />
+            <Empty title="No promo codes yet" description="Create a promo voucher for your members." />
           )}
         </Revealed>
       </div>
 
       {can('manage_members') && (
-        <section className="card table-card">
-          <CardHeader title="Club leaderboard" subtitle="Top contributors across all point kinds." />
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th className="numeric">Participation</th>
-                  <th className="numeric">Volunteer</th>
-                  <th className="numeric">Contribution</th>
-                  <th className="numeric">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...data.members]
-                  .map((m) => ({
-                    ...m,
-                    total:
-                      (m.participationPoints || 0) +
-                      (m.volunteerPoints || 0) +
-                      (m.contributionPoints || 0),
-                  }))
-                  .sort((a, b) => b.total - a.total)
-                  .slice(0, 12)
-                  .map((m) => (
-                    <tr key={m.id}>
-                      <td>
-                        <strong>{m.name}</strong>
-                        <small className="cell-subtext">{m.role}</small>
-                      </td>
-                      <td className="numeric">{m.participationPoints || 0}</td>
-                      <td className="numeric">{m.volunteerPoints || 0}</td>
-                      <td className="numeric">{m.contributionPoints || 0}</td>
-                      <td className="numeric">
-                        <strong>{m.total}</strong>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+        <section className="card table-card scoreboard-card">
+          <CardHeader title="Club Scoreboard & Leaderboard" subtitle="Top contributors ranked across all student activities." />
+          <div className="scoreboard-grid">
+            {[...data.members]
+              .map((m) => ({
+                ...m,
+                total:
+                  (m.participationPoints || 0) +
+                  (m.volunteerPoints || 0) +
+                  (m.contributionPoints || 0),
+              }))
+              .sort((a, b) => b.total - a.total)
+              .slice(0, 8)
+              .map((m, rank) => (
+                <div className={`scoreboard-player-card rank-${rank + 1}`} key={m.id}>
+                  <div className="player-rank-chip">#{rank + 1}</div>
+                  <div className="player-info">
+                    <strong>{m.name}</strong>
+                    <small>{m.role}</small>
+                  </div>
+                  <div className="player-points-breakdown">
+                    <span title="Participation Points" className="pt-part">🎟️ {m.participationPoints || 0}</span>
+                    <span title="Volunteer Points" className="pt-vol">🤝 {m.volunteerPoints || 0}</span>
+                    <span title="Merch Contribution Points" className="pt-con">🛍️ {m.contributionPoints || 0}</span>
+                  </div>
+                  <div className="player-total-badge">
+                    <strong>{m.total}</strong>
+                    <small>pts</small>
+                  </div>
+                </div>
+              ))}
           </div>
         </section>
       )}
