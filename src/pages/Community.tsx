@@ -71,6 +71,49 @@ export function MembersPage() {
     toast(`${member.name}'s membership is active. ${money(500)} added to the ledger.`);
     setDetail(null);
   };
+  const expiringMembers = data.members.filter((m) => m.status === 'Expiring');
+  const sendRenewalReminders = (targets?: Member[]) => {
+    const list = targets || expiringMembers;
+    if (!list.length) {
+      toast('No expiring members found to remind.');
+      return;
+    }
+    const newNotifications = list.map((m) => ({
+      id: uid('NOT'),
+      title: 'Membership renewal reminder',
+      body: `Hi ${m.name}, your membership expires on ${date(m.expires)}. Renew now to keep your club perks!`,
+      date: today,
+      read: false,
+      to: m.email,
+      audience: 'Renewing soon',
+    }));
+    const newDeliveries = list.flatMap((m) => [
+      {
+        id: uid('DEL'),
+        announcementId: 'RENEWAL-REMINDER',
+        channel: 'In-app' as const,
+        recipient: m.email,
+        status: 'Sent' as const,
+        date: today,
+        detail: `Sent in-app renewal reminder (expires ${m.expires})`,
+      },
+      {
+        id: uid('DEL'),
+        announcementId: 'RENEWAL-REMINDER',
+        channel: 'Email' as const,
+        recipient: m.email,
+        status: 'Prepared' as const,
+        date: today,
+        detail: `Queued outbound renewal email for ${m.email}`,
+      },
+    ]);
+    update((d) => ({
+      ...d,
+      notifications: [...newNotifications, ...(d.notifications || [])],
+      deliveries: [...newDeliveries, ...(d.deliveries || [])],
+    }));
+    toast(`Sent renewal reminders to ${list.length} expiring member${list.length > 1 ? 's' : ''}.`);
+  };
   const exportMembers = () =>
     exportCSV('skyline-members.csv', [
       ['Member ID', 'Name', 'Email', 'Course', 'Status', 'Expires'],
@@ -86,6 +129,15 @@ export function MembersPage() {
         description="A place for everyone. Keep your members connected and cared for."
         action={
           <>
+            {expiringMembers.length > 0 && (
+              <Button
+                variant="secondary"
+                icon="Bell"
+                onClick={() => sendRenewalReminders()}
+              >
+                Send renewal reminders ({expiringMembers.length})
+              </Button>
+            )}
             <Button variant="secondary" icon="Download" onClick={exportMembers}>
               Export members
             </Button>
@@ -159,6 +211,20 @@ export function MembersPage() {
         {selected.length > 0 && (
           <div className="bulk-bar">
             <span>{selected.length} members selected</span>
+            {data.members.some((m) => selected.includes(m.id) && m.status === 'Expiring') && (
+              <Button
+                variant="white"
+                icon="Bell"
+                onClick={() => {
+                  const targets = data.members.filter(
+                    (m) => selected.includes(m.id) && m.status === 'Expiring',
+                  );
+                  sendRenewalReminders(targets);
+                }}
+              >
+                Send renewal reminder
+              </Button>
+            )}
             <Button variant="white" icon="Download" onClick={exportMembers}>
               Export selected
             </Button>
@@ -397,9 +463,23 @@ export function MembersPage() {
             </div>
           </dl>
           {detail.status !== 'Active' && (
-            <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
-              {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
-            </Button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              {detail.status === 'Expiring' && (
+                <Button
+                  variant="secondary"
+                  icon="Bell"
+                  className="full-width"
+                  onClick={() => {
+                    sendRenewalReminders([detail]);
+                  }}
+                >
+                  Send renewal reminder
+                </Button>
+              )}
+              <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
+                {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
+              </Button>
+            </div>
           )}
           <p className="form-note">
             Dues received in person can be recorded here. Members can use their ID to verify
