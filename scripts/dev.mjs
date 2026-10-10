@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 const processes = [
-  spawn(process.execPath, ['server/api.mjs'], { stdio: 'inherit' }),
+  spawn(process.execPath, [process.argv.includes('--demo') ? 'server/api.js' : 'server/local.js'], { stdio: 'inherit' }),
   spawn(
     process.execPath,
     ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5174'],
-    { stdio: 'inherit' },
+    { stdio: 'inherit', env: { ...process.env, VITE_BACKEND_MODE: process.argv.includes('--demo') ? 'demo' : 'aws', VITE_API_URL: '/api' } },
   ),
 ];
 const close = () => {

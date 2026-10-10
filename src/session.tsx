@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useStore } from './store';
+import { backendPost, backendRequest, cloudMode, setCsrf } from './backend';
 export type Role = 'member' | 'organizer' | 'treasurer' | 'admin' | 'college';
 export const roleLabels: Record<Role, string> = {
   member: 'Student & volunteer',
@@ -17,6 +18,8 @@ export const personas: Record<Role, { id: string; name: string; email: string }>
   college: { id: 'FAC-001', name: 'Dr. Kavya Rao', email: 'kavya@skyline.edu' },
 };
 type Session = {
+  ready: boolean;
+  reloadAuth: () => Promise<void>;
   role: Role;
   signedIn: boolean;
   user: { id: string; name: string; email: string };
@@ -71,6 +74,9 @@ const permissions: Record<Role, string[]> = {
 };
 const Context = createContext<Session | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
+  return cloudMode ? <CloudSessionProvider>{children}</CloudSessionProvider> : <DemoSessionProvider>{children}</DemoSessionProvider>;
+}
+function DemoSessionProvider({ children }: { children: ReactNode }) {
   const store = useStore();
   const [session, setSession] = useState<{ role: Role; signedIn: boolean }>(() => {
     try {
@@ -89,6 +95,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider
       value={{
+        ready: true,
+        reloadAuth: async () => {},
         ...session,
         user,
         clubId: store.selectedClub,
@@ -102,6 +110,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {children}
     </Context.Provider>
   );
+}
+function CloudSessionProvider({ children }: { children: ReactNode }) {
+  const store = useStore();
+  const [account, setAccount] = useState<{ user: Session['user']; roles: Record<string, Role> } | null>(null);
+  const [ready, setReady] = useState(false);
+  const reloadAuth = async () => {
+    try {
+      const result = await backendRequest<{ user: Session['user']; roles: Record<string, Role>; csrfToken: string }>('/auth/me');
+      setCsrf(result.csrfToken); setAccount(result);
+      window.dispatchEvent(new CustomEvent('skyline-auth-changed', { detail: true }));
+    } catch { setAccount(null); window.dispatchEvent(new CustomEvent('skyline-auth-changed', { detail: false })); }
+    finally { setReady(true); }
+  };
+  useEffect(() => {
+    void reloadAuth();
+    const expired = () => { setAccount(null); window.dispatchEvent(new CustomEvent('skyline-auth-changed', { detail: false })); };
+    window.addEventListener('skyline-session-expired', expired);
+    return () => window.removeEventListener('skyline-session-expired', expired);
+  }, []);
+  const role = account?.roles[store.selectedClub] || 'member';
+  const user = account?.user || { id: '', name: '', email: '' };
+  useEffect(() => { store.setActor(user.name); }, [user.name, store.setActor]);
+  return <Context.Provider value={{ ready, reloadAuth, role, signedIn: !!account, user, clubId: store.selectedClub, clubs: store.organizations, selectClub: store.selectClub,
+    switchPersona: () => store.toast('Roles are assigned by the campus administrator.'),
+    signOut: () => { void backendPost('/auth/logout', {}).then(() => { setCsrf(''); setAccount(null); window.dispatchEvent(new CustomEvent('skyline-auth-changed', { detail: false })); }).catch(error => store.toast(error.message)); },
+    can: permission => !!account && permissions[role].includes(permission),
+  }}>{children}</Context.Provider>;
 }
 export function useSession() {
   const ctx = useContext(Context);

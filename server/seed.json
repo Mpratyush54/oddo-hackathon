@@ -1,0 +1,531 @@
+{
+  "organizations": [
+    {
+      "id": "skyline",
+      "name": "Skyline Association",
+      "slug": "skyline",
+      "description": "Campus life, a little more connected. Events, friendships, and opportunities for every student.",
+      "accent": "teal"
+    },
+    {
+      "id": "codecraft",
+      "name": "CodeCraft Society",
+      "slug": "codecraft",
+      "description": "Curious minds building useful things. Hack nights, workshops, and a community of makers.",
+      "accent": "purple"
+    },
+    {
+      "id": "canvas",
+      "name": "Canvas Collective",
+      "slug": "canvas",
+      "description": "Art, culture, and creative expression. A home for the campus’s next great ideas.",
+      "accent": "gold"
+    }
+  ],
+  "clubs": {
+    "skyline": {
+      "profile": {
+        "name": "",
+        "email": "",
+        "role": ""
+      },
+      "preferences": {
+        "email": true,
+        "renewals": true,
+        "weekly": false
+      },
+      "members": [],
+      "events": [
+        {
+          "id": "EVT-001",
+          "title": "The Skyline Gala",
+          "date": "2026-10-24",
+          "time": "18:00",
+          "venue": "The Grand Hall, Campus East",
+          "category": "Social",
+          "price": 750,
+          "memberPrice": 500,
+          "capacity": 60,
+          "sold": 0,
+          "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
+          "budget": 18000
+        },
+        {
+          "id": "EVT-002",
+          "title": "Bake a difference",
+          "date": "2026-10-16",
+          "time": "10:00",
+          "venue": "Student Union Courtyard",
+          "category": "Fundraiser",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 80,
+          "sold": 0,
+          "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
+          "budget": 2000
+        },
+        {
+          "id": "EVT-003",
+          "title": "Ideas & iced coffee",
+          "date": "2026-10-14",
+          "time": "16:30",
+          "venue": "Library Café",
+          "category": "Meeting",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 40,
+          "sold": 0,
+          "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1200
+        },
+        {
+          "id": "EVT-004",
+          "title": "Build your next big thing",
+          "date": "2026-11-06",
+          "time": "14:00",
+          "venue": "Innovation Lab, Block B",
+          "category": "Workshop",
+          "price": 250,
+          "memberPrice": 150,
+          "capacity": 18,
+          "sold": 0,
+          "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1500
+        }
+      ],
+      "transactions": [],
+      "tasks": [],
+      "products": [
+        {
+          "id": "PROD-001",
+          "name": "The everyday hoodie",
+          "type": "Hoodie",
+          "price": 1200,
+          "memberPrice": 999,
+          "color": "teal",
+          "stock": {
+            "S": 8,
+            "M": 12,
+            "L": 6,
+            "XL": 2
+          },
+          "image": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-002",
+          "name": "Wear your community",
+          "type": "T-shirt",
+          "price": 600,
+          "memberPrice": 499,
+          "color": "cream",
+          "stock": {
+            "S": 10,
+            "M": 14,
+            "L": 9,
+            "XL": 0
+          },
+          "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-003",
+          "name": "A little carry-all",
+          "type": "Tote bag",
+          "price": 450,
+          "memberPrice": 350,
+          "color": "green",
+          "stock": {
+            "One size": 18
+          },
+          "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85"
+        }
+      ],
+      "promos": [
+        {
+          "id": "PROMO-WELCOME",
+          "code": "WELCOME10",
+          "type": "percent",
+          "value": 10,
+          "active": true,
+          "maxRedemptions": 200,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 0,
+          "description": "10% off merchandise for everyone"
+        },
+        {
+          "id": "PROMO-MEMBER",
+          "code": "MEMBER50",
+          "type": "fixed",
+          "value": 50,
+          "active": true,
+          "maxRedemptions": 100,
+          "redemptions": 0,
+          "memberOnly": true,
+          "minSubtotal": 400,
+          "description": "₹50 off for active members (min ₹400)"
+        },
+        {
+          "id": "PROMO-CAMPUS",
+          "code": "CAMPUS100",
+          "type": "fixed",
+          "value": 100,
+          "active": true,
+          "maxRedemptions": 50,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 900,
+          "description": "₹100 off orders of ₹900+"
+        }
+      ],
+      "pointLedger": [],
+      "announcements": [],
+      "tickets": [],
+      "orders": [],
+      "waitlist": [],
+      "audit": [],
+      "deliveries": [],
+      "notifications": [],
+      "eventReviews": []
+    },
+    "codecraft": {
+      "profile": {
+        "name": "",
+        "email": "",
+        "role": ""
+      },
+      "preferences": {
+        "email": true,
+        "renewals": true,
+        "weekly": false
+      },
+      "members": [],
+      "events": [
+        {
+          "id": "EVT-001",
+          "title": "Builders night",
+          "date": "2026-10-24",
+          "time": "18:00",
+          "venue": "The Grand Hall, Campus East",
+          "category": "Social",
+          "price": 750,
+          "memberPrice": 500,
+          "capacity": 60,
+          "sold": 0,
+          "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
+          "budget": 18000
+        },
+        {
+          "id": "EVT-002",
+          "title": "Code for good",
+          "date": "2026-10-16",
+          "time": "10:00",
+          "venue": "Student Union Courtyard",
+          "category": "Fundraiser",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 80,
+          "sold": 0,
+          "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
+          "budget": 2000
+        },
+        {
+          "id": "EVT-003",
+          "title": "Coffee & code",
+          "date": "2026-10-14",
+          "time": "16:30",
+          "venue": "Library Café",
+          "category": "Meeting",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 40,
+          "sold": 0,
+          "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1200
+        },
+        {
+          "id": "EVT-004",
+          "title": "Ship your first app",
+          "date": "2026-11-06",
+          "time": "14:00",
+          "venue": "Innovation Lab, Block B",
+          "category": "Workshop",
+          "price": 250,
+          "memberPrice": 150,
+          "capacity": 12,
+          "sold": 0,
+          "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1500
+        }
+      ],
+      "transactions": [],
+      "tasks": [],
+      "products": [
+        {
+          "id": "PROD-001",
+          "name": "The everyday hoodie",
+          "type": "Hoodie",
+          "price": 1200,
+          "memberPrice": 999,
+          "color": "teal",
+          "stock": {
+            "S": 8,
+            "M": 12,
+            "L": 6,
+            "XL": 2
+          },
+          "image": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-002",
+          "name": "Wear your community",
+          "type": "T-shirt",
+          "price": 600,
+          "memberPrice": 499,
+          "color": "cream",
+          "stock": {
+            "S": 10,
+            "M": 14,
+            "L": 9,
+            "XL": 0
+          },
+          "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-003",
+          "name": "A little carry-all",
+          "type": "Tote bag",
+          "price": 450,
+          "memberPrice": 350,
+          "color": "green",
+          "stock": {
+            "One size": 18
+          },
+          "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85"
+        }
+      ],
+      "promos": [
+        {
+          "id": "PROMO-WELCOME",
+          "code": "WELCOME10",
+          "type": "percent",
+          "value": 10,
+          "active": true,
+          "maxRedemptions": 200,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 0,
+          "description": "10% off merchandise for everyone"
+        },
+        {
+          "id": "PROMO-MEMBER",
+          "code": "MEMBER50",
+          "type": "fixed",
+          "value": 50,
+          "active": true,
+          "maxRedemptions": 100,
+          "redemptions": 0,
+          "memberOnly": true,
+          "minSubtotal": 400,
+          "description": "₹50 off for active members (min ₹400)"
+        },
+        {
+          "id": "PROMO-CAMPUS",
+          "code": "CAMPUS100",
+          "type": "fixed",
+          "value": 100,
+          "active": true,
+          "maxRedemptions": 50,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 900,
+          "description": "₹100 off orders of ₹900+"
+        }
+      ],
+      "pointLedger": [],
+      "announcements": [],
+      "tickets": [],
+      "orders": [],
+      "waitlist": [],
+      "audit": [],
+      "deliveries": [],
+      "notifications": [],
+      "eventReviews": []
+    },
+    "canvas": {
+      "profile": {
+        "name": "",
+        "email": "",
+        "role": ""
+      },
+      "preferences": {
+        "email": true,
+        "renewals": true,
+        "weekly": false
+      },
+      "members": [],
+      "events": [
+        {
+          "id": "EVT-001",
+          "title": "Canvas after hours",
+          "date": "2026-10-24",
+          "time": "18:00",
+          "venue": "The Grand Hall, Campus East",
+          "category": "Social",
+          "price": 750,
+          "memberPrice": 500,
+          "capacity": 60,
+          "sold": 0,
+          "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
+          "budget": 18000
+        },
+        {
+          "id": "EVT-002",
+          "title": "Art for a cause",
+          "date": "2026-10-16",
+          "time": "10:00",
+          "venue": "Student Union Courtyard",
+          "category": "Fundraiser",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 80,
+          "sold": 0,
+          "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
+          "budget": 2000
+        },
+        {
+          "id": "EVT-003",
+          "title": "Sketchbook social",
+          "date": "2026-10-14",
+          "time": "16:30",
+          "venue": "Library Café",
+          "category": "Meeting",
+          "price": 0,
+          "memberPrice": 0,
+          "capacity": 40,
+          "sold": 0,
+          "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1200
+        },
+        {
+          "id": "EVT-004",
+          "title": "Printmaking studio",
+          "date": "2026-11-06",
+          "time": "14:00",
+          "venue": "Innovation Lab, Block B",
+          "category": "Workshop",
+          "price": 250,
+          "memberPrice": 150,
+          "capacity": 12,
+          "sold": 0,
+          "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
+          "budget": 1500
+        }
+      ],
+      "transactions": [],
+      "tasks": [],
+      "products": [
+        {
+          "id": "PROD-001",
+          "name": "The everyday hoodie",
+          "type": "Hoodie",
+          "price": 1200,
+          "memberPrice": 999,
+          "color": "teal",
+          "stock": {
+            "S": 8,
+            "M": 12,
+            "L": 6,
+            "XL": 2
+          },
+          "image": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-002",
+          "name": "Wear your community",
+          "type": "T-shirt",
+          "price": 600,
+          "memberPrice": 499,
+          "color": "cream",
+          "stock": {
+            "S": 10,
+            "M": 14,
+            "L": 9,
+            "XL": 0
+          },
+          "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
+        },
+        {
+          "id": "PROD-003",
+          "name": "A little carry-all",
+          "type": "Tote bag",
+          "price": 450,
+          "memberPrice": 350,
+          "color": "green",
+          "stock": {
+            "One size": 18
+          },
+          "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85"
+        }
+      ],
+      "promos": [
+        {
+          "id": "PROMO-WELCOME",
+          "code": "WELCOME10",
+          "type": "percent",
+          "value": 10,
+          "active": true,
+          "maxRedemptions": 200,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 0,
+          "description": "10% off merchandise for everyone"
+        },
+        {
+          "id": "PROMO-MEMBER",
+          "code": "MEMBER50",
+          "type": "fixed",
+          "value": 50,
+          "active": true,
+          "maxRedemptions": 100,
+          "redemptions": 0,
+          "memberOnly": true,
+          "minSubtotal": 400,
+          "description": "₹50 off for active members (min ₹400)"
+        },
+        {
+          "id": "PROMO-CAMPUS",
+          "code": "CAMPUS100",
+          "type": "fixed",
+          "value": 100,
+          "active": true,
+          "maxRedemptions": 50,
+          "redemptions": 0,
+          "memberOnly": false,
+          "minSubtotal": 900,
+          "description": "₹100 off orders of ₹900+"
+        }
+      ],
+      "pointLedger": [],
+      "announcements": [],
+      "tickets": [],
+      "orders": [],
+      "waitlist": [],
+      "audit": [],
+      "deliveries": [],
+      "notifications": [],
+      "eventReviews": []
+    }
+  }
+}

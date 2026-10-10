@@ -12,19 +12,25 @@ import {
   ProductArt,
   SearchField,
 } from '../components';
-import { money, today, uid, useStore } from '../store';
+import { money, today, useStore } from '../store';
+import type { Product, Store } from '../store';
+import { clubRequest } from '../api';
 import { useSession } from '../session';
 import GarmentPreview from './GarmentPreview';
 import { ShopPage as InventoryShop } from './Commerce';
+import { Revealed } from '../components/PageMotion';
 import '../shop.css';
 
+type ServerReply = { patch: Partial<Store>; total?: number; orders?: Array<{ id: string }>; order?: { id: string }; discount?: number; promoDiscount?: number; membershipFee?: number };
+const stockPhotos: Record<string, string> = { Hoodie: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85', 'T-shirt': 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85', 'Tote bag': 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85' };
+function ProductPhoto({product}: {product: Product & {image?:string}}) { const [failed,setFailed] = useState(false); useEffect(()=>setFailed(false),[product.id]); return failed ? <ProductArt type={product.type} color={product.color}/> : <img className="shop-product-photo" src={product.image || stockPhotos[product.type] || stockPhotos.Hoodie} alt={`${product.type} product photograph — illustrative catalog image`} onError={()=>setFailed(true)} loading="lazy"/>; }
 const productNotes: Record<string, string> = {
   Hoodie: 'A soft campus staple for early lectures, late projects, and everything in between.',
   'T-shirt': 'The everyday essential. A simple way to take a little community wherever you go.',
   'Tote bag': 'Books, groceries, a brilliant idea. Make room for whatever your day brings.',
 };
 export function ShopPage({ publicView = false }: { publicView?: boolean }) {
-  const { data, update, toast, organizations, selectedClub, selectClub } = useStore();
+  const { data, applyServerPatch, toast, organizations, selectedClub, selectClub } = useStore();
   const { user, signedIn, can } = useSession();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -48,6 +54,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     size: string;
     quantity: number;
   } | null>(null);
+  const [pending,setPending] = useState(false), [error,setError] = useState(''), [preview,setPreview] = useState(false), [joinMembership,setJoinMembership] = useState(false), [promoCode,setPromoCode] = useState(''), [promoDiscount,setPromoDiscount] = useState(0), [promoMessage,setPromoMessage] = useState(''), [inventory,setInventory] = useState(false), [inventoryProduct,setInventoryProduct] = useState(''), [inventorySize,setInventorySize] = useState(''), [delta,setDelta] = useState('1'), [inventoryReason,setInventoryReason] = useState('');
   const organization = organizations.find((c) => c.id === selectedClub);
   const product = data.products.find((p) => p.id === productId);
   const member =
@@ -58,7 +65,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         (m.status === 'Active' || m.status === 'Expiring') &&
         m.expires >= today,
     );
-  const unitPrice = product ? (member ? product.memberPrice : product.price) : 0;
+  const unitPrice = product ? (member || joinMembership ? product.memberPrice : product.price) : 0;
+  const checkoutTotal = Math.max(0,unitPrice * quantity - promoDiscount) + (!member && joinMembership ? 500 : 0);
   const filtered = data.products
     .filter(
       (p) =>
@@ -81,7 +89,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setSize(p ? Object.entries(p.stock).find(([, n]) => n > 0)?.[0] || '' : '');
     setColor(p?.color || 'teal');
     setQuantity(1);
-    setAgree(false);
+    setAgree(false); setPreview(false); setJoinMembership(false); setPromoCode(''); setPromoDiscount(0); setPromoMessage(''); setError('');
   }, [productId, selectedClub]);
   useEffect(() => {
     const club = params.get('club');
@@ -97,73 +105,122 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setProductId('');
     setParams({}, { replace: true });
   };
-  const purchase = () => {
+  useEffect(() => {setPromoDiscount(0);setPromoMessage('');},[quantity,joinMembership,promoCode]);
+  const quotePromo = async () => {
+    if (!signedIn) {
+      setPromoMessage('Sign in to apply a promo code.');
+      return;
+    }
+    setPending(true);
+    setError('');
+    try {
+      const reply = await clubRequest<ServerReply>(selectedClub, '/promos/quote', {
+        method: 'POST',
+        snapshot: data,
+        actor: user,
+        body: {
+          code: promoCode.trim(),
+          productId,
+          quantity,
+          joinMembership,
+          email: user.email,
+        },
+      });
+      setPromoDiscount(reply.discount ?? reply.promoDiscount ?? 0);
+      setPromoMessage(`Promo applied: save ${money(reply.discount ?? reply.promoDiscount ?? 0)}.`);
+    } catch (error) {
+      setPromoDiscount(0);
+      setPromoMessage(error instanceof Error ? error.message : 'Could not apply this code.');
+    } finally {
+      setPending(false);
+    }
+  };
+  const purchase = async () => {
     if (!signedIn) {
       const target = `${publicView ? '/shop' : '/app/merchandise'}?product=${encodeURIComponent(productId)}&club=${encodeURIComponent(selectedClub)}`;
       navigate(`/login?returnTo=${encodeURIComponent(target)}`);
       return;
     }
-    if (!can('shop')) {
+    if (
+      !can('shop') ||
+      !product ||
+      !size ||
+      quantity < 1 ||
+      quantity > (product.stock[size] || 0) ||
+      !agree ||
+      pending
+    )
+      return;
+    setPending(true);
+    setError('');
+    const targetClub = selectedClub;
+    try {
+      const reply = await clubRequest<ServerReply>(targetClub, '/orders', {
+        method: 'POST',
+        snapshot: data,
+        actor: user,
+        body: {
+          productId,
+          size,
+          quantity,
+          promoCode: promoCode.trim() || undefined,
+          joinMembership: !member && joinMembership,
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+      applyServerPatch(targetClub, reply.patch);
+      const refs =
+        reply.orders?.map((o) => o.id) ||
+        (reply.order
+          ? [reply.order.id]
+          : reply.patch.orders
+              ?.filter((o) => o.productId === productId && o.name === user.name)
+              .slice(0, quantity)
+              .map((o) => o.id) || []);
+      setReceipt({
+        refs,
+        name: product.name,
+        amount: reply.total ?? checkoutTotal,
+        size,
+        quantity,
+      });
+      closeProduct();
       toast(
-        'This persona can browse the shop. Switch to a student or club persona to place a demo order.',
+        joinMembership && !member
+          ? 'Order and membership saved. Member prices now apply. No real payment taken.'
+          : 'Order saved to the server. Inventory and ledger updated. No real payment taken.',
       );
-      return;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Order could not be saved. Please try again.');
+    } finally {
+      setPending(false);
     }
-    if (!product || !size || quantity < 1 || quantity > (product.stock[size] || 0)) {
-      toast('That size or quantity is no longer available. Choose another option.');
-      return;
+  };
+  const adjustInventory = async () => {
+    if (!can('manage_inventory')) return;
+    setPending(true);
+    setError('');
+    const targetClub = selectedClub;
+    try {
+      const reply = await clubRequest<ServerReply>(targetClub, '/inventory', {
+        method: 'POST',
+        snapshot: data,
+        actor: user,
+        body: {
+          productId: inventoryProduct,
+          size: inventorySize,
+          delta: Number(delta),
+          reason: inventoryReason.trim(),
+        },
+      });
+      applyServerPatch(targetClub, reply.patch);
+      setInventory(false);
+      toast('Inventory adjustment saved with an audit record.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Stock adjustment failed.');
+    } finally {
+      setPending(false);
     }
-    if (!agree) {
-      toast('Confirm campus pickup and demo checkout to continue.');
-      return;
-    }
-    const refs = Array.from({ length: quantity }, () => uid('ORD'));
-    const payment = uid('TX');
-    update((d) => {
-      const current = d.products.find((p) => p.id === productId);
-      if (!current || (current.stock[size] || 0) < quantity) return d;
-      const eligible = d.members.some(
-        (m) =>
-          m.email.toLowerCase() === user.email.toLowerCase() &&
-          (m.status === 'Active' || m.status === 'Expiring') &&
-          m.expires >= today,
-      );
-      const amount = eligible ? current.memberPrice : current.price;
-      return {
-        ...d,
-        products: d.products.map((p) =>
-          p.id === current.id
-            ? { ...p, stock: { ...p.stock, [size]: p.stock[size] - quantity } }
-            : p,
-        ),
-        orders: [
-          ...refs.map((id) => ({
-            id,
-            productId: current.id,
-            name: user.name,
-            size,
-            amount,
-            date: today,
-          })),
-          ...d.orders,
-        ],
-        transactions: [
-          {
-            id: payment,
-            title: `${current.name} × ${quantity} · ${user.name} (demo)`,
-            category: 'Merchandise',
-            amount: amount * quantity,
-            date: today,
-            status: 'Completed',
-            createdBy: user.id,
-          },
-          ...d.transactions,
-        ],
-      };
-    });
-    setReceipt({ refs, name: product.name, amount: unitPrice * quantity, size, quantity });
-    closeProduct();
-    toast('Demo order recorded. Your club inventory and ledger are updated.');
   };
   const content = (
     <div className="sky-shop">
@@ -208,7 +265,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
           <span>{organization?.name} · Student-led, community-first</span>
         </div>
         <div className="sky-shop-hero-art">
-          <ProductArt type="Hoodie" color="teal" />
+          <ProductPhoto product={data.products.find(p=>p.type==='Hoodie') || data.products[0] || {id:'hero',name:'Hoodie',type:'Hoodie',color:'teal',price:0,memberPrice:0,stock:{}}} />
           <span className="shop-hero-stamp">
             MADE TO
             <br />
@@ -242,7 +299,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         </div>
       )}
       {staff && !publicView && can('manage_orders') ? (
-        <InventoryShop />
+        <><div className="shop-management-actions">{can('manage_inventory') && <Button icon="Package" onClick={()=>{setInventory(true);setError('');setInventoryProduct(data.products[0]?.id||'');setInventorySize(Object.keys(data.products[0]?.stock||{})[0]||'');}}>Adjust stock</Button>}<LinkButton to="/app/contributions" variant="secondary" icon="HeartHandshake">Contribution points & promos</LinkButton></div><InventoryShop /></>
       ) : (
         <>
           <div className="sky-shop-toolbar">
@@ -287,13 +344,13 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
             {filtered.map((p, i) => {
               const stock = Object.values(p.stock).reduce((s, n) => s + n, 0);
               return (
-                <article key={p.id} className="sky-shop-product">
+                <Revealed key={p.id} delay={Math.min(250, i * 70)} pop as="article" className="sky-shop-product">
                   <button
                     className="sky-shop-product-art"
                     aria-label={`Explore ${p.name}`}
                     onClick={() => openProduct(p.id)}
                   >
-                    <ProductArt type={p.type} color={p.color} />
+                    <ProductPhoto product={p} />
                     <span className="shop-product-top">
                       <span>{i === 0 ? 'THE CAMPUS FAVOURITE' : p.type.toUpperCase()}</span>
                       <Icon name="ArrowUpRight" size={20} />
@@ -317,14 +374,14 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   <div className="shop-product-member-price">
                     <span>
                       {member
-                        ? `You save ${money(p.price - p.memberPrice)}`
-                        : `Members ${money(p.memberPrice)}`}
+                        ? `Membership saving ${money(p.price - p.memberPrice)} included`
+                        : `Save ${money(p.price - p.memberPrice)} with membership`}
                     </span>
                     <button onClick={() => openProduct(p.id)}>
                       Choose your fit <Icon name="ArrowRight" size={14} />
                     </button>
                   </div>
-                </article>
+                </Revealed>
               );
             })}
           </div>
@@ -410,9 +467,9 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         >
           <div className="shop-product-modal">
             <div className="shop-modal-preview">
-              <GarmentPreview kind={product.type} color={color} onColorChange={setColor} />
+              <div className="shop-preview-toggle"><button className={!preview?'active':''} onClick={()=>setPreview(false)}>Product photo</button><button className={preview?'active':''} onClick={()=>setPreview(true)}>Interactive preview</button></div>{preview ? <GarmentPreview kind={product.type} color={color} onColorChange={setColor} /> : <ProductPhoto product={product}/> }
               <p>
-                Interactive style preview. Preview colours are illustrative; the stocked colour is{' '}
+                Catalog photography and preview colours are illustrative. Stocked colour:{' '}
                 {product.color}.
               </p>
             </div>
@@ -423,8 +480,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               <div className="shop-modal-price">
                 <strong>{money(unitPrice)}</strong>
                 <span>
-                  {member ? 'Member price applied' : 'Standard price'}
-                  {!member && <small>Members pay {money(product.memberPrice)}</small>}
+                  {member || joinMembership ? 'Membership saving included' : `Save ${money(product.price-product.memberPrice)} with membership`}
                 </span>
               </div>
               <div className="shop-size-heading">
@@ -488,6 +544,10 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 </div>
                 <strong>{money(unitPrice * quantity)}</strong>
               </div>
+              {!member && <div className="shop-membership-offer"><label><input type="checkbox" checked={joinMembership} onChange={e=>setJoinMembership(e.target.checked)}/><span><strong>Add annual club membership · ₹500</strong><small>Save {money((product.price-product.memberPrice)*quantity)} on this order. Membership costs ₹500; {500 > (product.price-product.memberPrice)*quantity ? `this order costs ${money(500-(product.price-product.memberPrice)*quantity)} more with membership` : `your net saving is ${money((product.price-product.memberPrice)*quantity-500)}`}. Future eligible purchases also receive member pricing.</small></span></label></div>}
+              <div className="shop-promo-input"><input aria-label="Promo code" placeholder="Promo code" value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())}/><Button variant="secondary" disabled={pending||!promoCode.trim()} onClick={quotePromo}>Apply</Button></div>{promoMessage && <p className="shop-promo-message" role="status">{promoMessage}</p>}
+              <dl className="shop-checkout-breakdown"><div><dt>Items ({quantity})</dt><dd>{money(unitPrice*quantity)}</dd></div>{!member&&joinMembership&&<div><dt>Annual membership</dt><dd>₹500</dd></div>}{promoDiscount>0&&<div><dt>Promo discount</dt><dd>−{money(promoDiscount)}</dd></div>}<div><dt>Total</dt><dd>{money(checkoutTotal)}</dd></div></dl>
+              {error && <p className="inline-error" role="alert">{error}</p>}
               {signedIn && (
                 <label className="shop-pickup-consent">
                   <input
@@ -505,24 +565,25 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 className="full-width"
                 icon={signedIn ? 'ShoppingBag' : 'UserRound'}
                 disabled={
-                  !size || !(product.stock[size] > 0) || (signedIn && (!agree || !can('shop')))
+                  pending || !size || !(product.stock[size] > 0) || (signedIn && (!agree || !can('shop')))
                 }
                 onClick={purchase}
               >
-                {signedIn && !can('shop')
+                {pending ? 'Saving order…' : signedIn && !can('shop')
                   ? 'Browse-only college persona'
                   : signedIn
-                    ? `Complete demo order · ${money(unitPrice * quantity)}`
+                    ? `Place test order · ${money(checkoutTotal)}`
                     : 'Sign in to order'}
               </Button>
               <div className="shop-checkout-note">
                 <Icon name="ShieldCheck" size={15} />
-                <span>No real charge. Inventory and ledger are updated in this browser demo.</span>
+                <span>No real charge. Orders, inventory and ledger are saved by the server.</span>
               </div>
             </div>
           </div>
         </Modal>
       )}
+      {inventory && <Modal title="Adjust club stock" description="Every change requires a reason and is saved in the server audit." onClose={()=>{if(!pending)setInventory(false);}}><form onSubmit={e=>{e.preventDefault();void adjustInventory();}}><Field label="Product"><select value={inventoryProduct} onChange={e=>{setInventoryProduct(e.target.value);setInventorySize(Object.keys(data.products.find(p=>p.id===e.target.value)?.stock||{})[0]||'');}}>{data.products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field><div className="form-two"><Field label="Size"><select value={inventorySize} onChange={e=>setInventorySize(e.target.value)}>{Object.entries(data.products.find(p=>p.id===inventoryProduct)?.stock||{}).map(([size,count])=><option key={size} value={size}>{size} · {count} in stock</option>)}</select></Field><Field label="Stock change" hint="Positive adds units; negative removes units."><input type="number" required value={delta} onChange={e=>setDelta(e.target.value)}/></Field></div><Field label="Reason"><textarea required minLength={4} value={inventoryReason} onChange={e=>setInventoryReason(e.target.value)} placeholder="Restocked from supplier / damaged item"/></Field>{error&&<p className="inline-error" role="alert">{error}</p>}<Button type="submit" disabled={pending||Number(delta)===0} icon="Check">{pending?'Saving…':'Save adjustment'}</Button></form></Modal>}
       {fit && (
         <Modal
           title="A little help finding your fit"
@@ -593,7 +654,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       {receipt && (
         <Modal
           title="A little community, coming your way."
-          description="Demo order recorded · no real payment taken"
+          description="Order saved to the server · no real payment taken"
           onClose={() => setReceipt(null)}
         >
           <div className="shop-order-success">

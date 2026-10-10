@@ -108,19 +108,54 @@ type RevealedProps = {
   className?: string;
   /** Small stagger in milliseconds. Keep this below 250 for quick reading. */
   delay?: number;
+  /** Stronger scale+rise for cards and tiles. */
+  pop?: boolean;
+  as?: 'div' | 'section' | 'article' | 'li';
 };
 
-export function Revealed({ children, className = '', delay = 0 }: RevealedProps) {
+export function Revealed({
+  children,
+  className = '',
+  delay = 0,
+  pop = false,
+  as: Tag = 'div',
+}: RevealedProps) {
   const { ref, revealed } = useReveal();
   const style = { '--reveal-delay': `${Math.min(250, Math.max(0, delay))}ms` } as CSSProperties;
 
   return (
-    <div
-      ref={ref}
-      className={`motion-reveal ${revealed ? 'reveal-in' : 'reveal-ready'} ${className}`}
+    <Tag
+      ref={ref as never}
+      className={`motion-reveal ${pop ? 'pop' : ''} ${revealed ? 'reveal-in' : 'reveal-ready'} ${className}`}
       style={style}
     >
       {children}
+    </Tag>
+  );
+}
+
+/** Stagger children that are already wrapped in Revealed, or wrap plain nodes. */
+export function RevealStagger({
+  children,
+  className = '',
+  step = 55,
+  pop = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  step?: number;
+  pop?: boolean;
+}) {
+  const items = Array.isArray(children) ? children : [children];
+  return (
+    <div className={`motion-stagger ${className}`}>
+      {items.map((child, index) =>
+        child == null ? null : (
+          <Revealed key={index} delay={Math.min(250, index * step)} pop={pop}>
+            {child}
+          </Revealed>
+        ),
+      )}
     </div>
   );
 }

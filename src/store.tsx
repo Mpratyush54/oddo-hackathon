@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { backendPost, backendRequest, cloudMode } from './backend';
+import { actionFromChange } from './cloud-actions';
 import type { ReactNode } from 'react';
 
 export type Member = {
@@ -12,6 +14,9 @@ export type Member = {
   role: string;
   phone?: string;
   whatsappOptIn?: boolean;
+  participationPoints?: number;
+  volunteerPoints?: number;
+  contributionPoints?: number;
 };
 export type ClubEvent = {
   id: string;
@@ -63,6 +68,31 @@ export type Product = {
   color: string;
   type: string;
   stock: Record<string, number>;
+  image?: string;
+};
+export type PromoCode = {
+  id: string;
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  active: boolean;
+  maxRedemptions?: number;
+  redemptions: number;
+  memberOnly?: boolean;
+  minSubtotal?: number;
+  expires?: string;
+  description?: string;
+};
+export type PointEntry = {
+  id: string;
+  memberId: string;
+  kind: 'participation' | 'volunteer' | 'contribution';
+  points: number;
+  reason: string;
+  date: string;
+  eventId?: string;
+  orderId?: string;
+  taskId?: string;
 };
 export type Announcement = {
   id: string;
@@ -93,6 +123,7 @@ export type Order = {
   size: string;
   amount: number;
   date: string;
+  promoCode?: string;
 };
 export type Organization = {
   id: string;
@@ -132,7 +163,7 @@ export type Delivery = {
   announcementId: string;
   channel: 'Email' | 'WhatsApp' | 'In-app';
   recipient: string;
-  status: 'Prepared' | 'Sent' | 'Failed';
+  status: 'Prepared' | 'Sent' | 'Failed' | 'Unknown';
   date: string;
   detail: string;
 };
@@ -161,6 +192,8 @@ export type Store = {
   notifications: Notification[];
   deliveries: Delivery[];
   eventReviews?: EventReview[];
+  promos?: PromoCode[];
+  pointLedger?: PointEntry[];
 };
 export const today = '2026-10-10';
 export const money = (value: number) =>
@@ -531,6 +564,8 @@ export const seed: Store = {
       memberPrice: 999,
       color: 'teal',
       stock: { S: 8, M: 12, L: 6, XL: 4 },
+      image:
+        'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85',
     },
     {
       id: 'PROD-002',
@@ -540,6 +575,8 @@ export const seed: Store = {
       memberPrice: 499,
       color: 'cream',
       stock: { S: 10, M: 14, L: 9, XL: 0 },
+      image:
+        'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85',
     },
     {
       id: 'PROD-003',
@@ -549,8 +586,49 @@ export const seed: Store = {
       memberPrice: 350,
       color: 'green',
       stock: { 'One size': 18 },
+      image:
+        'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85',
     },
   ],
+  promos: [
+    {
+      id: 'PROMO-WELCOME',
+      code: 'WELCOME10',
+      type: 'percent',
+      value: 10,
+      active: true,
+      maxRedemptions: 200,
+      redemptions: 0,
+      memberOnly: false,
+      minSubtotal: 0,
+      description: '10% off merchandise for everyone',
+    },
+    {
+      id: 'PROMO-MEMBER',
+      code: 'MEMBER50',
+      type: 'fixed',
+      value: 50,
+      active: true,
+      maxRedemptions: 100,
+      redemptions: 0,
+      memberOnly: true,
+      minSubtotal: 400,
+      description: '₹50 off for active members (min ₹400)',
+    },
+    {
+      id: 'PROMO-CAMPUS',
+      code: 'CAMPUS100',
+      type: 'fixed',
+      value: 100,
+      active: true,
+      maxRedemptions: 50,
+      redemptions: 0,
+      memberOnly: false,
+      minSubtotal: 900,
+      description: '₹100 off orders of ₹900+',
+    },
+  ],
+  pointLedger: [],
   announcements: [
     {
       id: 'ANN-001',
@@ -643,7 +721,7 @@ export const organizations: Organization[] = [
     accent: 'gold',
   },
 ];
-function makeClub(id: string): Store {
+export function makeClub(id: string): Store {
   const club = structuredClone(seed);
   club.members = club.members.map((m, i) => ({
     ...m,
@@ -776,6 +854,25 @@ function makeClub(id: string): Store {
     });
   club.products[0].stock.XL = 2;
   club.products[1].stock.XL = 0;
+  club.products = club.products.map((p) => ({
+    ...p,
+    image:
+      p.image ||
+      (p.type === 'T-shirt'
+        ? 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85'
+        : p.type === 'Tote bag'
+          ? 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85'
+          : 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85'),
+  }));
+  club.promos = club.promos?.length ? club.promos : structuredClone(seed.promos || []);
+  club.pointLedger = club.pointLedger || [];
+  club.members = club.members.map((m, i) => ({
+    ...m,
+    participationPoints: m.participationPoints ?? (i % 3 === 0 ? 20 : 10),
+    volunteerPoints:
+      m.volunteerPoints ?? (m.role === 'Volunteer' || m.role === 'President' ? 40 : 5),
+    contributionPoints: m.contributionPoints ?? (i % 4 === 0 ? 15 : 0),
+  }));
   club.notifications = [
     {
       id: 'NOT-WELCOME',
@@ -906,6 +1003,7 @@ type Registry = { selectedClub: string; clubs: Record<string, Store> };
 type ContextValue = {
   data: Store;
   update: (fn: (current: Store) => Store) => void;
+  applyServerPatch: (clubId: string, patch: Partial<Store>) => void;
   toast: (message: string) => void;
   toastMessage: string;
   clearToast: () => void;
@@ -918,6 +1016,10 @@ type ContextValue = {
 const StoreContext = createContext<ContextValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [registry, setRegistry] = useState<Registry>(() => {
+    if (cloudMode) return { selectedClub: 'skyline', clubs: Object.fromEntries(organizations.map(o => {
+      const club = makeClub(o.id);
+      return [o.id, { ...club, events: club.events.map(e => ({ ...e, sold: 0 })), members: [], transactions: [], tasks: [], announcements: [], tickets: [], orders: [], waitlist: [], audit: [], notifications: [], deliveries: [], eventReviews: [], pointLedger: [] }];
+    })) };
     try {
       const saved = localStorage.getItem('skyline-v2');
       if (saved) {
@@ -928,11 +1030,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ...t,
               createdBy: club.members.find((m) => m.name === t.createdBy)?.id || t.createdBy,
             }));
-          for (const club of Object.values(parsed.clubs))
-            enrichEventHistory(
-              club,
-              organizations.find((org) => parsed.clubs[org.id] === club)?.id || 'skyline',
-            );
+          for (const [clubId, club] of Object.entries(parsed.clubs)) {
+            club.promos ??= structuredClone(seed.promos || []);
+            club.pointLedger ??= [];
+            club.products = club.products.map((p, i) => ({
+              ...p,
+              image: p.image || seed.products[i]?.image || seed.products[0]?.image,
+            }));
+            club.members = club.members.map((m) => ({
+              ...m,
+              participationPoints: m.participationPoints ?? 0,
+              volunteerPoints: m.volunteerPoints ?? 0,
+              contributionPoints: m.contributionPoints ?? 0,
+            }));
+            enrichEventHistory(club, clubId);
+          }
           return parsed;
         }
       }
@@ -950,6 +1062,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const data = registry.clubs[registry.selectedClub] || registry.clubs.skyline;
   const [toastMessage, setToastMessage] = useState('');
   useEffect(() => {
+    if (cloudMode) return;
     try {
       localStorage.setItem('skyline-v2', JSON.stringify(registry));
     } catch {
@@ -962,7 +1075,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [toastMessage]);
   const scope = registry.selectedClub;
-  const update = (fn: (current: Store) => Store) =>
+  const [authenticated, setAuthenticated] = useState(false);
+  const pending = useRef(Promise.resolve());
+  useEffect(() => {
+    if (!cloudMode) return;
+    const authChanged = (event: Event) => {
+      const signedIn = !!(event as CustomEvent).detail;
+      setAuthenticated(signedIn);
+      if (!signedIn) void backendRequest<{ clubs: Record<string, Store> }>('/public/clubs').then(result => setRegistry(r => ({ ...r, clubs: result.clubs })));
+    };
+    window.addEventListener('skyline-auth-changed', authChanged);
+    return () => window.removeEventListener('skyline-auth-changed', authChanged);
+  }, []);
+  useEffect(() => {
+    if (!cloudMode) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        if (authenticated) {
+          const result = await backendRequest<{ state: Store }>(`/clubs/${scope}/state`);
+          if (active) setRegistry(r => ({ ...r, clubs: { ...r.clubs, [scope]: result.state } }));
+        } else {
+          const result = await backendRequest<{ clubs: Record<string, Store> }>('/public/clubs');
+          if (active) setRegistry(r => ({ ...r, clubs: result.clubs }));
+        }
+      } catch (error) { if (active) setToastMessage(error instanceof Error ? error.message : 'Could not load campus data.'); }
+    };
+    void refresh();
+    window.addEventListener('skyline-data-changed', refresh);
+    return () => { active = false; window.removeEventListener('skyline-data-changed', refresh); };
+  }, [scope, authenticated]);
+  const localUpdate = (fn: (current: Store) => Store) =>
     setRegistry((current) => {
       const before = current.clubs[scope];
       const after = fn(before);
@@ -1018,14 +1161,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       };
     });
+  const update = (fn: (current: Store) => Store) => {
+    if (!cloudMode) { localUpdate(fn); return; }
+    try {
+      const action = actionFromChange(data, fn(structuredClone(data)));
+      if (!action) return;
+      const request = { ...action, idempotencyKey: crypto.randomUUID() };
+      pending.current = pending.current.then(async () => {
+        const result = await backendPost<{ state: Store }>(`/clubs/${scope}/actions`, request);
+        setRegistry(current => ({ ...current, clubs: { ...current.clubs, [scope]: result.state } }));
+        setToastMessage(action.type === 'membership.demo-dues' ? 'Membership is now active.' : action.type === 'profile.preferences' ? 'Preferences saved.' : action.type === 'membership.join' ? 'Club joined. Your membership is pending dues.' : 'Changes saved.');
+      }).catch(error => setToastMessage(error.message));
+    } catch (error) { setToastMessage(error instanceof Error ? error.message : 'This action could not be saved.'); }
+  };
   const selectClub = (id: string) => {
     if (organizations.some((o) => o.id === id)) setRegistry((r) => ({ ...r, selectedClub: id }));
+  };
+  const applyServerPatch = (clubId: string, patch: Partial<Store>) => {
+    if (!organizations.some((o) => o.id === clubId) || !patch) return;
+    setRegistry((current) => {
+      const before = current.clubs[clubId];
+      if (!before) return current;
+      return {
+        ...current,
+        clubs: {
+          ...current.clubs,
+          [clubId]: { ...before, ...patch },
+        },
+      };
+    });
   };
   return (
     <StoreContext.Provider
       value={{
         data,
         update,
+        applyServerPatch,
         toast: setToastMessage,
         toastMessage,
         clearToast: () => setToastMessage(''),

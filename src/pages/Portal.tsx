@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -17,9 +18,14 @@ import {
 } from '../components';
 import { date, money, today, uid, useStore } from '../store';
 import { useSession } from '../session';
+import { cloudMode } from '../backend';
+import { CloudAuth } from './CloudAuth';
+import { CloudCollege } from './CloudCollege';
 import '../portal.css';
+import '../landing-stage.css';
 import { cancelEventTicket } from './Commerce';
 import { LandingEvents } from '../components/LandingEvents';
+import { Revealed } from '../components/PageMotion';
 
 const accentColor = (tone: string) =>
   ({ teal: 'var(--primary)', purple: 'var(--purple)', gold: 'var(--gold)' })[tone] ||
@@ -355,25 +361,34 @@ export function RoleDashboard() {
         }
       />
       <div className="portal-stat-grid">
-        <StatCard
-          icon="BadgeCheck"
-          label="Membership"
-          value={personal.member?.status || 'Not joined'}
-        />
-        <StatCard icon="Ticket" label="My bookings" value={personal.tickets.length} />
-        <StatCard
-          icon="ListTodo"
-          label="My open tasks"
-          value={personal.tasks.filter((t) => t.status !== 'Done').length}
-          tone="gold"
-        />
-        <StatCard
-          icon="ShoppingBag"
-          label="My orders"
-          value={personal.orders.length}
-          tone="purple"
-        />
+        <Revealed delay={0} pop>
+          <StatCard
+            icon="BadgeCheck"
+            label="Membership"
+            value={personal.member?.status || 'Not joined'}
+          />
+        </Revealed>
+        <Revealed delay={55} pop>
+          <StatCard icon="Ticket" label="My bookings" value={personal.tickets.length} />
+        </Revealed>
+        <Revealed delay={110} pop>
+          <StatCard
+            icon="ListTodo"
+            label="My open tasks"
+            value={personal.tasks.filter((t) => t.status !== 'Done').length}
+            tone="gold"
+          />
+        </Revealed>
+        <Revealed delay={165} pop>
+          <StatCard
+            icon="ShoppingBag"
+            label="My orders"
+            value={personal.orders.length}
+            tone="purple"
+          />
+        </Revealed>
       </div>
+      <Revealed>
       <div className="portal-columns">
         <section className="portal-panel">
           <CardHeader
@@ -421,7 +436,8 @@ export function RoleDashboard() {
           </section>
         </div>
       </div>
-      <section className="portal-panel portal-latest">
+      </Revealed>
+      <Revealed delay={80} as="section" className="portal-panel portal-latest">
         <CardHeader
           title="From your community"
           action={
@@ -444,7 +460,7 @@ export function RoleDashboard() {
             <Icon name="ArrowUpRight" size={18} />
           </Link>
         ))}
-      </section>
+      </Revealed>
     </>
   );
 }
@@ -720,7 +736,7 @@ function NotificationPreferences() {
 }
 export function MyTickets() {
   const { data, tickets, user } = usePersonal();
-  const { update, toast } = useStore();
+  const { update, applyServerPatch, toast, selectedClub } = useStore();
   return (
     <>
       <PageHeader
@@ -765,13 +781,34 @@ export function MyTickets() {
                     variant="secondary"
                     onClick={() => {
                       if (
-                        window.confirm(
-                          'Cancel this demo booking? Your payment will be credited in the demo ledger.',
+                        !window.confirm(
+                          'Cancel this demo booking? Your payment will be credited in the demo ledger, and the next waitlisted guest is auto-promoted.',
                         )
-                      ) {
-                        update((d) => cancelEventTicket(d, t.id, user.id));
-                        toast('Ticket cancelled. Demo payment credited to the ledger.');
-                      }
+                      )
+                        return;
+                      void (async () => {
+                        try {
+                          const { clubRequest } = await import('../api');
+                          const reply = await clubRequest<{
+                            patch: Parameters<typeof applyServerPatch>[1];
+                            promoted?: { name: string } | null;
+                          }>(selectedClub, '/tickets/cancel', {
+                            snapshot: data,
+                            actor: user,
+                            body: { ticketId: t.id },
+                          });
+                          applyServerPatch(selectedClub, reply.patch);
+                          toast(
+                            reply.promoted
+                              ? `Cancelled. ${reply.promoted.name} was auto-promoted from the waitlist.`
+                              : 'Ticket cancelled. Demo payment credited to the ledger.',
+                          );
+                        } catch (error) {
+                          if (cloudMode) { toast(error instanceof Error ? error.message : 'Cancellation failed.'); return; }
+                          update((d) => cancelEventTicket(d, t.id, user.id));
+                          toast('Ticket cancelled locally. Demo payment credited to the ledger.');
+                        }
+                      })();
                     }}
                   >
                     Cancel booking
@@ -838,6 +875,9 @@ export function MyOrders() {
 }
 
 export function CollegeDashboard() {
+  return cloudMode ? <CloudCollege /> : <DemoCollegeDashboard />;
+}
+function DemoCollegeDashboard() {
   const { allClubs, organizations } = useStore();
   const unique = new Set(
     Object.values(allClubs).flatMap((d) => d.members.map((m) => m.email.toLowerCase())),
@@ -937,6 +977,9 @@ export function CollegeDashboard() {
   );
 }
 export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
+  return cloudMode ? <CloudAuth mode={mode} /> : <DemoAuthPage mode={mode} />;
+}
+function DemoAuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
   const { switchPersona } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -1061,7 +1104,7 @@ export function ClubsPage() {
     </div>
   );
 }
-export function PublicNav() {
+export function PublicNav({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const nav = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -1083,7 +1126,11 @@ export function PublicNav() {
     };
   }, [open]);
   return (
-    <nav ref={nav} className="portal-public-nav public-navigation" aria-label="Public navigation">
+    <nav
+      ref={nav}
+      className={`portal-public-nav public-navigation ${className}`.trim()}
+      aria-label="Public navigation"
+    >
       <Logo />
       <button
         className="public-menu-toggle icon-button"
@@ -1103,9 +1150,9 @@ export function PublicNav() {
         <Link to="/shop" onClick={() => setOpen(false)}>
           Shop
         </Link>
-        <LinkButton to="/login" icon="UserRound" variant="secondary">
-          Sign in
-        </LinkButton>
+        <Link to="/login" onClick={() => setOpen(false)}>
+          Login
+        </Link>
       </div>
     </nav>
   );
@@ -1119,198 +1166,238 @@ function PublicFooter() {
     </footer>
   );
 }
+const mosaicExtras = [
+  {
+    image:
+      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80',
+    club: 'SKYLINE',
+    title: 'NIGHT STAGE',
+    tag: 'MUSIC',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
+    club: 'CANVAS',
+    title: 'OPEN MIC',
+    tag: 'CULTURE',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=900&q=80',
+    club: 'CODECRAFT',
+    title: 'BUILDERS',
+    tag: 'TECH',
+    year: '2026',
+  },
+  {
+    image:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
+    club: 'SKYLINE',
+    title: 'CAMPUS',
+    tag: 'COMMUNITY',
+    year: '2026',
+  },
+];
+
 export function LandingPage() {
-  const { data, organizations, selectedClub } = useStore();
-  const event = data.events.find(
-    (event) => new Date(`${event.date}T${event.time}:00+05:30`) > new Date(),
-  );
+  const { allClubs, organizations } = useStore();
+  const afterRef = useRef<HTMLDivElement>(null);
+  const mosaic = [
+    ...organizations.flatMap((org) =>
+      (allClubs[org.id]?.events || []).map((event) => ({
+        id: `${org.id}-${event.id}`,
+        href: `/e/${org.id}/${event.id}`,
+        image: event.image,
+        club: org.name.split(' ')[0].toUpperCase(),
+        title: event.title.split(' ').slice(0, 2).join(' ').toUpperCase(),
+        tag: event.category.toUpperCase(),
+        year: event.date.slice(0, 4),
+      })),
+    ),
+    ...mosaicExtras.map((item, i) => ({
+      id: `extra-${i}`,
+      href: '/events',
+      ...item,
+    })),
+  ].slice(0, 14);
+
   return (
-    <div className="portal-public">
-      <PublicNav />
-      <section className="portal-public-hero">
-        <div>
-          <span className="portal-kicker">
-            <span className="live-dot" /> THE STUDENT COMMUNITY OPERATING SYSTEM
-          </span>
-          <h1>
-            Less chasing.
-            <br />
-            More <em>belonging.</em>
-          </h1>
-          <p>
-            Events worth showing up for. People worth knowing. Money everyone can account for. Run
-            your whole student organization in one thoughtful space.
-          </p>
-          <div className="portal-hero-buttons">
-            <LinkButton to="/events" icon="ArrowRight">
-              Browse campus events
-            </LinkButton>
-            <LinkButton to="/clubs" variant="secondary">
-              Find your community
-            </LinkButton>
+    <div className="portal-public landing-root">
+      <section className="landing-stage" aria-label="Skyline home">
+        <PublicNav className="landing-stage-nav" />
+        <div className="landing-mosaic-viewport" aria-hidden="true">
+          <div className="landing-mosaic">
+            {mosaic.map((card, i) => (
+              <Link
+                key={card.id}
+                to={card.href}
+                className="landing-mosaic-card"
+                style={{ '--pop-delay': `${Math.min(420, i * 35)}ms` } as CSSProperties}
+                tabIndex={-1}
+              >
+                <img src={card.image} alt="" loading={i < 6 ? 'eager' : 'lazy'} />
+                <div className="landing-mosaic-meta">
+                  <span className="tl">{card.club}</span>
+                  <span className="tr">{card.title}</span>
+                  <span className="bl">{card.tag}</span>
+                  <span className="br">{card.year}</span>
+                </div>
+              </Link>
+            ))}
           </div>
-          <div className="portal-hero-caption">
-            <div className="avatar-stack">
-              {['Alex Morgan', 'Priya Sharma', 'Jordan Lee', 'Aisha Patel'].map((n, i) => (
-                <Avatar key={n} name={n} index={i} small />
+        </div>
+        <div className="landing-stage-veil" />
+        <div className="landing-stage-copy">
+          <div className="landing-stage-panel">
+            <span className="landing-stage-kicker">
+              <span className="live-dot" /> The student community operating system
+            </span>
+            <h1 className="landing-stage-headline">
+              Less chasing.
+              <br />
+              More <em>belonging.</em>
+            </h1>
+            <p className="landing-stage-lede">
+              Events worth showing up for. People worth knowing. Money everyone can account for.
+              Run your whole student organization in one thoughtful space.
+            </p>
+            <div className="landing-stage-actions">
+              <LinkButton to="/events" icon="ArrowRight">
+                Browse campus events
+              </LinkButton>
+              <LinkButton to="/clubs" variant="secondary">
+                Find your community
+              </LinkButton>
+            </div>
+            <div className="landing-stage-caption">
+              <div className="avatar-stack">
+                {['Alex Morgan', 'Priya Sharma', 'Jordan Lee', 'Aisha Patel'].map((n, i) => (
+                  <Avatar key={n} name={n} index={i} small />
+                ))}
+              </div>
+              <span>
+                Built for busy students.
+                <br />
+                <strong>Every role has a place.</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="landing-stage-scroll"
+          onClick={() => afterRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          Scroll to explore
+          <Icon name="ChevronDown" size={18} />
+        </button>
+      </section>
+
+      <div className="landing-after-stage" ref={afterRef}>
+        <Revealed>
+          <section className="portal-proof">
+            <span>ONE CONNECTED CAMPUS.</span>
+            {organizations.map((c) => (
+              <span key={c.id}>
+                <Icon name="Sprout" size={18} />
+                {c.name}
+              </span>
+            ))}
+          </section>
+        </Revealed>
+        <LandingEvents />
+        <Revealed>
+          <section className="portal-feature-section" id="how-it-works">
+            <span className="portal-kicker">EVERYTHING YOUR CLUB NEEDS</span>
+            <h2>
+              Good things happen
+              <br />
+              when everything comes together.
+            </h2>
+            <div className="portal-features">
+              {[
+                {
+                  icon: 'UsersRound',
+                  title: 'A home for your people',
+                  body: 'Membership, renewals, digital cards and student benefits. Know who belongs and help them feel it.',
+                  label: 'MEMBERSHIP',
+                },
+                {
+                  icon: 'Ticket',
+                  title: 'From idea to a full room',
+                  body: 'Member pricing, capacity, digital tickets and quick check-in. Give every event a strong start.',
+                  label: 'EVENTS & EXPERIENCES',
+                },
+                {
+                  icon: 'Wallet',
+                  title: 'Money that makes sense',
+                  body: 'Dues, sales, receipts and approvals in a shared ledger. Close the semester with confidence.',
+                  label: 'FINANCE & TRUST',
+                },
+              ].map((f, i) => (
+                <Revealed key={f.title} delay={i * 70} pop as="article">
+                  <span className="icon-tile">
+                    <Icon name={f.icon} size={26} />
+                  </span>
+                  <small>{f.label}</small>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </Revealed>
               ))}
             </div>
-            <span>
-              Built for busy students.
-              <br />
-              <strong>Every role has a place.</strong>
-            </span>
-          </div>
-        </div>
-        <div className="portal-preview motion-float">
-          <div className="portal-preview-top">
-            <span className="portal-preview-dots">● ● ●</span>
-            <span>your campus, connected</span>
-            <Icon name="ShieldCheck" size={16} />
-          </div>
-          <div className="portal-preview-content">
-            <div className="portal-preview-greeting">
-              <span>SKYLINE ASSOCIATION</span>
-              <h2>A good day to build something.</h2>
-              <p>Your community is moving. Here's the latest.</p>
-            </div>
-            <div className="portal-preview-stats">
-              <div>
-                <Icon name="UsersRound" />
-                <strong>{data.members.length}</strong>
-                <small>members, one community</small>
-              </div>
-              <div>
-                <Icon name="CalendarDays" />
-                <strong>{data.events.length}</strong>
-                <small>moments to look forward to</small>
-              </div>
-            </div>
-            <Link
-              to={`/e/${selectedClub}/${event?.id || 'EVT-001'}`}
-              className="portal-preview-event"
-            >
-              <img src={event?.image} alt="A warmly lit gala venue" />
-              <div>
-                <Badge tone="gold">UP NEXT</Badge>
-                <h3>{event?.title || 'The Skyline Gala'}</h3>
-                <p>Music, memories & your people.</p>
-                <span>
-                  {event ? date(event.date) : 'Coming soon'} <Icon name="ArrowUpRight" size={15} />
-                </span>
-              </div>
-            </Link>
-            <div className="portal-preview-task">
-              <span className="icon-tile">
-                <Icon name="CircleCheck" />
-              </span>
-              <div>
-                <strong>Everyone knows their next step.</strong>
-                <small>Tasks assigned. Receipts recorded. You're ready.</small>
-              </div>
-            </div>
-          </div>
-          <div className="portal-floating-card">
-            <Icon name="QrCode" size={32} />
+          </section>
+        </Revealed>
+        <Revealed>
+          <section className="portal-roles-section">
             <div>
-              <strong>Your membership, verified.</strong>
-              <small>One scan. You're part of it.</small>
+              <span className="portal-kicker">THE RIGHT VIEW FOR EVERY RESPONSIBILITY</span>
+              <h2>
+                One campus.
+                <br />
+                Five ways to make it better.
+              </h2>
+              <p>
+                Students need their next ticket. Treasurers need their next approval. College teams
+                need the bigger picture. Skyline gives each person a useful starting point.
+              </p>
+              <LinkButton to="/login" icon="ArrowRight">
+                Try a different perspective
+              </LinkButton>
             </div>
-            <Icon name="BadgeCheck" size={24} />
-          </div>
-        </div>
-      </section>
-      <section className="portal-proof">
-        <span>ONE CONNECTED CAMPUS.</span>
-        {organizations.map((c) => (
-          <span key={c.id}>
-            <Icon name="Sprout" size={18} />
-            {c.name}
-          </span>
-        ))}
-      </section>
-      <LandingEvents />
-      <section className="portal-feature-section" id="how-it-works">
-        <span className="portal-kicker">EVERYTHING YOUR CLUB NEEDS</span>
-        <h2>
-          Good things happen
-          <br />
-          when everything comes together.
-        </h2>
-        <div className="portal-features">
-          {[
-            {
-              icon: 'UsersRound',
-              title: 'A home for your people',
-              body: 'Membership, renewals, digital cards and student benefits. Know who belongs and help them feel it.',
-              label: 'MEMBERSHIP',
-            },
-            {
-              icon: 'Ticket',
-              title: 'From idea to a full room',
-              body: 'Member pricing, capacity, digital tickets and quick check-in. Give every event a strong start.',
-              label: 'EVENTS & EXPERIENCES',
-            },
-            {
-              icon: 'Wallet',
-              title: 'Money that makes sense',
-              body: 'Dues, sales, receipts and approvals in a shared ledger. Close the semester with confidence.',
-              label: 'FINANCE & TRUST',
-            },
-          ].map((f) => (
-            <article key={f.title}>
-              <span className="icon-tile">
-                <Icon name={f.icon} size={26} />
-              </span>
-              <small>{f.label}</small>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="portal-roles-section">
-        <div>
-          <span className="portal-kicker">THE RIGHT VIEW FOR EVERY RESPONSIBILITY</span>
-          <h2>
-            One campus.
-            <br />
-            Five ways to make it better.
-          </h2>
-          <p>
-            Students need their next ticket. Treasurers need their next approval. College teams need
-            the bigger picture. Skyline gives each person a useful starting point.
-          </p>
-          <LinkButton to="/login" icon="ArrowRight">
-            Try a different perspective
-          </LinkButton>
-        </div>
-        <div className="portal-role-list">
-          {roles.map((r, i) => (
-            <Link to="/login" key={r.role}>
-              <span>0{i + 1}</span>
-              <Icon name={r.icon} />
-              <div>
-                <strong>{r.title}</strong>
-                <small>{r.text}</small>
-              </div>
-              <Icon name="ArrowUpRight" size={20} />
-            </Link>
-          ))}
-        </div>
-      </section>
-      <section className="portal-public-cta">
-        <span className="portal-kicker">MAKE THIS SEMESTER COUNT</span>
-        <h2>
-          Your next big thing
-          <br />
-          starts with your people.
-        </h2>
-        <LinkButton to="/login" icon="ArrowRight">
-          Step into Skyline
-        </LinkButton>
-      </section>
-      <PublicFooter />
+            <div className="portal-role-list">
+              {roles.map((r, i) => (
+                <Revealed key={r.role} delay={i * 50} pop>
+                  <Link to="/login">
+                    <span>0{i + 1}</span>
+                    <Icon name={r.icon} />
+                    <div>
+                      <strong>{r.title}</strong>
+                      <small>{r.text}</small>
+                    </div>
+                    <Icon name="ArrowUpRight" size={20} />
+                  </Link>
+                </Revealed>
+              ))}
+            </div>
+          </section>
+        </Revealed>
+        <Revealed>
+          <section className="portal-public-cta">
+            <span className="portal-kicker">MAKE THIS SEMESTER COUNT</span>
+            <h2>
+              Your next big thing
+              <br />
+              starts with your people.
+            </h2>
+            <LinkButton to="/login" icon="ArrowRight">
+              Step into Skyline
+            </LinkButton>
+          </section>
+        </Revealed>
+        <PublicFooter />
+      </div>
     </div>
   );
 }

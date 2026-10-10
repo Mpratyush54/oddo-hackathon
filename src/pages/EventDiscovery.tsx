@@ -5,6 +5,7 @@ import { date, money, useStore } from '../store';
 import { useSession } from '../session';
 import { PublicNav } from './Portal';
 import { eventPhase } from '../event-utils';
+import { Revealed } from '../components/PageMotion';
 import '../event-discovery.css';
 
 export function EventDiscovery({ publicView = false }: { publicView?: boolean }) {
@@ -177,16 +178,19 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
         </span>
       </div>
       <div className="event-discovery-grid">
-        {(featured ? visible.slice(1) : visible).map((event) => {
+        {(featured ? visible.slice(1) : visible).map((event, index) => {
           const phase = eventPhase(event);
           const past = phase === 'past';
           const href = publicView ? `/e/${event.clubId}/${event.id}` : `/app/events/${event.id}`;
           const capacity = Math.max(0, event.capacity - event.sold);
           const atCapacity = capacity === 0;
           return (
-            <article
-              className={`event-discovery-card ${past ? 'past-event' : ''}`}
+            <Revealed
               key={`${event.clubId}-${event.id}`}
+              delay={Math.min(250, index * 55)}
+              pop
+              as="article"
+              className={`event-discovery-card ${past ? 'past-event' : ''}`}
             >
               <Link className="event-discovery-photo" to={href} aria-label={`View ${event.title}`}>
                 <img src={event.image} alt={event.title} loading="lazy" />
@@ -251,7 +255,7 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
                   </Link>
                 </div>
               </div>
-            </article>
+            </Revealed>
           );
         })}
       </div>

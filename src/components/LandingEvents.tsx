@@ -15,8 +15,8 @@ export function LandingEvents() {
     .slice(0, 3);
 
   return (
-    <Revealed>
-      <section className="landing-events" aria-labelledby="landing-events-title">
+    <section className="landing-events" aria-labelledby="landing-events-title">
+      <Revealed>
         <header>
           <div>
             <span className="portal-kicker">OUTSIDE THE GROUP CHAT</span>
@@ -27,13 +27,11 @@ export function LandingEvents() {
             All campus events
           </LinkButton>
         </header>
-        <div className="landing-event-grid">
-          {events.map(({ club, event }) => (
-            <Link
-              className="landing-event"
-              to={`/e/${club.id}/${event.id}`}
-              key={`${club.id}-${event.id}`}
-            >
+      </Revealed>
+      <div className="landing-event-grid">
+        {events.map(({ club, event }, i) => (
+          <Revealed key={`${club.id}-${event.id}`} delay={i * 70} pop>
+            <Link className="landing-event" to={`/e/${club.id}/${event.id}`}>
               <div className="landing-event-image">
                 <img src={event.image} alt={event.title} loading="lazy" />
                 <span>{date(event.date, { month: 'short', day: 'numeric' })}</span>
@@ -53,9 +51,9 @@ export function LandingEvents() {
                 <span>{Math.max(0, event.capacity - event.sold)} seats left</span>
               </footer>
             </Link>
-          ))}
-        </div>
-      </section>
-    </Revealed>
+          </Revealed>
+        ))}
+      </div>
+    </section>
   );
 }

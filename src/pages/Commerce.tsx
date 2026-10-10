@@ -22,6 +22,7 @@ import {
 } from '../components';
 import { date, exportCSV, money, today, uid, useStore } from '../store';
 import { useSession } from '../session';
+import { backendPost, cloudMode } from '../backend';
 import { eventEnd, eventPhase, eventStart } from '../event-utils';
 import '../commerce-finance.css';
 import type { Store, ClubEvent, Ticket } from '../store';
@@ -418,7 +419,7 @@ function eventCalendar(event: ClubEvent) {
 
 export function EventDetail() {
   const { id } = useParams();
-  const { data, update, toast } = useStore();
+  const { data, update, applyServerPatch, toast, selectedClub } = useStore();
   const { can, user, clubId } = useSession();
   const [tab, setTab] = useState('Overview'),
     [attendeeSearch, setAttendeeSearch] = useState('');
@@ -667,10 +668,31 @@ export function EventDetail() {
                               <Button
                                 variant="secondary"
                                 onClick={() => {
-                                  update((d) => cancelEventTicket(d, t.id, user.id));
-                                  toast(
-                                    'Ticket cancelled. Any waiting student has received an in-app seat offer.',
-                                  );
+                                  void (async () => {
+                                    try {
+                                      const { clubRequest } = await import('../api');
+                                      const reply = await clubRequest<{
+                                        patch: Parameters<typeof applyServerPatch>[1];
+                                        promoted?: { name: string } | null;
+                                      }>(selectedClub, '/tickets/cancel', {
+                                        snapshot: data,
+                                        actor: user,
+                                        body: { ticketId: t.id },
+                                      });
+                                      applyServerPatch(selectedClub, reply.patch);
+                                      toast(
+                                        reply.promoted
+                                          ? `Cancelled. ${reply.promoted.name} received a waitlist seat offer.`
+                                          : 'Ticket cancelled. No one was waiting.',
+                                      );
+                                    } catch (error) {
+                                      if (cloudMode) { toast(error instanceof Error ? error.message : 'Cancellation failed.'); return; }
+                                      update((d) => cancelEventTicket(d, t.id, user.id));
+                                      toast(
+                                        'Ticket cancelled. Any waiting student has received an in-app seat offer.',
+                                      );
+                                    }
+                                  })();
                                 }}
                               >
                                 Cancel ticket
@@ -1011,8 +1033,8 @@ export function ShopPage() {
 
 export function CheckoutPage() {
   const [params] = useSearchParams();
-  const { data, update, toast } = useStore();
-  const { user, can } = useSession();
+  const { data, update, applyServerPatch, toast } = useStore();
+  const { user, can, clubId } = useSession();
   const [email, setEmail] = useState(user.email),
     [result, setResult] = useState<{
       id: string;
@@ -1020,7 +1042,10 @@ export function CheckoutPage() {
       name: string;
       ticket: boolean;
     } | null>(null),
-    [qr, setQr] = useState('');
+    [qr, setQr] = useState(''),
+    [joinMembership, setJoinMembership] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const cloudAttempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const event = data.events.find((e) => e.id === params.get('event'));
   const product = data.products.find((p) => p.id === params.get('product'));
   const size = params.get('size') || '';
@@ -1034,7 +1059,11 @@ export function CheckoutPage() {
   );
   const item = event || product;
   const regular = item?.price || 0;
-  const amount = member ? item?.memberPrice || 0 : regular;
+  const memberRate = item?.memberPrice || 0;
+  const treatedAsMember = !!member || (!!product && joinMembership);
+  const itemTotal = treatedAsMember ? memberRate : regular;
+  const membershipFee = !member && product && joinMembership ? 500 : 0;
+  const amount = itemTotal + membershipFee;
   useEffect(() => {
     if (result?.ticket)
       QRCode.toDataURL(result.id, {
@@ -1176,12 +1205,18 @@ export function CheckoutPage() {
               <dt>{event ? 'Standard ticket' : 'Regular price'}</dt>
               <dd>{money(regular)}</dd>
             </div>
-            {member && regular > amount && (
+            {treatedAsMember && regular > memberRate && (
               <div className="discount-row">
                 <dt>
                   Member discount <Icon name="BadgeCheck" size={14} />
                 </dt>
-                <dd>−{money(regular - amount)}</dd>
+                <dd>−{money(regular - memberRate)}</dd>
+              </div>
+            )}
+            {membershipFee > 0 && (
+              <div>
+                <dt>Annual membership</dt>
+                <dd>{money(membershipFee)}</dd>
               </div>
             )}
             <div>
@@ -1197,7 +1232,9 @@ export function CheckoutPage() {
             <Icon name="Heart" size={17} />
             {member
               ? 'A little thank-you for being part of Skyline.'
-              : 'Members get a little extra. Use your member email.'}
+              : product
+                ? 'Not a member yet? Add membership below to unlock member rates.'
+                : 'Members get a little extra. Use your member email.'}
           </span>
         </section>
         <section className="card checkout-form">
@@ -1206,13 +1243,28 @@ export function CheckoutPage() {
             subtitle="We’ll keep your ticket or order under this name."
           />
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               const f = formValues(e);
               if ((event && eventPhase(event) === 'past') || soldOut || unavailable) {
                 toast('This item is no longer available. Please choose another.');
                 return;
               }
               const reference = uid(event ? 'SKY' : 'ORD');
+              if (cloudMode) {
+                if (processing) return;
+                setProcessing(true);
+                try {
+                  const command = { type: event ? 'tickets.book' : 'orders', args: event ? { eventId: event.id } : { productId: product?.id, size, quantity: 1, joinMembership } };
+                  const fingerprint = JSON.stringify(command);
+                  if (cloudAttempt.current?.fingerprint !== fingerprint) cloudAttempt.current = { fingerprint, key: crypto.randomUUID() };
+                  const reply = await backendPost<{ state: Store; ticket?: Ticket; orders?: { id: string }[]; total?: number }>(`/clubs/${clubId}/actions`, { ...command, idempotencyKey: cloudAttempt.current.key });
+                  applyServerPatch(clubId, reply.state);
+                  setResult({ id: reply.ticket?.id || reply.orders?.[0]?.id || '', amount: reply.ticket?.amount ?? reply.total ?? 0, name: user.name, ticket: !!event });
+                  cloudAttempt.current = null;
+                } catch (error) { toast(error instanceof Error ? error.message : 'Booking could not be confirmed.'); }
+                finally { setProcessing(false); }
+                return;
+              }
               if (event) {
                 const ticket: Ticket = {
                   id: reference,
@@ -1269,36 +1321,78 @@ export function CheckoutPage() {
                       : d.transactions,
                 }));
               } else if (product) {
-                update((d) => ({
-                  ...d,
-                  products: d.products.map((p) =>
-                    p.id === product.id
-                      ? { ...p, stock: { ...p.stock, [size]: p.stock[size] - 1 } }
-                      : p,
-                  ),
-                  orders: [
-                    {
-                      id: reference,
-                      productId: product.id,
-                      name: f.name.trim(),
-                      size,
-                      amount,
-                      date: today,
-                    },
-                    ...d.orders,
-                  ],
-                  transactions: [
+                update((d) => {
+                  let members = d.members;
+                  const transactions = [
                     {
                       id: uid('TX'),
                       title: `${product.name} · ${f.name.trim()}`,
                       category: 'Merchandise',
-                      amount,
+                      amount: itemTotal,
                       date: today,
-                      status: 'Completed',
+                      status: 'Completed' as const,
+                      createdBy: user.id,
                     },
                     ...d.transactions,
-                  ],
-                }));
+                  ];
+                  if (!member && joinMembership) {
+                    const existing = d.members.find(
+                      (m) => m.email.toLowerCase() === email.trim().toLowerCase(),
+                    );
+                    members = existing
+                      ? d.members.map((m) =>
+                          m.id === existing.id
+                            ? { ...m, status: 'Active' as const, expires: '2027-07-31' }
+                            : m,
+                        )
+                      : [
+                          ...d.members,
+                          {
+                            id: uid('MEM'),
+                            name: f.name.trim(),
+                            email: email.trim(),
+                            course: 'Campus community',
+                            status: 'Active' as const,
+                            joined: today,
+                            expires: '2027-07-31',
+                            role: 'Member',
+                            participationPoints: 0,
+                            volunteerPoints: 0,
+                            contributionPoints: 0,
+                          },
+                        ];
+                    transactions.unshift({
+                      id: uid('TX'),
+                      title: `Annual membership · ${f.name.trim()}`,
+                      category: 'Membership',
+                      amount: 500,
+                      date: today,
+                      status: 'Completed',
+                      createdBy: user.id,
+                    });
+                  }
+                  return {
+                    ...d,
+                    members,
+                    products: d.products.map((p) =>
+                      p.id === product.id
+                        ? { ...p, stock: { ...p.stock, [size]: p.stock[size] - 1 } }
+                        : p,
+                    ),
+                    orders: [
+                      {
+                        id: reference,
+                        productId: product.id,
+                        name: f.name.trim(),
+                        size,
+                        amount: itemTotal,
+                        date: today,
+                      },
+                      ...d.orders,
+                    ],
+                    transactions,
+                  };
+                });
               }
               setResult({ id: reference, amount, name: f.name.trim(), ticket: !!event });
             }}
@@ -1311,7 +1405,9 @@ export function CheckoutPage() {
               hint={
                 member
                   ? `✓ Membership verified for ${member.name}. Your discount is applied.`
-                  : 'Use an active member email for your club discount.'
+                  : product
+                    ? 'Non-members pay the standard rate — or add membership below.'
+                    : 'Use an active member email for your club discount.'
               }
             >
               <input
@@ -1322,6 +1418,25 @@ export function CheckoutPage() {
                 required
               />
             </Field>
+            {product && !member && (
+              <label className="check-label shop-membership-offer">
+                <input
+                  type="checkbox"
+                  checked={joinMembership}
+                  onChange={(e) => setJoinMembership(e.target.checked)}
+                />
+                <span>
+                  <strong>Add annual club membership · ₹500</strong>
+                  <small>
+                    Unlock the member price for this order
+                    {regular > memberRate
+                      ? ` (save ${money(regular - memberRate)} on this piece)`
+                      : ''}{' '}
+                    and future eligible purchases.
+                  </small>
+                </span>
+              </label>
+            )}
             <div className="payment-demo">
               <span className="icon-tile">
                 <Icon name="CreditCard" />
@@ -1343,7 +1458,7 @@ export function CheckoutPage() {
               type="submit"
               className="full-width"
               icon={event ? 'Ticket' : 'ShoppingBag'}
-              disabled={soldOut || unavailable}
+              disabled={soldOut || unavailable || processing}
             >
               {soldOut
                 ? 'All spots reserved'
@@ -1365,8 +1480,8 @@ export function CheckoutPage() {
 }
 
 export function CheckInPage() {
-  const { data, update, toast } = useStore();
-  const { can, clubId } = useSession();
+  const { data, update, applyServerPatch, toast, selectedClub } = useStore();
+  const { can, clubId, user } = useSession();
   const [mode, setMode] = useState('ticket');
   const [memberResult, setMemberResult] = useState<{
     valid: boolean;
@@ -1423,12 +1538,31 @@ export function CheckInPage() {
     if (!ticket) setResult({ type: 'invalid' });
     else if (ticket.checkedIn) setResult({ type: 'used', ticket });
     else {
-      update((d) => ({
-        ...d,
-        tickets: d.tickets.map((t) => (t.id === ticket.id ? { ...t, checkedIn: true } : t)),
-      }));
-      setResult({ type: 'valid', ticket });
-      toast(`${ticket.name} checked in. Welcome to the event!`);
+      void (async () => {
+        try {
+          const { clubRequest } = await import('../api');
+          const reply = await clubRequest<{ patch: Parameters<typeof applyServerPatch>[1] }>(
+            selectedClub,
+            '/check-in',
+            {
+              snapshot: data,
+              actor: user,
+              body: { ticketId: ticket.id },
+            },
+          );
+          applyServerPatch(selectedClub, reply.patch);
+          setResult({ type: 'valid', ticket: { ...ticket, checkedIn: true } });
+          toast(`${ticket.name} checked in. Participation points awarded when eligible.`);
+        } catch (error) {
+          if (cloudMode) { toast(error instanceof Error ? error.message : 'Check-in failed.'); setResult({ type: 'invalid' }); return; }
+          update((d) => ({
+            ...d,
+            tickets: d.tickets.map((t) => (t.id === ticket.id ? { ...t, checkedIn: true } : t)),
+          }));
+          setResult({ type: 'valid', ticket });
+          toast(`${ticket.name} checked in. Welcome to the event!`);
+        }
+      })();
     }
     setCamera(false);
   };

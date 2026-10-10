@@ -41,20 +41,36 @@
   opacity: 1;
   transform: none;
   transition:
-    transform 380ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    transform 420ms cubic-bezier(0.16, 0.84, 0.28, 1),
     opacity 320ms ease;
   transition-delay: var(--reveal-delay, 0ms);
+  will-change: transform, opacity;
 }
 
-/* Even pending reveals remain readable; CSS never hides sections entirely. */
+/* Soft rise — default for sections and dense content. */
 .motion-reveal.reveal-ready {
-  opacity: 0.82;
-  transform: translateY(12px);
+  opacity: 0.55;
+  transform: translateY(18px) scale(0.985);
 }
 
 .motion-reveal.reveal-in {
   opacity: 1;
   transform: none;
+}
+
+/* Pop — card grids and hero tiles. */
+.motion-reveal.pop.reveal-ready {
+  opacity: 0.35;
+  transform: translateY(28px) scale(0.94);
+}
+
+.motion-reveal.pop.reveal-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.motion-stagger > .motion-reveal {
+  min-width: 0;
 }
 
 .page-motion .button,
@@ -165,10 +181,13 @@
 
   .motion-reveal,
   .motion-reveal.reveal-ready,
-  .motion-reveal.reveal-in {
+  .motion-reveal.reveal-in,
+  .motion-reveal.pop.reveal-ready,
+  .motion-reveal.pop.reveal-in {
     opacity: 1;
     transform: none;
     transition: none;
+    will-change: auto;
   }
 
   .page-motion .button,

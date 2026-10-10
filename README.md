@@ -1,62 +1,87 @@
 # Skyline Student Association
 
-A React + TypeScript campus club platform with React Router, Vite, QR tickets, and a readable local Express/Node.js API for OpenRouter drafts and Meta WhatsApp tests.
+React + TypeScript frontend with a custom Node.js/Express backend written in standard .js files.
+
+Live AWS deployment: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com
 
 ## Run locally
 
-```sh
-npm install
-npm run dev
-```
+    npm install
+    npm run dev
 
-Open http://127.0.0.1:5174/. This command starts both the frontend and the local API (port 3001). Vite proxies `/api` to that API. If 5174 is already occupied, use the frontend URL printed in the terminal.
+Open http://127.0.0.1:5174. The command starts the full JWT backend on port 3001 and Vite with its API proxy. Local backend records use memory and reset when it restarts. Provider settings load from the ignored .env file. The local JWT signing key is generated at startup unless JWT_SECRET is set.
 
-```sh
-npm run build
-npm run test:api
-```
+    npm run dev:demo
 
-`npm run preview` previews the static production build; it does not start the integration API. For integration development, use `npm run dev` or start `npm run dev:api` separately. Camera scanning requires permission and localhost or HTTPS.
+This preserves the original labelled persona/localStorage demonstration and its separate integration API. Demo personas are unavailable in the AWS build.
 
-## Current product
+    npm run test:api
+    npm run build
 
-- Public landing, club discovery, club profiles, and shareable event pages.
-- Working organization switcher with three independent club datasets, profile menu, and scrolling navigation.
-- Five labelled demo personas: student/volunteer, organizer, treasurer, club administrator, and college administrator. Each sees relevant navigation, actions, and dashboard priorities.
-- Personal membership card, QR verification, bookings/orders, and WhatsApp consent.
-- Event capacity, member pricing, ticket checkout/check-in, duplicate scan feedback, and waitlists.
-- Merchandise sizes/stock, task planning, event budget/actual reporting, expense receipts, approvals/rejection, and local audit history.
-- Communications with audience targeting, in-app publication, consent-aware WhatsApp preparation, delivery records, reminders, and editable AI/template drafts.
+## Deploy on AWS
 
-## Optional provider setup
+    npm run deploy:aws -- --api-hosting
 
-Copy `.env.example` to a local `.env`, then set only the integrations you want to demonstrate. Restart `npm run dev` after changing server credentials. Do not paste keys into the app or commit them.
+This builds the Express Lambda and frontend, provisions/updates CloudFormation in Mumbai, stores JWT/provider secrets in Secrets Manager, and initializes public club fixtures only when they do not exist. Existing business data survives redeployment. Resource identifiers are saved in the ignored AWS_DEPLOYMENT_OUTPUT.json file.
 
-| Setting                              | Purpose                                                  |
-| ------------------------------------ | -------------------------------------------------------- |
-| `OPENROUTER_API_KEY`                 | Server-only OpenRouter key                               |
-| `OPENROUTER_MODEL=openrouter/free`   | Free router; a selected `:free` model is also permitted  |
-| `AI_DAILY_LIMIT=30`                  | Local server draft limit; provider quotas also apply     |
-| `META_WHATSAPP_TOKEN`                | Server-only Meta test access token                       |
-| `META_PHONE_NUMBER_ID`               | Meta test sender phone-number ID                         |
-| `META_GRAPH_VERSION`                 | Use the version shown in your Meta API setup             |
-| `META_TEST_RECIPIENTS`               | Comma-separated approved test numbers with country code  |
-| `META_WHATSAPP_TEMPLATE=hello_world` | Preapproved connectivity test template                   |
-| `META_TEMPLATE_LANGUAGE=en_US`       | Template language                                        |
-| `META_TEMPLATE_PARAMETER_COUNT=0`    | No custom body parameters for hello_world                |
-| `API_PORT=3001`                      | Local integration API port                               |
-| `VITE_API_URL=/api`                  | Public API URL only; no secrets in any `VITE_*` variable |
+The AWS account currently blocks CloudFront creation pending account verification. The working deployment therefore serves both static files and /api through API Gateway HTTP API + Lambda. It uses DynamoDB on-demand and private S3 receipts. Frontend build artifacts are also saved in private S3. See AWS_DEPLOYMENT_PLAN.md for the account limitation and rollout details.
 
-OpenRouter free access can be unavailable or rate-limited. Successful AI drafts are labelled OpenRouter; deterministic fallback is labelled Template draft. Drafts remain editable and do not publish automatically. The server refuses paid model names.
+API Gateway hosting is the deployment script's default. Use `node scripts/deploy-aws.js --cloudfront` only after AWS verifies the account for CloudFront.
 
-For WhatsApp, add and verify the recipient in Meta's test setup. Record that person's actual phone and explicit opt-in in their profile. Publish an announcement with WhatsApp selected, then explicitly click **Send WhatsApp test template**. Every selected recipient must be in the server allowlist; use an audience containing only your approved demo recipients. The default hello_world test verifies connectivity and **does not deliver your announcement body**. Provider acceptance is not device delivery confirmation. Manual WhatsApp sharing is a separate human action. Email remains prepared until a provider is added. No messages are sent just by starting the app.
+## Automatic GitHub deployments
 
-## Demo and production boundaries
+The `.github/workflows/deploy-aws.yml` workflow tests and builds pull requests. Every push to `main` in `Mpratyush54/oddo-hackathon` tests, builds, and deploys the Express backend and React frontend to the existing AWS stack, then checks the live website and JWT backend health. It can also be run manually from GitHub Actions.
 
-Business data persists in this browser under `skyline-v2`; session/persona selection uses `skyline-session`. There is no shared database or real account authentication yet. Demo roles govern UI actions, but localStorage can be edited and these controls are not a production security boundary. The local Express API is a loopback demo service, not a public authenticated backend. Its counters and send deduplication live in memory and reset when the server restarts. Verify the provider dashboard before retrying an uncertain send.
+AWS OIDC trusts only this repository's `main` branch. The role can read this stack's outputs, update this Lambda's code, and upload to the existing private artifact/frontend buckets. It has no direct secret-read, database-write or IAM permissions. AWS credentials are temporary; provider credentials and JWT keys remain in Secrets Manager. [GitHub's AWS OIDC guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
 
-Payments are simulated. Receipts and audit history are local demonstration records. No AWS infrastructure, Cognito authentication, production WhatsApp, shared DynamoDB persistence, email delivery, or payment provider has been deployed. Event photos/fonts may require internet access. The sample semester is anchored to 10 October 2026.
+The repository variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `AWS_STACK_NAME`, and `AWS_ARTIFACT_BUCKET` are already configured. The workflow pins official actions to verified commit hashes. Deployments run serially. Infrastructure changes and new club initialization use the local `npm run deploy:aws` command; automatic code deployments preserve existing accounts, memberships, secrets and receipts.
 
-To reset the demo, clear `skyline-v2` and `skyline-session` from this site's browser storage and reload; this discards local demo changes. Production hosting must support React Router deep links.
+`node scripts/setup-github-deploy.js` recreates or updates the OIDC role and repository variables using authorized local AWS and GitHub credentials.
 
-See [ITERATION_2_PLAN.md](ITERATION_2_PLAN.md) for the current scope/demo story and [AWS_DEPLOYMENT_PLAN.md](AWS_DEPLOYMENT_PLAN.md) for the concise AWS rollout using direct Meta and OpenRouter.
+## Accounts and permissions
+
+Signup/login use our own Express routes, scrypt password hashes, HS256 JWT access tokens lasting 15 minutes, and rotating refresh tokens lasting seven days. Cookies are HttpOnly, Secure in AWS, and SameSite=Lax. JWTs validate signature, algorithm, issuer, audience and expiry; DynamoDB session/profile records enforce revocation. Logout revokes the session; changing a password revokes other sessions. Refresh-token reuse revokes the associated account session version. The web client supplies a CSRF token and client header on authenticated changes.
+
+All new accounts start with student permissions. Roles come from server-owned per-club records and cannot be selected in the production browser. The initial account mpratyush54@gmail.com has the Skyline admin role. Grant subsequent access from an authorized local AWS session after the intended account signs up:
+
+    node scripts/grant-role.js mpratyush54@gmail.com skyline admin
+
+This initial administrator also has active complimentary Skyline membership through 31 July 2027, granted with `node scripts/activate-membership.js mpratyush54@gmail.com skyline`. The grant records an audit event and does not record a payment.
+
+Other roles are member, organizer, treasurer and college. Club IDs are skyline, codecraft and canvas. A college assignment grants aggregate campus overview access, rather than individual finance records. Never grant staff access merely because someone typed a matching email: email ownership verification and email-based password recovery are not configured in this pilot.
+
+## Shared backend
+
+The backend owns memberships, WhatsApp consent, prices, tickets/check-in, merchandise stock/orders, promo codes, points, waitlists, tasks, announcements, prepared reminders, expenses/approvals, college summaries, and audit events. The cloud client never supplies commerce snapshots or actor identities. Sensitive reads are filtered by user and per-club role.
+
+Club mutations use optimistic version checks in DynamoDB transactions together with a separate audit event and a per-user request record. This protects last-seat/stock changes, duplicate scans, approvals, and repeat requests. Mutation clients must reuse their idempotencyKey after an uncertain response; keys are retained for 24 hours. WhatsApp deduplication records have no TTL and persist across restarts. The pilot stores one aggregate per club, capped at 300 KB; large deployments should move business entities to individual records.
+
+Receipts allow PDF/JPEG/PNG, up to 5 MB, with five-minute presigned uploads and two-minute authorized downloads. They are private, scoped to user + club, and checked for object existence/type/size before an expense is accepted. Another finance reviewer must approve an expense.
+
+Payments remain explicitly simulated; the backend does not charge money or verify gateway payments.
+
+## Provider settings
+
+Keep all provider secrets in .env locally and Secrets Manager in AWS. No secret may use a VITE_ prefix.
+
+- OPENROUTER_API_KEY; OPENROUTER_MODEL defaults to openrouter/free. Only free models are accepted. AI_DAILY_LIMIT controls a persistent club quota. Drafts use organizer notes/public facts and stay editable.
+- META_WHATSAPP_TOKEN, META_PHONE_NUMBER_ID, META_GRAPH_VERSION, META_TEST_RECIPIENTS configure the direct Meta test API.
+- META_WHATSAPP_TEMPLATE must be hello_world and META_TEMPLATE_PARAMETER_COUNT must be 0 for this endpoint.
+- META_APP_SECRET authenticates webhook signatures. It was not present at deployment, so signed delivery processing remains unavailable until supplied.
+- META_WEBHOOK_VERIFY_TOKEN is generated in Secrets Manager if omitted. Copy that value into Meta's webhook configuration, rather than putting it in the browser.
+- VITE_API_URL is public configuration; the deployed app uses /api.
+- VITE_BACKEND_MODE=aws enables authenticated shared-data flows.
+
+WhatsApp is sent only by the explicit test button, after server-side consent and allowlist checks. hello_world is a connectivity test and does not send announcement content. Meta acceptance is not device delivery. Uncertain timeouts are marked Unknown and blocked from automatic resend. The webhook URL is:
+
+    https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com/api/webhooks/whatsapp
+
+Email is prepared only; no email provider or automated delivery schedule is configured.
+
+## Validation
+
+API tests cover JWT/CSRF/session rotation and revocation, role isolation, concurrency, authoritative pricing, waitlist offers, private data filtering, expense review, and persistent WhatsApp timeout deduplication/signatures.
+
+    node scripts/backend-smoke.cjs
+
+The AWS/browser smoke test creates a synthetic account, validates signup/login, joining, an idempotent booking, a private receipt upload and expense, and session refresh/logout. It removes only its synthetic account/business records/receipt afterward, retaining the audit history. The Playwright package location can be overridden with PLAYWRIGHT_MODULE. It sends no WhatsApp messages and makes no AI requests.

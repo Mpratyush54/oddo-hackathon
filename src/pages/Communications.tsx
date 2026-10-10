@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Badge, Button, CardHeader, Empty, Field, Icon, PageHeader, StatCard } from '../components';
 import { date, exportCSV, today, uid, useStore } from '../store';
 import { useSession } from '../session';
+import { backendHeaders, backendRequest, cloudMode } from '../backend';
 import '../communications.css';
 
 type Channel = 'Email' | 'WhatsApp' | 'In-app';
@@ -13,6 +14,25 @@ const apiURL =
   '/api';
 const audiences = ['All members', 'Active members', 'Volunteers', 'Pending dues', 'Renewing soon'];
 const normalizePhone = (value: string) => value.replace(/\D/g, '');
+async function integrationRequest(path: string, body: unknown, timeout: number): Promise<unknown> {
+  const options = {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeout),
+  };
+  if (cloudMode) return backendRequest(path, options);
+  const response = await fetch(`${apiURL.replace(/\/$/, '')}${path}`, {
+    ...options,
+    headers: backendHeaders(),
+    credentials: 'include',
+  });
+  const result = await response.json();
+  if (!response.ok)
+    throw new Error(
+      typeof result?.error === 'string' ? result.error : 'Provider service unavailable.',
+    );
+  return result;
+}
 
 export function CommunicationsPage() {
   const { data, update, toast } = useStore();
@@ -128,15 +148,11 @@ export function CommunicationsPage() {
     setBusy(true);
     if (apiURL) {
       try {
-        const response = await fetch(`${apiURL.replace(/\/$/, '')}/ai/draft`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ clubId, notes, audience, purpose: 'club-announcement' }),
-          signal: AbortSignal.timeout(22000),
-        });
-        if (!response.ok) throw new Error('Draft service unavailable');
-        const result: unknown = await response.json();
+        const result = await integrationRequest(
+          '/ai/draft',
+          { clubId, notes, audience, purpose: 'club-announcement' },
+          22000,
+        );
         if (
           !result ||
           typeof result !== 'object' ||
@@ -217,11 +233,9 @@ export function CommunicationsPage() {
     }
     setSending(announcement.id);
     try {
-      const response = await fetch(`${apiURL.replace(/\/$/, '')}/notifications/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      const result = await integrationRequest(
+        '/notifications/send',
+        {
           clubId,
           announcementId: announcement.id,
           title: announcement.title,
@@ -229,19 +243,9 @@ export function CommunicationsPage() {
           channel: 'WhatsApp',
           recipients: phones,
           template: 'hello_world',
-        }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const result: unknown = await response.json();
-      if (!response.ok)
-        throw new Error(
-          result &&
-            typeof result === 'object' &&
-            'error' in result &&
-            typeof result.error === 'string'
-            ? result.error
-            : 'Test service unavailable. Check server configuration.',
-        );
+        },
+        20000,
+      );
       if (
         !result ||
         typeof result !== 'object' ||
@@ -255,7 +259,7 @@ export function CommunicationsPage() {
         ): entry is {
           recipient: string;
           channel: 'WhatsApp';
-          status: 'Sent' | 'Failed';
+          status: 'Sent' | 'Failed' | 'Unknown';
           detail: string;
         } =>
           !!entry &&
@@ -263,7 +267,7 @@ export function CommunicationsPage() {
           typeof entry.recipient === 'string' &&
           phones.includes(entry.recipient) &&
           entry.channel === 'WhatsApp' &&
-          (entry.status === 'Sent' || entry.status === 'Failed') &&
+          (entry.status === 'Sent' || entry.status === 'Failed' || entry.status === 'Unknown') &&
           typeof entry.detail === 'string',
       );
       if (!records.length) throw new Error('No recipient delivery results were returned.');
@@ -273,43 +277,45 @@ export function CommunicationsPage() {
         );
         return;
       }
-      update((current) => {
-        const existing = current.deliveries || [];
-        const updated = existing.map((row) => {
-          const resultRow = records.find(
-            (item) =>
-              row.announcementId === announcement.id &&
-              row.channel === 'WhatsApp' &&
-              normalizePhone(row.recipient) === item.recipient,
-          );
-          return resultRow
-            ? {
-                ...row,
-                status: resultRow.status,
-                date: today,
-                detail: `hello_world connectivity test only; announcement content not sent. ${resultRow.detail}`,
-              }
-            : row;
+      if (cloudMode) window.dispatchEvent(new Event('skyline-data-changed'));
+      else
+        update((current) => {
+          const existing = current.deliveries || [];
+          const updated = existing.map((row) => {
+            const resultRow = records.find(
+              (item) =>
+                row.announcementId === announcement.id &&
+                row.channel === 'WhatsApp' &&
+                normalizePhone(row.recipient) === item.recipient,
+            );
+            return resultRow
+              ? {
+                  ...row,
+                  status: resultRow.status,
+                  date: today,
+                  detail: `hello_world connectivity test only; announcement content not sent. ${resultRow.detail}`,
+                }
+              : row;
+          });
+          const fresh = records
+            .filter(
+              (item) =>
+                !existing.some(
+                  (row) =>
+                    row.announcementId === announcement.id &&
+                    row.channel === 'WhatsApp' &&
+                    normalizePhone(row.recipient) === item.recipient,
+                ),
+            )
+            .map((item) => ({
+              id: uid('DEL'),
+              announcementId: announcement.id,
+              ...item,
+              date: today,
+              detail: `hello_world connectivity test only; announcement content not sent. ${item.detail}`,
+            }));
+          return { ...current, deliveries: [...fresh, ...updated] };
         });
-        const fresh = records
-          .filter(
-            (item) =>
-              !existing.some(
-                (row) =>
-                  row.announcementId === announcement.id &&
-                  row.channel === 'WhatsApp' &&
-                  normalizePhone(row.recipient) === item.recipient,
-              ),
-          )
-          .map((item) => ({
-            id: uid('DEL'),
-            announcementId: announcement.id,
-            ...item,
-            date: today,
-            detail: `hello_world connectivity test only; announcement content not sent. ${item.detail}`,
-          }));
-        return { ...current, deliveries: [...fresh, ...updated] };
-      });
       const sent = records.filter((row) => row.status === 'Sent').length;
       toast(
         `${sent} test template(s) accepted by provider; ${records.length - sent} failed. This test does not send your announcement content.`,

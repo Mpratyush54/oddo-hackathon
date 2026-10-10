@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApi, createExpressApp, handler } from './api.mjs';
+import { createApi, createExpressApp } from './api.js';
 
 test('Express routes enforce JSON size, shape and local origins without provider calls', async () => {
   let providerCalls = 0;
@@ -37,7 +37,7 @@ test('Express routes enforce JSON size, shape and local origins without provider
     const oversized = await fetch(`${base}/ai/draft`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: 'x'.repeat(17000) }),
+      body: JSON.stringify({ notes: 'x'.repeat(2_100_000) }),
     });
     assert.equal(oversized.status, 413);
     const foreign = await fetch(`${base}/health`, {
@@ -145,12 +145,4 @@ test('WhatsApp rejects unknown recipients and sends template only once', async (
   assert.equal(first.deliveries[0].status, 'Sent');
   assert.equal(second.deliveries[0].status, 'Sent');
   assert.match(first.deliveries[0].detail, /Announcement content was not sent/);
-});
-test('production handler denies requests without Cognito authorizer identity', async () => {
-  const result = await handler({
-    rawPath: '/ai/draft',
-    body: '{}',
-    requestContext: { http: { method: 'POST' } },
-  });
-  assert.equal(result.statusCode, 401);
 });

@@ -284,6 +284,23 @@
     flex: 1;
   }
 }
+/* Tablet: collapse multi-column tools that previously waited until 540px. */
+@media (max-width: 900px) {
+  .dashboard-top,
+  .kanban-board,
+  .checkin-layout,
+  .checkout-layout,
+  .personal-task-grid,
+  .finance-charts {
+    grid-template-columns: 1fr !important;
+  }
+  .kanban-board {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-event,
   .landing-event img,

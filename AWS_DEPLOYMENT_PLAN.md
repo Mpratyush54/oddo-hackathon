@@ -1,51 +1,97 @@
-# Skyline: simple AWS deployment plan
+# Skyline AWS deployment: implementation and current status
 
-Updated 10 October 2026. Use the existing OpenRouter free access and Meta WhatsApp test account directly. AWS hosts the frontend, server, and shared data. No cloud deployment or provider messages have been performed by the agent.
+Updated 10 October 2026.
 
-## Smallest practical stack
+## Decisions applied
 
-| Part           | Choice                                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------------------------- |
-| React frontend | Private S3 bucket + CloudFront; default CloudFront URL initially                                                    |
-| API            | API Gateway HTTP API + Lambda; use an Express-compatible Lambda adapter for the existing Node.js backend            |
-| Data           | DynamoDB on-demand, with college/club IDs on every record                                                           |
-| Receipts       | Separate private S3 bucket; authorized, short-lived presigned uploads/downloads                                     |
-| Login          | Cognito when moving from demo personas to real users; never publicly expose demo role switching with sensitive data |
-| AI drafts      | Server proxy to OpenRouter using a free model; no provider key in React                                             |
-| WhatsApp test  | Server calls Meta Cloud API directly with test phone-number ID/token and approved recipients                        |
+The backend is our own Node.js/Express application in .js files. Authentication is fully custom JWT authentication; Cognito is not used. The React frontend is connected to authenticated APIs and shared DynamoDB data. The original persona demo remains available locally through npm run dev:demo.
 
-Keep application resources in Mumbai (`ap-south-1`). CloudFront serves global assets; OpenRouter and Meta remain external services. Do not claim all user data stays in India when sending content to these services. Avoid always-on servers, NAT gateways, RDS, ALBs, and paid AI infrastructure for this stage.
+## Live deployment
 
-CloudFront should use S3 Origin Access Control and a private REST origin. Rewrite extensionless React Router paths to `/index.html`, preserving asset errors. Prefer the default CloudFront hostname during the hackathon; add a custom domain later. Check the account's eligible CloudFront plan and AWS usage allowances rather than promising permanently free hosting. [AWS private S3 origin guide](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html), [CloudFront plan options](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html)
+Website and API base: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com
 
-## Existing integrations to wire
+Health: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com/api/health
 
-The browser calls `/api/ai/draft` and `/api/notifications/send` locally through Vite's proxy, or `VITE_API_URL` when deployed. `VITE_API_URL` is public configuration; provider secrets stay in the server's local ignored environment file, then protected Lambda configuration or secret storage.
+CloudFormation stack: skyline-campus-api in ap-south-1.
 
-**OpenRouter:** configure `OPENROUTER_API_KEY` and the selected free model. Use `openrouter/free` or a verified `:free` model; prevent automatic fallback to paid models. Free access has quotas and variable availability. Keep drafts short, throttle per user/club, and fall back to the clearly labelled deterministic “Template draft” when unavailable. Always review generated names, dates, and claims before publishing. Only send organizer notes and necessary public event facts; do not send member lists or receipts. [OpenRouter free routing](https://openrouter.ai/discover), [OpenRouter limits](https://openrouter.ai/support/), [free-model selection guidance](https://openrouter.zendesk.com/hc/en-us/articles/51679572756123-I-used-openrouter-auto-free-or-auto-and-still-got-charged)
+| Part                     | Deployed choice                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| HTTPS frontend and API   | API Gateway HTTP API + Node.js 22 Lambda with the Express adapter                                     |
+| Accounts                 | Express signup/login, scrypt password hashing, signed JWT access cookies and rotating refresh cookies |
+| Data                     | DynamoDB on-demand, encrypted, with point-in-time recovery and TTL for sessions/request counters      |
+| Receipts                 | Separate private encrypted S3 bucket with scoped presigned uploads/downloads                          |
+| Provider/JWT credentials | Secrets Manager, accessible to the Lambda role                                                        |
+| Frontend build archive   | Private encrypted S3 bucket                                                                           |
+| Logging                  | CloudWatch Lambda logs, 14-day retention                                                              |
+| AI                       | Direct OpenRouter free-model calls from Express                                                       |
+| WhatsApp                 | Direct Meta hello_world connectivity tests, consent and test-recipient allowlist enforced             |
 
-**Meta test account:** configure the server's WhatsApp access token, phone-number ID, API version, and a strict approved-recipient allowlist. Match the names in the server's `.env.example`. Add/verify the demo recipient in Meta's test setup; record that person's phone and explicit WhatsApp consent in their profile. Tokens may expire and must be refreshed by the account owner.
+No always-on instance, NAT gateway, RDS, ALB, paid AI fallback or AWS messaging intermediary is required. AWS services still have metered costs; this is not a promise of free hosting.
 
-The first explicit test button sends the preapproved `hello_world` template. This verifies connectivity and **does not send the announcement body**. The UI/delivery detail must say so. Arbitrary announcement text requires a permitted active user-initiated messaging window, or a suitable approved template; the default test must not pretend to deliver custom content. Provider API acceptance is not proof of delivery. [Meta Cloud API collection](https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api?entity=folder-e5097869-a194-44db-89a9-936d994a5f9e), [Meta messaging policy](https://whatsappbusiness.com/policy/)
+## CloudFront account limitation
 
-Automatic WhatsApp requires phone + opt-in, and consent must be rechecked immediately before sending. Honor withdrawal. Outside the customer service window, use approved templates. Test-account recipient restrictions remain in place; an AWS deployment does not remove them. Production Meta onboarding, templates, and billing are a later step. Email remains Prepared until an email provider is configured; use SES later if desired.
+The attempted CloudFront distribution was rejected by AWS: the account must be verified before new CloudFront resources can be created. AWS directed the account owner to contact AWS Support and include that error.
 
-## Shared-data and access work
+The live API Gateway/Lambda hosting path is the operational fallback. Both the website and /api use the same HTTPS origin, so secure cookies work without cross-origin browser configuration. Static files are bundled into the Lambda package; this is practical for the pilot but less efficient than CloudFront at high traffic. The private S3/CloudFront OAC template is retained in infra/template.js for use once AWS verifies the account.
 
-1. Cognito authenticates the real user; HTTP API verifies JWTs. Lambda then resolves server-owned college/club role records. Never trust a browser role, club ID, price, or finance permission. Keep the demo persona switcher only in a labelled isolated demo. [HTTP API JWT guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html)
-2. Replace browser-local store operations with API calls progressively: memberships, ticket booking/check-in, expenses, stock/orders, announcements.
-3. Use DynamoDB conditional transactions for last-seat booking, size stock decrement, one-time check-in, and pending-expense approval. A payment gateway remains separate; simulated payments must stay labelled.
-4. Record actor, club, server timestamp, action, and changed record in append-only application audit history. This does not claim cryptographic tamper-proofing against cloud administrators.
-5. Limit receipt type/size; scope signed object keys and short URL expiry; check finance/owner access on download.
-6. Deduplicate send requests by announcement/channel/recipient. Treat uncertain provider timeouts carefully; do not blindly resend. Add signed provider webhook verification and status updates when demonstrating delivery receipts. A queue/DLQ and scheduled renewals can follow after the core demo is stable.
+The empty DynamoDB table and S3 buckets retained by the failed initial stack were checked and removed. The failed stack was removed. Code artifact staging/secret storage are private.
 
-## Deployment sequence
+AWS references: [Lambda runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html), [private S3 origins with OAC](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html).
 
-1. Freeze the winning demo journey: join → member card → discounted ticket → QR check-in → volunteer expense → treasurer approval → college overview. Add one AI draft and one clearly labelled WhatsApp connectivity test.
-2. Finish local validation using synthetic data; owner supplies secrets locally, never in chat or React.
-3. Create S3/CloudFront, HTTP API/Lambda, and DynamoDB with SAM or CDK. Add Cognito before making sensitive real-user operations public. Use public URLs without purchasing a domain initially.
-4. Configure server integrations and the frontend API URL. Deploy frontend build and server handlers. Test frontend deep links, sign-in, cross-club rejection, concurrent last-seat booking, duplicate scan, and retry behavior.
-5. Owner initiates one consented Meta test and one OpenRouter draft from the UI; inspect results. Keep fallback/demo states clear if external accounts are unavailable.
-6. Rehearse the three-minute presentation, then freeze features. Add no new infrastructure or feature families during the final rehearsal window.
+## Security and shared data
 
-Owner dependencies: AWS deployment access, OpenRouter key/free model, Meta test token + phone-number ID + approved recipient. No paid AI or AWS messaging intermediary is required for this approach. AWS still bills metered hosting/backend usage outside eligible allowances; use account budgets and service throttles, and avoid a promise of zero cost.
+- Access tokens expire after 15 minutes; refresh tokens after seven days. Cookies are HttpOnly, Secure in AWS and SameSite=Lax. Signatures, algorithm, audience, issuer and expiration are verified on every access.
+- DynamoDB session and account version checks enforce logout, password-change revocation and refresh-token reuse detection.
+- CSRF tokens, a required custom client header, origin checks and persistent user/IP quotas protect changes. Tokens are never saved in browser localStorage.
+- Signup assigns student access. Per-club staff role records are owned by the server/AWS administrator. UI role switching and browser snapshots are rejected in AWS.
+- Student reads include their own membership, tickets, orders, requests and points; finance data and receipts require owner/finance permissions. College access returns aggregate summaries.
+- Each club mutation atomically writes its new version, an audit event, and a per-user idempotency result. Concurrent seat/stock changes, duplicate check-ins and repeated approvals cannot overwrite each other.
+- The low-volume pilot uses a club aggregate with a 300 KB ceiling. Audit events persist separately; the state contains only a recent audit view. Move entity families to individual DynamoDB records before large-scale use.
+- Receipt uploads last five minutes, allow PDF/JPEG/PNG and 1 byte–5 MB, and use user/club-scoped keys. Submission checks S3 metadata. Downloads require authorization and expire after two minutes.
+- Payments remain simulated. Real gateway integration and settlement verification are separate work.
+
+Application audit history is append-only through the application API; it does not claim cryptographic tamper-proofing against cloud administrators.
+
+## Provider behavior
+
+OpenRouter credentials from the ignored .env are stored in Secrets Manager. Only openrouter/free or a selected :free model is accepted, with a persistent daily club quota. Failed AI requests retain the editable, labelled template fallback. Member lists and receipts are not sent to the model. [OpenRouter API](https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request?explorer=true), [free router](https://github.com/OpenRouterTeam/docs/blob/main/guides/routing/routers/free-router.mdx).
+
+WhatsApp credentials and approved recipients are configured. The explicit test button uses hello_world only: it tests connectivity and does not send an announcement's body. Server-owned opt-in is rechecked immediately before the call. Accepted requests, confirmed webhook statuses, rejected calls and uncertain timeouts remain distinct in the delivery detail. Durable deduplication prevents automatic resends across Lambda restarts.
+
+Signed webhook handling is implemented, but META_APP_SECRET was absent. Add the real Meta app secret to .env and redeploy before configuring delivery status webhooks. Retrieve META_WEBHOOK_VERIFY_TOKEN from the backend Secrets Manager secret and enter it in Meta's setup. Do not expose either value in React or chat. [Meta webhook signature verification](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/).
+
+Webhook URL: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com/api/webhooks/whatsapp
+
+No WhatsApp messages or AI generations were sent as part of deployment verification. Email and reminder delivery remain Prepared until an email provider/scheduler is connected. OpenRouter and Meta are external services; hosting in Mumbai does not imply all provider-processed content stays in India.
+
+## Deployment and administrator setup
+
+    npm install
+    npm run test:api
+    npm run deploy:aws -- --api-hosting
+
+The script builds and packages the backend/frontend, stores server secrets securely, applies CloudFormation, and initializes public fixture clubs only when absent. It preserves existing DynamoDB state. AWS_DEPLOYMENT_OUTPUT.json contains resource identifiers and is ignored by Git.
+
+The initial Skyline administrator account, mpratyush54@gmail.com, registered and received the admin role on 10 October 2026. Reload the workspace after role changes. An authorized AWS session can grant roles with:
+
+    node scripts/grant-role.js mpratyush54@gmail.com skyline admin
+
+The same account has active complimentary Skyline membership expiring 31 July 2027. The AWS CLI grant created its enrollment and audit event atomically without claiming a payment. The generic AWS save toast has been replaced with contextual membership/preferences messages.
+
+Fresh accounts cannot self-select staff roles. Email verification and email-based password recovery are not configured; verify the intended staff member before granting privilege. Add a verified mail sender and those account recovery flows before onboarding real campus users.
+
+## GitHub push deployments
+
+Repository: [Mpratyush54/oddo-hackathon](https://github.com/Mpratyush54/oddo-hackathon). The workflow in `.github/workflows/deploy-aws.yml` checks pull requests and deploys pushes to main. Tests and the TypeScript/Vite build must pass before deployment; the deploy job builds the Express Lambda package, uploads it to the existing private artifact bucket, updates Lambda with a revision guard, waits for success, archives the frontend in private S3, and checks the live website/backend.
+
+The `skyline-campus-api-github-deploy` IAM role trusts GitHub OIDC only for this repository and refs/heads/main. Repository variables are configured. Only the deployment job receives temporary credentials. Role permissions are scoped to existing stack outputs, the one backend function and its artifact/frontend buckets; direct provider-secret reads, database writes and IAM changes are excluded. Provider/JWT secrets and persistent data survive code deployments. [AWS role trust guidance](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html), [GitHub AWS OIDC guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
+
+Code deployments use scripts/deploy-existing.js. Infrastructure updates and new club initialization use scripts/deploy-aws.js locally. API Gateway hosting is now the default; CloudFront requires an explicit --cloudfront option after account verification. The latest CLI attempt was also rejected with the same AWS account-verification error.
+
+## Verification and next dependencies
+
+Unit/integration tests cover custom JWT sessions, CSRF, refresh rotation/reuse, logout/password revocation, club-role isolation, last-seat/stock concurrency, waitlist reservations, duplicate scans, expense review, and provider signature/deduplication behavior. The production build passes.
+
+Live AWS/browser verification passed signup/login, joining a club, server-priced booking and duplicate retry, ticket display, private receipt upload and expense submission, refresh, and logout. Browser runtime errors were empty; synthetic QA account/data/receipt were removed while retaining audit events.
+
+Remaining owner dependencies: Meta app secret/webhook setup and one explicit consented test from the UI; AWS account verification for CloudFront; a verified email sender/recovery workflow before real-user rollout. No payment gateway or production WhatsApp onboarding has been performed.

@@ -1,6 +1,17 @@
 import express from 'express';
 import { readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import {
+  adjustInventory,
+  awardPoints,
+  cancelTicket,
+  checkInWithPoints,
+  CommerceError,
+  ensureCommerceFields,
+  joinWaitlist,
+  placeOrder,
+  quotePromo,
+} from './commerce.js';
 
 export function loadLocalEnvironment() {
   if (!existsSync('.env')) return;
@@ -220,6 +231,14 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
     );
     return { deliveries: details };
   };
+  const requireSnapshot = (body) => {
+    if (!body.snapshot || typeof body.snapshot !== 'object' || Array.isArray(body.snapshot))
+      throw new ApiError(400, 'A club store snapshot is required for commerce actions.');
+    if (!body.clubId || String(body.clubId).length > 60)
+      throw new ApiError(400, 'A clubId is required.');
+    return ensureCommerceFields(body.snapshot);
+  };
+
   return async (path, method, body = {}) => {
     if (path === '/health' && method === 'GET')
       return {
@@ -237,59 +256,53 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
           ),
           template: env.META_WHATSAPP_TEMPLATE || 'hello_world',
         },
+        commerce: {
+          promos: true,
+          inventory: true,
+          waitlist: true,
+          points: true,
+          membershipUpsell: true,
+        },
       };
     rateLimit();
     if (method !== 'POST') throw new ApiError(405, 'This action requires POST.');
     if (path === '/ai/draft') return createAnnouncementDraft(body);
     if (path === '/notifications/send') return sendWhatsAppTest(body);
+    try {
+      if (path === '/promos/quote') {
+        const store = requireSnapshot(body);
+        return quotePromo(store, body);
+      }
+      if (path === '/orders') {
+        const store = requireSnapshot(body);
+        return placeOrder(store, body);
+      }
+      if (path === '/inventory') {
+        const store = requireSnapshot(body);
+        return adjustInventory(store, body);
+      }
+      if (path === '/tickets/cancel') {
+        const store = requireSnapshot(body);
+        return cancelTicket(store, body);
+      }
+      if (path === '/waitlist/join') {
+        const store = requireSnapshot(body);
+        return joinWaitlist(store, body);
+      }
+      if (path === '/points/award') {
+        const store = requireSnapshot(body);
+        return awardPoints(store, body);
+      }
+      if (path === '/check-in') {
+        const store = requireSnapshot(body);
+        return checkInWithPoints(store, body);
+      }
+    } catch (error) {
+      if (error instanceof CommerceError) throw new ApiError(error.status, error.message);
+      throw error;
+    }
     throw new ApiError(404, 'Unknown API endpoint.');
   };
-}
-const productionApi = createApi();
-export async function handler(event) {
-  const origin = event.headers?.origin;
-  const expected = process.env.APP_ORIGIN;
-  if (origin && expected && origin !== expected)
-    return { statusCode: 403, body: JSON.stringify({ error: 'Origin not allowed.' }) };
-  const claims = event.requestContext?.authorizer?.jwt?.claims;
-  if (!claims?.sub)
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ error: 'A Cognito-authenticated session is required.' }),
-    };
-  const method = event.requestContext?.http?.method || event.httpMethod || 'GET';
-  const path = (event.rawPath || event.path || '').replace(/^\/api/, '');
-  try {
-    const body = event.body
-      ? JSON.parse(
-          event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString() : event.body,
-        )
-      : {};
-    if (method === 'POST') {
-      const groups = String(claims['cognito:groups'] || '');
-      const scopes = String(claims['custom:club_ids'] || '').split(',');
-      if (
-        !/(^|[,\[\s"])(club-admin|organizer)([,\]\s"]|$)/.test(groups) ||
-        !scopes.includes(body.clubId)
-      )
-        return {
-          statusCode: 403,
-          body: JSON.stringify({ error: 'This club action is not permitted.' }),
-        };
-    }
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      body: JSON.stringify(await productionApi(path, method, body)),
-    };
-  } catch (error) {
-    return {
-      statusCode: error.status || 503,
-      body: JSON.stringify({
-        error: error.status ? error.message : 'The service is temporarily unavailable.',
-      }),
-    };
-  }
 }
 // Local demo transport. Provider logic stays reusable for the future Lambda adapter.
 export function createExpressApp({ env = process.env, fetchImpl = fetch } = {}) {
@@ -315,7 +328,8 @@ export function createExpressApp({ env = process.env, fetchImpl = fetch } = {}) 
     next();
   });
 
-  app.use(express.json({ limit: 16000, strict: true }));
+  // Club store snapshots for commerce can exceed the smaller AI-draft limit.
+  app.use(express.json({ limit: '2mb', strict: true }));
   app.use('/api', async (request, response, next) => {
     try {
       const body = request.body ?? {};

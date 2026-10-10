@@ -14,12 +14,13 @@ import {
 } from '../components';
 import { date, exportCSV, money, today, uid, useStore } from '../store';
 import { useSession } from '../session';
+import { backendPost, backendRequest, cloudMode } from '../backend';
 import '../commerce-finance.css';
 import type { Transaction } from '../store';
 
 export function FinancePage() {
-  const { data, update, toast } = useStore();
-  const { can, user } = useSession();
+  const { data, update, applyServerPatch, toast } = useStore();
+  const { can, user, clubId } = useSession();
   const viewAll = can('view_finance');
   const [rejecting, setRejecting] = useState<Transaction | null>(null);
   const [adding, setAdding] = useState(false),
@@ -94,6 +95,7 @@ export function FinancePage() {
       ]),
     ]);
   const receiptLink = (t: Transaction) => {
+    if (cloudMode) { void backendRequest<{ url: string }>(`/clubs/${clubId}/receipts/${t.id}`).then(result => { window.location.assign(result.url); }).catch(error => toast(error.message)); return; }
     if (t.receiptData) {
       const a = document.createElement('a');
       a.href = t.receiptData;
@@ -445,6 +447,18 @@ export function FinancePage() {
               }
               setSaving(true);
               try {
+                if (cloudMode) {
+                  let receiptKey: string | undefined;
+                  if (receipt) {
+                    const upload = await backendPost<{ url: string; fields: Record<string, string>; key: string }>(`/clubs/${clubId}/receipts/upload`, { contentType: receipt.type });
+                    const form = new FormData(); for (const [key, value] of Object.entries(upload.fields)) form.append(key, value); form.append('file', receipt);
+                    const response = await fetch(upload.url, { method: 'POST', body: form });
+                    if (!response.ok) throw new Error('Receipt upload failed.');
+                    receiptKey = upload.key;
+                  }
+                  const result = await backendPost<{ state: Parameters<typeof applyServerPatch>[1] }>(`/clubs/${clubId}/actions`, { type: kind === 'expense' ? 'expenses.create' : 'income.create', args: { title: f.title.trim(), amount: Number(f.amount), category: f.category, eventId: f.eventId || undefined, receipt: receipt?.name, receiptKey }, idempotencyKey: crypto.randomUUID() });
+                  applyServerPatch(clubId, result.state); close(); toast('Saved to the shared club ledger.'); return;
+                }
                 const receiptData = receipt ? await readFile(receipt) : undefined;
                 const tx: Transaction = {
                   id: uid('TX'),
@@ -465,8 +479,8 @@ export function FinancePage() {
                     ? 'Expense request added. Ready for the treasurer’s review.'
                     : 'Income recorded. A little more clarity.',
                 );
-              } catch {
-                setError('Could not read this receipt. Please try another file.');
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Could not save this request.');
               } finally {
                 setSaving(false);
               }

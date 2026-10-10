@@ -8,3 +8,5 @@ dist/
 dashboard-preview.png
 mobile-preview.png
 artifacts/
+.aws-build/
+AWS_DEPLOYMENT_OUTPUT.json

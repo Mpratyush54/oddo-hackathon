@@ -14,6 +14,7 @@ import {
 } from './components';
 import { date, exportCSV, money, useStore } from './store';
 import { roleLabels, useSession } from './session';
+import { backendPost, cloudMode } from './backend';
 import type { Role } from './session';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { MembersPage, TasksPage } from './pages/Community';
@@ -23,6 +24,7 @@ import { EventDiscovery } from './pages/EventDiscovery';
 import EventExperience from './pages/EventExperience';
 import CampusCalendar from './pages/CampusCalendar';
 import { ShopPage } from './pages/Shop';
+import { ContributionsPage } from './pages/Contributions';
 import { FinancePage } from './pages/Finance';
 import { CommunicationsPage } from './pages/Communications';
 import {
@@ -42,6 +44,7 @@ const operational: NavItem[] = [
   { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
   { to: '/app/announcements', label: 'Communications', icon: 'Megaphone' },
   { to: '/app/merchandise', label: 'Merchandise', icon: 'ShoppingBag' },
+  { to: '/app/contributions', label: 'Points & promos', icon: 'HeartHandshake' },
   {
     to: '/app/tasks',
     label: 'Projects & tasks',
@@ -134,6 +137,7 @@ export default function Workspace() {
     document.addEventListener('mousedown', outside);
     return () => document.removeEventListener('mousedown', outside);
   }, []);
+  if (!session.ready) return <div className="portal-note" role="status">Loading your campus account…</div>;
   if (!signedIn) return <Navigate to="/login" replace />;
   const club = clubs.find((c) => c.id === clubId)!;
   const mainNav =
@@ -344,7 +348,7 @@ export default function Workspace() {
           </Link>
           <div className="sidebar-footer">
             <span className="live-dot" />
-            Local demo · data saved on this device
+            {cloudMode ? 'AWS workspace · shared campus data' : 'Local demo · data saved on this device'}
           </div>
         </div>
       </aside>
@@ -520,7 +524,7 @@ export default function Workspace() {
                       {label}
                     </Link>
                   ))}
-                  <div className="persona-section">
+                  {!cloudMode && <div className="persona-section">
                     <div className="popover-label">EXPLORE A DEMO PERSONA</div>
                     {(['member', 'organizer', 'treasurer', 'admin', 'college'] as Role[]).map(
                       (r) => (
@@ -552,7 +556,7 @@ export default function Workspace() {
                         </button>
                       ),
                     )}
-                  </div>
+                  </div>}
                   <button
                     className="sign-out"
                     onClick={() => {
@@ -561,7 +565,7 @@ export default function Workspace() {
                     }}
                   >
                     <Icon name="ArrowLeft" size={17} />
-                    Sign out of demo
+                    {cloudMode ? 'Sign out' : 'Sign out of demo'}
                   </button>
                 </div>
               )}
@@ -569,6 +573,7 @@ export default function Workspace() {
           </div>
         </header>
         <main id="main-content" className="content" key={`${clubId}:${role}`}>
+          {cloudMode && role !== 'college' && !data.members.some(m => m.email === user.email) && <div className="info-banner"><Icon name="UsersRound" /><p>Join this club to get your membership card and save WhatsApp preferences.</p><Button onClick={() => { void backendPost<{ state: typeof data }>(`/clubs/${clubId}/actions`, { type: 'membership.join', args: {}, idempotencyKey: crypto.randomUUID() }).then(() => window.dispatchEvent(new Event('skyline-data-changed'))).catch(error => toast(error.message)); }}>Join club</Button></div>}
           <Routes>
             <Route
               index
@@ -613,6 +618,10 @@ export default function Workspace() {
             <Route
               path="merchandise"
               element={role === 'college' ? <Unauthorized /> : <ShopPage />}
+            />
+            <Route
+              path="contributions"
+              element={role === 'college' ? <Unauthorized /> : <ContributionsPage />}
             />
             <Route
               path="tasks"
@@ -700,7 +709,7 @@ export default function Workspace() {
           <footer className="content-footer">
             <span>One campus. Your community. Everything connected.</span>
             <span>
-              Demo workspace <Icon name="Heart" size={12} />
+              {cloudMode ? 'Campus workspace' : 'Demo workspace'} <Icon name="Heart" size={12} />
             </span>
           </footer>
         </main>
@@ -792,8 +801,7 @@ function AuditPage() {
       <div className="info-banner audit-note">
         <Icon name="ShieldCheck" />
         <p>
-          This local demo records business changes automatically. AWS deployment will write audit
-          records on the server; browser storage is editable and is not a tamper-proof log.
+          {cloudMode ? 'Business changes are recorded in the shared club audit history.' : 'This local demo records business changes automatically in editable browser storage.'}
         </p>
       </div>
       <section className="card table-card">
