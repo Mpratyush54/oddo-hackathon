@@ -9,6 +9,7 @@
     "dev:ui": "vite --config frontend/vite.config.ts --host 127.0.0.1",
     "dev:api": "node backend/demo/api.js",
     "test:api": "node --test backend/tests/**/*.test.js",
+    "test:interaction": "node scripts/interaction-coverage.cjs",
     "dev:backend": "node backend/src/entrypoints/local.js",
     "deploy:aws": "node scripts/deploy-aws.js",
     "deploy:aws:code": "node scripts/deploy-existing.js",
