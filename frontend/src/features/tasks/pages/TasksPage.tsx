@@ -147,11 +147,6 @@ export function TasksPage() {
                 <Icon name="MapPin" size={15} />
                 Student Union Courtyard
               </span>
-              <span className="avatar-stack">
-                {data.members.slice(0, 4).map((m, i) => (
-                  <Avatar name={m.name} small index={i} key={m.id} />
-                ))}
-              </span>
             </div>
           </div>
           <div className="project-progress">
