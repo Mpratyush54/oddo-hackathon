@@ -538,14 +538,10 @@ export function ContributionsPage() {
                 />
               </Field>
             </div>
-            <FormFooter>
-              <Button type="button" variant="secondary" onClick={() => setEditingRules(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={pending} icon="Check">
-                {pending ? 'Saving…' : 'Save rules'}
-              </Button>
-            </FormFooter>
+            <FormFooter
+              onClose={() => setEditingRules(false)}
+              label={pending ? 'Saving…' : 'Save rules'}
+            />
           </form>
         </Modal>
       )}
