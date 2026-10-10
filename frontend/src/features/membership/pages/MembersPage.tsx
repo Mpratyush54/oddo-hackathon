@@ -16,6 +16,7 @@ import { Revealed } from '../../../shared/components/PageMotion';
 import { date, exportCSV, money, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { Member } from '../../../shared/types/domain';
+import { cloudMode } from '../../../shared/api/client';
 
 export function MembersPage() {
   const { data, update, toast } = useStore();
@@ -47,6 +48,10 @@ export function MembersPage() {
   const currentPage = Math.min(page, pages);
   const visible = filtered.slice((currentPage - 1) * 8, currentPage * 8);
   const activate = (member: Member) => {
+    if (cloudMode) {
+      toast('Ask the member to pay through Membership, or waive dues in User management.');
+      return;
+    }
     update((d) => ({
       ...d,
       members: d.members.map((m) =>
@@ -492,12 +497,13 @@ export function MembersPage() {
               </select>
             </Field>
             <label className="check-label">
-              <input type="checkbox" name="paid" />
+              <input type="checkbox" name="paid" disabled={cloudMode} />
               Annual dues received (₹500)
             </label>
             <p className="form-note">
-              Paid dues are automatically added to the club ledger. Membership runs through 31 July
-              2027.
+              {cloudMode
+                ? 'New members start pending. Pay through Membership, or waive dues in User management.'
+                : 'Paid dues are automatically added to the club ledger. Membership runs through 31 July 2027.'}
             </p>
             <FormFooter onClose={close} label="Add member" />
           </form>

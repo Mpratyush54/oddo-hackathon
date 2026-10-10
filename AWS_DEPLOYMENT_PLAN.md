@@ -1,6 +1,6 @@
 # Skyline AWS deployment: implementation and current status
 
-Updated 10 October 2026.
+Updated 11 October 2026.
 
 ## Decisions applied
 
@@ -50,7 +50,7 @@ AWS references: [Lambda runtimes](https://docs.aws.amazon.com/lambda/latest/dg/l
 - Each club mutation atomically writes its new version, an audit event, and a per-user idempotency result. Concurrent seat/stock changes, duplicate check-ins and repeated approvals cannot overwrite each other.
 - The low-volume pilot uses a club aggregate with a 300 KB ceiling. Audit events persist separately; the state contains only a recent audit view. Move entity families to individual DynamoDB records before large-scale use.
 - Receipt uploads last five minutes, allow PDF/JPEG/PNG and 1 byte–5 MB, and use user/club-scoped keys. Submission checks S3 metadata. Downloads require authorization and expire after two minutes.
-- Payments remain simulated. Real gateway integration and settlement verification are separate work.
+- Razorpay TEST mode connects tickets, merchandise and annual membership. Server signatures and captured payment checks guard fulfillment. Live keys are rejected. See [payment setup and limits](docs/PAYMENTS.md).
 
 Application audit history is append-only through the application API; it does not claim cryptographic tamper-proofing against cloud administrators.
 
@@ -98,4 +98,4 @@ Business actions now use eight feature service classes with named methods instea
 
 Live AWS/browser verification passed signup/login, joining a club, server-priced booking and duplicate retry, ticket display, private receipt upload and expense submission, refresh, and logout. Browser runtime errors were empty; synthetic QA account/data/receipt were removed while retaining audit events.
 
-Remaining owner dependencies: Meta app secret/webhook setup and one explicit consented test from the UI; AWS account verification for CloudFront; a verified email sender/recovery workflow before real-user rollout. No payment gateway or production WhatsApp onboarding has been performed.
+Remaining owner dependencies: Meta app secret/webhook setup and one explicit consented test from the UI; AWS account verification for CloudFront; a verified email sender/recovery workflow before real-user rollout. Razorpay test payment integration is implemented; production WhatsApp onboarding and live payment processing are not enabled.

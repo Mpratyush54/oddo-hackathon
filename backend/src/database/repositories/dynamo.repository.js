@@ -119,13 +119,14 @@ export class DynamoRepository {
       throw error;
     }
   }
-  async commit(pk, version, data, audit, request) {
+  async commit(pk, version, data, audit, request, extraOperations = []) {
     if (Buffer.byteLength(JSON.stringify(data)) > 300_000)
       throw new HttpError(
         409,
         'This club has reached its pilot data limit. Archive records before adding more.',
       );
     return this.atomic([
+      ...extraOperations,
       {
         item: { pk, sk: 'STATE', version: version + 1, data },
         condition: '#version = :version',

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { Button } from '../../../shared/ui/Button';
@@ -13,7 +13,8 @@ import { formValues } from '../../../shared/ui/formValues';
 import { date, exportInvoicePdf, money, moneyPdf, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
-import { backendPost, cloudMode } from '../../../shared/api/client';
+import { cloudMode } from '../../../shared/api/client';
+import { razorpayCheckout } from '../api/razorpay';
 import { eventPhase } from '../../events/utils/event-time';
 import '../../finance/styles/finance.css';
 import type { Store, Ticket } from '../../../shared/types/domain';
@@ -32,7 +33,6 @@ export function CheckoutPage() {
     [qr, setQr] = useState(''),
     [joinMembership, setJoinMembership] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const cloudAttempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const event = data.events.find((e) => e.id === params.get('event'));
   const product = data.products.find((p) => p.id === params.get('product'));
   const size = params.get('size') || '';
@@ -69,11 +69,7 @@ export function CheckoutPage() {
       items: [
         {
           description: event?.title || product?.name || 'Order',
-          detail: result.ticket
-            ? `Ticket ID: ${result.id}`
-            : size
-              ? `Size: ${size}`
-              : undefined,
+          detail: result.ticket ? `Ticket ID: ${result.id}` : size ? `Size: ${size}` : undefined,
           quantity: 1,
           amount: moneyPdf(result.amount),
         },
@@ -144,7 +140,11 @@ export function CheckoutPage() {
             Back to overview
           </LinkButton>
         </div>
-        <p className="form-note">Demo checkout completed. No real money was charged.</p>
+        <p className="form-note">
+          {cloudMode
+            ? 'Razorpay test checkout confirmed. No real money was charged.'
+            : 'Demo checkout completed. No real money was charged.'}
+        </p>
       </div>
     );
   const offered =
@@ -265,18 +265,12 @@ export function CheckoutPage() {
                       ? { eventId: event.id }
                       : { productId: product?.id, size, quantity: 1, joinMembership },
                   };
-                  const fingerprint = JSON.stringify(command);
-                  if (cloudAttempt.current?.fingerprint !== fingerprint)
-                    cloudAttempt.current = { fingerprint, key: crypto.randomUUID() };
-                  const reply = await backendPost<{
+                  const reply = await razorpayCheckout<{
                     state: Store;
                     ticket?: Ticket;
                     orders?: { id: string }[];
                     total?: number;
-                  }>(`/clubs/${clubId}/actions`, {
-                    ...command,
-                    idempotencyKey: cloudAttempt.current.key,
-                  });
+                  }>(clubId, command, user);
                   applyServerPatch(clubId, reply.state);
                   setResult({
                     id: reply.ticket?.id || reply.orders?.[0]?.id || '',
@@ -284,7 +278,6 @@ export function CheckoutPage() {
                     name: user.name,
                     ticket: !!event,
                   });
-                  cloudAttempt.current = null;
                 } catch (error) {
                   toast(error instanceof Error ? error.message : 'Booking could not be confirmed.');
                 } finally {
@@ -469,10 +462,18 @@ export function CheckoutPage() {
                 <Icon name="CreditCard" />
               </span>
               <div>
-                <strong>{amount ? 'Demo payment' : 'No payment needed'}</strong>
+                <strong>
+                  {amount
+                    ? cloudMode
+                      ? 'Razorpay test payment'
+                      : 'Demo payment'
+                    : 'No payment needed'}
+                </strong>
                 <p>
                   {amount
-                    ? 'Try the complete flow. No card details or real payment required.'
+                    ? cloudMode
+                      ? 'Continue to Razorpay in test mode. No real money is charged.'
+                      : 'Try the complete flow. No card details or real payment required.'
                     : 'This event is free. Good company is all you need.'}
                 </p>
               </div>
@@ -492,12 +493,14 @@ export function CheckoutPage() {
                 : unavailable
                   ? 'Size unavailable'
                   : amount
-                    ? `Complete demo checkout · ${money(amount)}`
+                    ? `${cloudMode ? 'Pay in test mode' : 'Complete demo checkout'} · ${money(amount)}`
                     : 'Confirm my spot'}
             </Button>
             <p className="ticket-helper">
               <Icon name="LockKeyhole" size={14} />
-              Demo workspace · Your data stays in this browser
+              {cloudMode
+                ? 'Secure Razorpay test checkout'
+                : 'Demo workspace · Your data stays in this browser'}
             </p>
           </form>
         </section>

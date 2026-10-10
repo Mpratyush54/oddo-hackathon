@@ -59,6 +59,12 @@ export function MyTickets() {
                   <Button
                     variant="secondary"
                     onClick={() => {
+                      if (cloudMode && t.paymentId) {
+                        toast(
+                          'Contact the club administrator for a refund through the Razorpay test dashboard.',
+                        );
+                        return;
+                      }
                       if (
                         !window.confirm(
                           'Cancel this demo booking? Your payment will be credited in the demo ledger, and the next waitlisted guest is auto-promoted.',

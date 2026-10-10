@@ -14,7 +14,7 @@ export const createRequestSecurity =
     req.clientIp =
       req.apiGateway?.event?.requestContext?.http?.sourceIp || req.socket.remoteAddress;
     Object.defineProperty(req, 'ip', { value: req.clientIp });
-    const webhook = req.path === '/api/webhooks/whatsapp';
+    const webhook = ['/api/webhooks/whatsapp', '/api/webhooks/razorpay'].includes(req.path);
     if (!webhook && !['GET', 'HEAD'].includes(req.method)) {
       const allowed = new Set(
         String(env.APP_ORIGIN || 'http://127.0.0.1:5174,http://localhost:5174').split(','),

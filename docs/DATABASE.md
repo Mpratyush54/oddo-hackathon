@@ -66,3 +66,7 @@ Live validation requires the existing AWS CLI login and ignored AWS_DEPLOYMENT_O
 Sources: [DynamoDB core components](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html), [DynamoDB transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transactions.html), [Zod schema parsing](https://zod.dev/basics), [Zod JSON Schema export](https://zod.dev/json-schema).
 
 Email proof uses EMAIL_VERIFICATION records under VERIFY#<SHA-256 token>, with userId, email, revoked and expiresAt. The runtime Zod schema and generated JSON Schema include this record kind. Tokens are never returned by an API or persisted in plaintext. DynamoDB TTL cleans expired records; confirmation checks expiry independently of TTL cleanup.
+
+## Razorpay test payment records
+
+`USER#userId / PAYMENT#requestKey` stores a versioned test-only checkout with server-calculated INR paise, its action, captured payment/order IDs and fulfillment result. `RAZORPAY#orderId / PAYMENT_REF` maps signed webhooks to the owner. Both are declared in `payment.schema.js` and have no TTL. Fulfillment updates the payment record atomically with STATE, AUDIT and REQUEST. New ticket/order/transaction rows declare optional `paymentId`. See [payment behavior](PAYMENTS.md).

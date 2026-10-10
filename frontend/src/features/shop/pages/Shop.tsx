@@ -31,6 +31,8 @@ const orderStatusTone = (status?: string) =>
         ? 'teal'
         : 'gold';
 import { clubRequest } from '../../commerce/api/commerce.api';
+import { cloudMode } from '../../../shared/api/client';
+import { razorpayCheckout } from '../../commerce/api/razorpay';
 import { useSession } from '../../auth/session';
 import GarmentPreview from '../components/GarmentPreview';
 import { Revealed } from '../../../shared/components/PageMotion';
@@ -58,13 +60,7 @@ function productImages(product: Product) {
   const primary = product.image || gallery[0] || stockPhotos[product.type] || stockPhotos.Hoodie;
   return [...new Set([primary, ...gallery].filter(Boolean))];
 }
-function ProductPhoto({
-  product,
-  src,
-}: {
-  product: Product;
-  src?: string;
-}) {
+function ProductPhoto({ product, src }: { product: Product; src?: string }) {
   const [failed, setFailed] = useState(false);
   const image = src || productImages(product)[0];
   useEffect(() => setFailed(false), [product.id, image]);
@@ -302,19 +298,37 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setError('');
     const targetClub = selectedClub;
     try {
-      const reply = await clubRequest<ServerReply>(targetClub, '/orders', {
-        method: 'POST',
-        snapshot: data,
-        actor: user,
-        body: {
-          productId,
-          size,
-          quantity,
-          promoCode: promoCode.trim() || undefined,
-          joinMembership: !member && joinMembership,
-          idempotencyKey: crypto.randomUUID(),
-        },
-      });
+      const paid = cloudMode
+        ? await razorpayCheckout<ServerReply & { state: Store }>(
+            targetClub,
+            {
+              type: 'orders',
+              args: {
+                productId,
+                size,
+                quantity,
+                promoCode: promoCode.trim() || undefined,
+                joinMembership: !member && joinMembership,
+              },
+            },
+            user,
+          )
+        : null;
+      const reply = paid
+        ? { ...paid, patch: paid.state }
+        : await clubRequest<ServerReply>(targetClub, '/orders', {
+            method: 'POST',
+            snapshot: data,
+            actor: user,
+            body: {
+              productId,
+              size,
+              quantity,
+              promoCode: promoCode.trim() || undefined,
+              joinMembership: !member && joinMembership,
+              idempotencyKey: crypto.randomUUID(),
+            },
+          });
       applyServerPatch(targetClub, reply.patch);
       const refs =
         reply.orders?.map((o) => o.id) ||
@@ -527,7 +541,9 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   <br />
                   looks good on you.
                 </h2>
-                <p>From the first coffee to the last study session. Meet your next campus staple.</p>
+                <p>
+                  From the first coffee to the last study session. Meet your next campus staple.
+                </p>
                 <Button
                   icon="ArrowUpRight"
                   onClick={() => {
@@ -1260,8 +1276,9 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                     onChange={(e) => setAgree(e.target.checked)}
                   />
                   <span>
-                    I understand this is demo checkout and I'll collect from the Student Union
-                    office.
+                    {cloudMode
+                      ? 'I understand this is a Razorpay test payment and I will collect from the Student Union office.'
+                      : 'I understand this is demo checkout and I will collect from the Student Union office.'}
                   </span>
                 </label>
               )}
@@ -1455,7 +1472,11 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               </p>
             )}
             <div className="shop-list-actions">
-              <Button type="submit" disabled={pending || readingImages || !listName.trim()} icon="Plus">
+              <Button
+                type="submit"
+                disabled={pending || readingImages || !listName.trim()}
+                icon="Plus"
+              >
                 {pending ? 'Listing…' : listAgain ? 'Publish & list another' : 'Publish to shop'}
               </Button>
               <Button

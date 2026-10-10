@@ -67,6 +67,7 @@ export const productSchema = z.strictObject({
   gallery: z.array(z.string().max(350000)).max(3).optional(),
 });
 export const ticketSchema = z.strictObject({
+  paymentId: id.optional(),
   id,
   eventId: id,
   userId: id.optional(),
@@ -80,13 +81,9 @@ export const ticketSchema = z.strictObject({
   cancelledAt: text.optional(),
   checkedInAt: text.optional(),
 });
-export const orderStatusSchema = z.enum([
-  'Placed',
-  'Ready for pickup',
-  'Picked up',
-  'Cancelled',
-]);
+export const orderStatusSchema = z.enum(['Placed', 'Ready for pickup', 'Picked up', 'Cancelled']);
 export const orderSchema = z.strictObject({
+  paymentId: id.optional(),
   id,
   productId: id,
   userId: id.optional(),
@@ -103,6 +100,7 @@ export const orderSchema = z.strictObject({
   status: orderStatusSchema.optional(),
 });
 export const transactionSchema = z.strictObject({
+  paymentId: id.optional(),
   id,
   title: text,
   category: text,

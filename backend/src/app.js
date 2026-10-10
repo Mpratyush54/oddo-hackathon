@@ -7,6 +7,7 @@ import { registerCommunicationsRoutes } from './modules/communications/communica
 import { registerFinanceRoutes } from './modules/finance/finance.routes.js';
 import { registerWebhooksRoutes } from './modules/webhooks/webhooks.routes.js';
 import express from 'express';
+import { registerPaymentsRoutes } from './modules/payments/payments.routes.js';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createAuth } from './modules/auth/index.js';
 import { createDomain } from './modules/clubs/club.service.js';
@@ -34,7 +35,11 @@ export function createApp({
 }) {
   const app = express(),
     auth = createAuth({ repo, env, fetchImpl }),
-    domain = createDomain({ repo, clubs }),
+    domain = createDomain({
+      repo,
+      clubs,
+      paymentsRequired: env.NODE_ENV === 'production' || !!env.RAZORPAY_KEY_ID,
+    }),
     providers = createProviders({ env, repo, domain, fetchImpl });
   const { checkReceipt } = createReceiptService({ env, s3 });
   const catalogController = createCatalogController({ env, clubs, domain });
@@ -51,7 +56,8 @@ export function createApp({
       limit: '64kb',
       strict: true,
       verify: (req, res, buffer) => {
-        if (req.path === '/api/webhooks/whatsapp') req.rawBody = buffer;
+        if (['/api/webhooks/whatsapp', '/api/webhooks/razorpay'].includes(req.path))
+          req.rawBody = buffer;
       },
     }),
   );
@@ -60,6 +66,7 @@ export function createApp({
 
   auth.routes(app);
   app.use('/api', createAuthenticate({ auth, repo }));
+  registerPaymentsRoutes(app, { repo, domain, env, fetchImpl });
   registerClubsRoutes(app, clubsController);
   registerUsersRoutes(app, { repo, domain });
   registerCollegeRoutes(app, collegeController);

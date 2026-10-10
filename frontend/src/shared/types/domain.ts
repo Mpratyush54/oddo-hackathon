@@ -36,6 +36,7 @@ export type ClubEvent = {
 };
 
 export type Transaction = {
+  paymentId?: string;
   id: string;
   title: string;
   category: string;
@@ -126,6 +127,7 @@ export type Announcement = {
 };
 
 export type Ticket = {
+  paymentId?: string;
   id: string;
   eventId: string;
   name: string;
@@ -139,6 +141,7 @@ export type Ticket = {
 export type OrderStatus = 'Placed' | 'Ready for pickup' | 'Picked up' | 'Cancelled';
 
 export type Order = {
+  paymentId?: string;
   id: string;
   productId: string;
   name: string;

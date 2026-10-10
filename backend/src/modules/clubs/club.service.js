@@ -8,7 +8,19 @@ import { requireRole } from '../../shared/authorization.js';
 import { visibleState } from './club.views.js';
 
 import { applyAction } from './actions.js';
-export function createDomain({ repo, clubs }) {
+export function paymentAmount(action, result) {
+  const rupees =
+    action.type === 'tickets.book'
+      ? result.ticket.amount
+      : action.type === 'orders'
+        ? result.total
+        : 500;
+  const amount = Math.round(rupees * 100);
+  if (!Number.isSafeInteger(amount) || amount < 0)
+    throw new HttpError(400, 'Invalid checkout amount.');
+  return amount;
+}
+export function createDomain({ repo, clubs, paymentsRequired = false }) {
   async function load(clubId) {
     if (!clubs.some((c) => c.id === clubId)) throw new HttpError(404, 'Club not found.');
     const item = await repo.get(clubKey(clubId), 'STATE');
@@ -18,7 +30,7 @@ export function createDomain({ repo, clubs }) {
   async function roleFor(user, clubId) {
     return (await repo.get(`USER#${user.id}`, `ACCESS#${clubId}`))?.role || 'member';
   }
-  async function execute(clubId, action, user) {
+  async function execute(clubId, action, user, payment) {
     action = parseRequest(actionRequestSchema, action);
     const pk = clubKey(clubId),
       role = await roleFor(user, clubId);
@@ -40,6 +52,23 @@ export function createDomain({ repo, clubs }) {
         return { ...cached.result, state: visibleState((await load(clubId)).data, user, role) };
       }
       const current = await load(clubId);
+      if (
+        paymentsRequired &&
+        action.type === 'members.add' &&
+        action.args?.member?.status === 'Active'
+      )
+        throw new HttpError(409, 'Add a pending member, or use user management to waive dues.');
+      const cancelled =
+        action.type === 'tickets.cancel'
+          ? current.data.tickets.find((t) => t.id === action.args.ticketId)
+          : action.type === 'orders.update' && action.args.status === 'Cancelled'
+            ? current.data.orders.find((o) => o.id === action.args.orderId)
+            : null;
+      if (cancelled?.paymentId)
+        throw new HttpError(
+          409,
+          'Paid cancellations require a refund through the Razorpay test dashboard.',
+        );
       const { data, result } = applyAction(
         current.data,
         { ...action, clubId },
@@ -48,6 +77,31 @@ export function createDomain({ repo, clubs }) {
         dateToday(),
         context,
       );
+      const paidAction = ['tickets.book', 'orders', 'membership.demo-dues'].includes(action.type);
+      if (paidAction && paymentsRequired) {
+        const amount = paymentAmount(action, result);
+        if (amount > 0 && !payment)
+          throw new HttpError(402, 'Complete Razorpay test checkout first.');
+        if (
+          payment &&
+          (payment.amount !== amount ||
+            payment.userId !== user.id ||
+            payment.clubId !== clubId ||
+            payment.status !== 'Created')
+        )
+          throw new HttpError(409, 'Checkout price or payment state changed.');
+        if (payment) {
+          for (const field of ['tickets', 'orders', 'transactions']) {
+            const previous = new Set(current.data[field].map((row) => row.id));
+            for (const row of data[field])
+              if (!previous.has(row.id)) {
+                row.paymentId = payment.paymentId;
+                if (field === 'transactions')
+                  row.title = row.title.replace('(simulated payment)', '(Razorpay test payment)');
+              }
+          }
+        }
+      }
       const audit = {
         id: recordId('AUD'),
         actor: user.id,
@@ -67,7 +121,28 @@ export function createDomain({ repo, clubs }) {
       data.audit = [audit, ...(data.audit || [])].slice(0, 100);
       const { patch, ...safeResult } = result;
       if (
-        await repo.commit(pk, current.version, data, audit, { sk, fingerprint, result: safeResult })
+        await repo.commit(
+          pk,
+          current.version,
+          data,
+          audit,
+          { sk, fingerprint, result: safeResult },
+          payment
+            ? [
+                {
+                  item: {
+                    ...payment,
+                    status: 'Fulfilled',
+                    version: payment.version + 1,
+                    result: safeResult,
+                  },
+                  condition: '#version = :version',
+                  names: { '#version': 'version' },
+                  values: { ':version': payment.version },
+                },
+              ]
+            : [],
+        )
       )
         return { ...safeResult, state: visibleState(data, user, role) };
     }

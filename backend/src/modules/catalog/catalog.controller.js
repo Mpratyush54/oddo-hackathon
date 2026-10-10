@@ -24,7 +24,15 @@ export function createCatalogController({ env, clubs, domain }) {
           template: 'hello_world',
           webhookConfigured: !!env.META_APP_SECRET,
         },
-        payments: 'simulated',
+        payments: {
+          provider: 'Razorpay',
+          mode: 'test',
+          configured: !!(
+            env.RAZORPAY_KEY_ID?.startsWith('rzp_test_') &&
+            env.RAZORPAY_KEY_SECRET &&
+            env.RAZORPAY_WEBHOOK_SECRET
+          ),
+        },
       }),
     listPublicClubs: async (req, res) =>
       res.json({

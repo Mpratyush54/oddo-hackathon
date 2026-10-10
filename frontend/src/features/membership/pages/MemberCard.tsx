@@ -8,6 +8,7 @@ import { date, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
 import { cloudMode } from '../../../shared/api/client';
+import { razorpayCheckout } from '../../commerce/api/razorpay';
 import '../../../shared/styles/portal.css';
 import '../../landing/styles/landing.css';
 import { usePersonal } from '../../account/hooks/usePersonal';
@@ -19,9 +20,10 @@ import {
 
 export function MemberCard() {
   const { user, member, data } = usePersonal();
-  const { update, toast } = useStore();
+  const { update, toast, applyServerPatch } = useStore();
   const { clubs, clubId, can } = useSession();
   const [saving, setSaving] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -78,8 +80,26 @@ export function MemberCard() {
     cardInput?.qrPayload,
   ]);
 
-  const activateMembership = () => {
+  const activateMembership = async () => {
     if (!member) return;
+    if (cloudMode) {
+      if (paying) return;
+      setPaying(true);
+      try {
+        const reply = await razorpayCheckout(
+          clubId,
+          { type: 'membership.demo-dues', args: {} },
+          user,
+        );
+        applyServerPatch(clubId, reply.state);
+        toast('Razorpay test payment confirmed. Membership is active.');
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Membership payment failed.');
+      } finally {
+        setPaying(false);
+      }
+      return;
+    }
     if (
       !window.confirm(
         'Activate annual membership for ₹500? Demo checkout — no real payment is taken.',
@@ -176,9 +196,7 @@ export function MemberCard() {
                   ? 'Building a device-independent card image.'
                   : 'Join the club to generate your membership card.'}
               </p>
-              {!member && (
-                <Badge tone="neutral">Not enrolled</Badge>
-              )}
+              {!member && <Badge tone="neutral">Not enrolled</Badge>}
             </div>
           )}
         </section>
@@ -216,7 +234,7 @@ export function MemberCard() {
             </p>
             <div className="member-card-actions">
               {needsDues && (
-                <Button icon="BadgeCheck" onClick={activateMembership}>
+                <Button icon="BadgeCheck" disabled={paying} onClick={activateMembership}>
                   Buy membership · ₹500
                 </Button>
               )}
