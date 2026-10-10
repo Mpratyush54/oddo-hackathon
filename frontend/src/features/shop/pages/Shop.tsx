@@ -580,11 +580,6 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       </>
       {showOps && (
         <div className="shop-seller-bar">
-          {canManageInventory && (
-            <Button icon="Plus" onClick={openListing}>
-              List something new
-            </Button>
-          )}
           <LinkButton to="/shop" variant="secondary" icon="ShoppingBag">
             Preview public shop
           </LinkButton>
@@ -626,6 +621,11 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
             >
               Export orders
             </Button>
+            {canManageInventory && (
+              <Button icon="Plus" onClick={openListing}>
+                New product
+              </Button>
+            )}
           </div>
 
           {canManageInventory && (
@@ -635,9 +635,6 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   <h2>In the collection</h2>
                   <p>Stock across campus pickup sizes — tap a piece to restock.</p>
                 </div>
-                <Button icon="Plus" onClick={openListing}>
-                  List something new
-                </Button>
               </div>
               {data.products.length ? (
                 <div className="shop-stock-grid">
@@ -1297,7 +1294,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       )}
       {listing && (
         <Modal
-          title="List something new"
+          title="New product"
           description="Add a piece to the campus collection. Students can buy it with member prices."
           onClose={() => {
             if (!pending) setListing(false);
