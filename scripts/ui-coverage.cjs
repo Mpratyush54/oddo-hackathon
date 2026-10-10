@@ -795,12 +795,12 @@ async function auditRoute(browser, testCase, report) {
     report.summary.buttonsRequiringDedicatedWorkflow += entry.buttons.filter(
       (button) => button.classification === 'dedicated-workflow-required',
     ).length;
-    report.summary.buttonsNeedingBehaviorAssertion += entry.buttons.filter(
+    report.summary.buttonsWithoutDedicatedAssertion += entry.buttons.filter(
       (button) => button.classification === 'visible-action-contract',
     ).length;
     report.summary.linksClicked += entry.links.filter((link) => link.exercised).length;
     report.summary.fieldsExercised += entry.fields.filter((field) => field.exercised).length;
-    report.summary.internalLinksNotClicked += entry.links.filter((link) => !link.exercised).length;
+    report.summary.linksNotClicked += entry.links.filter((link) => !link.exercised).length;
     report.summary.fieldsNotExercised += entry.fields.filter((field) => !field.exercised).length;
 
     if (entry.issues.length > 0) {
@@ -850,10 +850,10 @@ async function main() {
       buttonInstances: 0,
       buttonsClicked: 0,
       buttonsRequiringDedicatedWorkflow: 0,
-      buttonsNeedingBehaviorAssertion: 0,
+      buttonsWithoutDedicatedAssertion: 0,
       links: 0,
       linksClicked: 0,
-      internalLinksNotClicked: 0,
+      linksNotClicked: 0,
       fields: 0,
       fieldsExercised: 0,
       fieldsNotExercised: 0,
