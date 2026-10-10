@@ -154,6 +154,22 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   const [listImages, setListImages] = useState<string[]>([]);
   const [readingImages, setReadingImages] = useState(false);
   const [listAgain, setListAgain] = useState(true);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState<'Hoodie' | 'T-shirt' | 'Tote bag' | 'Other'>('T-shirt');
+  const [editColor, setEditColor] = useState('teal');
+  const [editPrice, setEditPrice] = useState('799');
+  const [editMemberPrice, setEditMemberPrice] = useState('649');
+  const [editStockS, setEditStockS] = useState('4');
+  const [editStockM, setEditStockM] = useState('12');
+  const [editStockL, setEditStockL] = useState('8');
+  const [editStockXl, setEditStockXl] = useState('4');
+  const [editStockTote, setEditStockTote] = useState('12');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [editDelisted, setEditDelisted] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [couponValue, setCouponValue] = useState('50');
   const [couponType, setCouponType] = useState<'fixed' | 'percent'>('fixed');
@@ -193,6 +209,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   const filtered = data.products
     .filter(
       (p) =>
+        !p.delisted &&
         (category === 'All pieces' || p.type === category) &&
         p.name.toLowerCase().includes(search.toLowerCase()),
     )
@@ -228,13 +245,12 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     const club = params.get('club');
     if (club && organizations.some((c) => c.id === club) && selectedClub !== club) selectClub(club);
     const id = params.get('product');
-    // Ops desk never opens the campus-collection product modal.
     if (showOps) {
       setProductId('');
       if (id) setParams({}, { replace: true });
       return;
     }
-    if (id) setProductId(id);
+    if (id) setParams({}, { replace: true });
   }, [params, organizations, selectedClub, selectClub, showOps, setParams]);
   const openProduct = (id: string) => {
     if (showOps) return;
@@ -478,6 +494,200 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       setPending(false);
     }
   };
+
+  const openEditModal = (p: Product) => {
+    setEditingProduct(p);
+    setEditName(p.name);
+    const standardType = ['Hoodie', 'T-shirt', 'Tote bag'].includes(p.type)
+      ? (p.type as 'Hoodie' | 'T-shirt' | 'Tote bag')
+      : 'Other';
+    setEditType(standardType);
+    setEditColor(p.color || 'teal');
+    setEditPrice(String(p.price));
+    setEditMemberPrice(String(p.memberPrice));
+    setEditStockS(String(p.stock.S ?? 0));
+    setEditStockM(String(p.stock.M ?? 0));
+    setEditStockL(String(p.stock.L ?? 0));
+    setEditStockXl(String(p.stock.XL ?? 0));
+    setEditStockTote(String(p.stock['One size'] ?? Object.values(p.stock)[0] ?? 12));
+    setEditImageUrl('');
+    const existingImages = [p.image, ...(p.gallery || [])].filter(Boolean) as string[];
+    setEditImages([...new Set(existingImages)].slice(0, 3));
+    setEditDelisted(!!p.delisted);
+    setEditError('');
+  };
+
+  const addEditImages = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setReadingImages(true);
+    setEditError('');
+    try {
+      const incoming = Array.from(files).slice(0, 3 - editImages.length);
+      const dataUrls = await Promise.all(incoming.map(readImageFile));
+      setEditImages((current) => [...current, ...dataUrls].slice(0, 3));
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Could not process images.');
+    } finally {
+      setReadingImages(false);
+    }
+  };
+
+  const saveEditProduct = async () => {
+    if (!editingProduct) return;
+    const price = Number(editPrice);
+    const memberPrice = Number(editMemberPrice);
+    if (!editName.trim()) {
+      setEditError('Product name is required.');
+      return;
+    }
+    if (Number.isNaN(price) || price <= 0 || Number.isNaN(memberPrice) || memberPrice <= 0) {
+      setEditError('Enter positive numbers for price and member price.');
+      return;
+    }
+    if (memberPrice > price) {
+      setEditError('Member price cannot exceed the regular price.');
+      return;
+    }
+
+    const stock: Record<string, number> =
+      editType === 'Tote bag'
+        ? { 'One size': Math.max(0, Number(editStockTote) || 0) }
+        : {
+            S: Math.max(0, Number(editStockS) || 0),
+            M: Math.max(0, Number(editStockM) || 0),
+            L: Math.max(0, Number(editStockL) || 0),
+            XL: Math.max(0, Number(editStockXl) || 0),
+          };
+
+    const url = editImageUrl.trim();
+    const gallery = [...editImages, ...(url ? [url] : [])].slice(0, 3);
+    const typeLabel = editType === 'Other' ? 'Merchandise' : editType;
+
+    const updatedProduct: Product = {
+      ...editingProduct,
+      name: editName.trim(),
+      type: typeLabel,
+      color: editColor.trim() || 'teal',
+      price,
+      memberPrice,
+      stock,
+      image: gallery[0] || editingProduct.image || '',
+      ...(gallery.length ? { gallery } : {}),
+      delisted: editDelisted,
+    };
+
+    setPending(true);
+    setEditError('');
+    try {
+      try {
+        const reply = await clubRequest<ServerReply & { product?: Product }>(
+          selectedClub,
+          '/products/update',
+          {
+            method: 'POST',
+            snapshot: data,
+            actor: user,
+            body: {
+              id: editingProduct.id,
+              name: updatedProduct.name,
+              type: editType,
+              color: updatedProduct.color,
+              price: updatedProduct.price,
+              memberPrice: updatedProduct.memberPrice,
+              stock,
+              image: updatedProduct.image,
+              gallery,
+              delisted: editDelisted,
+            },
+          },
+        );
+        if (reply.patch) applyServerPatch(selectedClub, reply.patch);
+      } catch {
+        // Fallback to local store update
+      }
+      update((d) => ({
+        ...d,
+        products: d.products.map((p) => (p.id === editingProduct.id ? updatedProduct : p)),
+      }));
+      toast(`${updatedProduct.name} updated.`);
+      setEditingProduct(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Could not save product.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const toggleDelist = async (p: Product) => {
+    const nextDelisted = !p.delisted;
+    setPending(true);
+    try {
+      try {
+        const reply = await clubRequest<ServerReply & { product?: Product }>(
+          selectedClub,
+          '/products/update',
+          {
+            method: 'POST',
+            snapshot: data,
+            actor: user,
+            body: {
+              id: p.id,
+              delisted: nextDelisted,
+            },
+          },
+        );
+        if (reply.patch) applyServerPatch(selectedClub, reply.patch);
+      } catch {
+        // Fallback
+      }
+      update((d) => ({
+        ...d,
+        products: d.products.map((item) =>
+          item.id === p.id ? { ...item, delisted: nextDelisted } : item,
+        ),
+      }));
+      toast(`${p.name} ${nextDelisted ? 'delisted from public catalog.' : 'relisted to collection.'}`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not update product.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deletingProduct) return;
+    setPending(true);
+    try {
+      try {
+        const reply = await clubRequest<ServerReply>(
+          selectedClub,
+          '/products/delete',
+          {
+            method: 'POST',
+            snapshot: data,
+            actor: user,
+            body: {
+              productId: deletingProduct.id,
+            },
+          },
+        );
+        if (reply.patch) applyServerPatch(selectedClub, reply.patch);
+      } catch {
+        // Fallback
+      }
+      update((d) => ({
+        ...d,
+        products: d.products.filter((item) => item.id !== deletingProduct.id),
+      }));
+      toast(`${deletingProduct.name} deleted from collection.`);
+      setDeletingProduct(null);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not delete product.');
+    } finally {
+      setPending(false);
+    }
+  };
+
   const content = (
     <div className={`sky-shop ${showOps ? 'sky-shop-ops' : ''}`}>
       <div className="shop-breadcrumb">
@@ -547,7 +757,10 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 <Button
                   icon="ArrowUpRight"
                   onClick={() => {
-                    const p = data.products.find((p) => p.type === 'Hoodie') || data.products[0];
+                    const p =
+                      data.products.find((p) => !p.delisted && p.type === 'Hoodie') ||
+                      data.products.find((p) => !p.delisted) ||
+                      data.products[0];
                     if (p) openProduct(p.id);
                   }}
                 >
@@ -558,7 +771,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               <div className="sky-shop-hero-art">
                 <ProductPhoto
                   product={
-                    data.products.find((p) => p.type === 'Hoodie') ||
+                    data.products.find((p) => !p.delisted && p.type === 'Hoodie') ||
+                    data.products.find((p) => !p.delisted) ||
                     data.products[0] || {
                       id: 'hero',
                       name: 'Hoodie',
@@ -649,7 +863,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               <div className="shop-stock-board-head">
                 <div>
                   <h2>In the collection</h2>
-                  <p>Stock across campus pickup sizes — tap a piece to restock.</p>
+                  <p>Stock, pricing and visibility across campus pickup pieces.</p>
                 </div>
               </div>
               {data.products.length ? (
@@ -657,31 +871,72 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   {data.products.map((p) => {
                     const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={p.id}
-                        className="shop-stock-card"
-                        onClick={() => {
-                          setInventory(true);
-                          setError('');
-                          setInventoryProduct(p.id);
-                          setInventorySize(Object.keys(p.stock)[0] || '');
-                        }}
+                        className={`shop-stock-card ${p.delisted ? 'is-delisted' : ''}`}
                       >
-                        <ProductPhoto product={p} />
-                        <div>
-                          <strong>{p.name}</strong>
-                          <small>
-                            {p.type} · {money(p.price)}
-                          </small>
-                          <span className="shop-stock-sizes">
-                            {Object.entries(p.stock)
-                              .map(([s, n]) => `${s} ${n}`)
-                              .join(' · ') || 'No sizes'}
-                          </span>
-                          <Badge tone={total < 10 ? 'gold' : 'green'}>{total} in stock</Badge>
+                        <div className="shop-stock-card-body">
+                          <ProductPhoto product={p} />
+                          <div>
+                            <strong>{p.name}</strong>
+                            <div className="shop-stock-card-badges">
+                              {p.delisted ? (
+                                <Badge tone="neutral">Delisted</Badge>
+                              ) : (
+                                <Badge tone="teal">Live in shop</Badge>
+                              )}
+                              <Badge tone={total < 5 ? (total === 0 ? 'red' : 'gold') : 'green'}>
+                                {total} in stock
+                              </Badge>
+                            </div>
+                            <small>
+                              {p.type} · Regular: {money(p.price)} · Member: {money(p.memberPrice)}
+                            </small>
+                            <span className="shop-stock-sizes">
+                              {Object.entries(p.stock)
+                                .map(([s, n]) => `${s} ${n}`)
+                                .join(' · ') || 'No sizes'}
+                            </span>
+                          </div>
                         </div>
-                      </button>
+                        <div className="shop-stock-card-actions">
+                          <Button
+                            variant="secondary"
+                            icon="Pencil"
+                            onClick={() => openEditModal(p)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            icon="Package"
+                            onClick={() => {
+                              setInventory(true);
+                              setError('');
+                              setInventoryProduct(p.id);
+                              setInventorySize(Object.keys(p.stock)[0] || '');
+                            }}
+                          >
+                            Stock
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            className="is-delist"
+                            icon={p.delisted ? 'Eye' : 'EyeOff'}
+                            onClick={() => void toggleDelist(p)}
+                          >
+                            {p.delisted ? 'Relist' : 'Delist'}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            className="is-delete"
+                            icon="Trash2"
+                            onClick={() => setDeletingProduct(p)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -809,7 +1064,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         <>
           <div className="sky-shop-toolbar">
             <div className="shop-category-tabs">
-              {['All pieces', ...new Set(data.products.map((p) => p.type))].map((c) => (
+              {['All pieces', ...new Set(data.products.filter((p) => !p.delisted).map((p) => p.type))].map((c) => (
                 <button
                   key={c}
                   aria-pressed={category === c}
@@ -1489,6 +1744,217 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+      {editingProduct && (
+        <Modal
+          title={`Edit product · ${editingProduct.name}`}
+          description="Update details, pricing, stock levels, photos, or delist this item."
+          onClose={() => {
+            if (!pending) setEditingProduct(null);
+          }}
+          wide
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveEditProduct();
+            }}
+          >
+            <Field label="Name">
+              <input
+                required
+                maxLength={80}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Product title"
+              />
+            </Field>
+            <div className="form-two">
+              <Field label="Type">
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value as typeof editType)}
+                >
+                  <option value="T-shirt">T-shirt</option>
+                  <option value="Hoodie">Hoodie</option>
+                  <option value="Tote bag">Tote bag</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Color">
+                <input
+                  required
+                  maxLength={40}
+                  value={editColor}
+                  onChange={(e) => setEditColor(e.target.value)}
+                  placeholder="Color"
+                />
+              </Field>
+            </div>
+            <div className="form-two">
+              <Field label="Price (₹)">
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                />
+              </Field>
+              <Field label="Member price (₹)">
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={editMemberPrice}
+                  onChange={(e) => setEditMemberPrice(e.target.value)}
+                />
+              </Field>
+            </div>
+            {editType === 'Tote bag' ? (
+              <Field label="Stock (one size)" hint="One-size tote inventory.">
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  value={editStockTote}
+                  onChange={(e) => setEditStockTote(e.target.value)}
+                />
+              </Field>
+            ) : (
+              <Field label="Stock by size" hint="Set available units on hand.">
+                <div className="shop-list-stock-grid">
+                  {(
+                    [
+                      ['S', editStockS, setEditStockS],
+                      ['M', editStockM, setEditStockM],
+                      ['L', editStockL, setEditStockL],
+                      ['XL', editStockXl, setEditStockXl],
+                    ] as const
+                  ).map(([label, value, setValue]) => (
+                    <label key={label}>
+                      <span>{label}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Field>
+            )}
+            <Field
+              label="Photos"
+              hint="Upload up to three images, or paste an image URL."
+            >
+              <div className="shop-list-photos">
+                {editImages.map((src, index) => (
+                  <div className="shop-list-photo-thumb" key={`${src.slice(0, 24)}-${index}`}>
+                    <img src={src} alt={`Upload preview ${index + 1}`} />
+                    <button
+                      type="button"
+                      aria-label={`Remove photo ${index + 1}`}
+                      onClick={() =>
+                        setEditImages((current) => current.filter((_, i) => i !== index))
+                      }
+                    >
+                      <Icon name="X" size={14} />
+                    </button>
+                  </div>
+                ))}
+                {editImages.length < 3 && (
+                  <label className="shop-image-upload">
+                    <Icon name="CloudUpload" size={22} />
+                    <span>
+                      Upload photo
+                      <small>PNG, JPEG, or WebP · under 2 MB</small>
+                    </span>
+                    <input
+                      aria-label="Upload product photos"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      multiple
+                      disabled={readingImages || pending}
+                      onChange={(e) => {
+                        void addEditImages(e.target.files);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              <input
+                type="url"
+                value={editImageUrl}
+                onChange={(e) => setEditImageUrl(e.target.value)}
+                placeholder="Or paste an image URL (optional)"
+                style={{ marginTop: 10 }}
+              />
+            </Field>
+            <label className="shop-list-again" style={{ marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={editDelisted}
+                onChange={(e) => setEditDelisted(e.target.checked)}
+              />
+              <span>Delist this piece (hide from student shop, visible only to club staff)</span>
+            </label>
+            {editError && (
+              <p className="inline-error" role="alert">
+                {editError}
+              </p>
+            )}
+            <div className="shop-list-actions">
+              <Button type="submit" disabled={pending || readingImages || !editName.trim()} icon="Check">
+                {pending ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => setEditingProduct(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {deletingProduct && (
+        <Modal
+          title="Delete product"
+          description={`Are you sure you want to remove "${deletingProduct.name}" from the collection?`}
+          onClose={() => {
+            if (!pending) setDeletingProduct(null);
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ margin: 0, color: '#4b5563', fontSize: 14, lineHeight: 1.5 }}>
+              This product will be permanently removed from the club's merchandise catalog.
+              Students will no longer be able to buy it. Any existing pickup orders will remain in records.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => setDeletingProduct(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                icon="Trash2"
+                disabled={pending}
+                onClick={() => void confirmDeleteProduct()}
+              >
+                {pending ? 'Deleting…' : 'Delete product'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
       {inventory && (

@@ -23,6 +23,8 @@ const handlers = new Map([
   ['orders.update', { Service: CommerceService, method: 'updateOrder' }],
   ['inventory', { Service: CommerceService, method: 'adjustInventory' }],
   ['products.create', { Service: CommerceService, method: 'createProduct' }],
+  ['products.update', { Service: CommerceService, method: 'updateProduct' }],
+  ['products.delete', { Service: CommerceService, method: 'deleteProduct' }],
   ['points.award', { Service: CommerceService, method: 'awardPoints' }],
   ['points.rules', { Service: CommerceService, method: 'savePointRules' }],
   ['promos.save', { Service: CommerceService, method: 'savePromo' }],

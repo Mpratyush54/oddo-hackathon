@@ -1018,6 +1018,9 @@
           "items": {
             "$ref": "#/$defs/__schema15"
           }
+        },
+        "delisted": {
+          "type": "boolean"
         }
       },
       "required": [

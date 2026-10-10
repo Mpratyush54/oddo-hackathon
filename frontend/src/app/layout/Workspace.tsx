@@ -96,6 +96,15 @@ export default function Workspace() {
     [searchInput, setSearchInput] = useState(''),
     [debouncedQuery, setDebouncedQuery] = useState(''),
     [searchFilter, setSearchFilter] = useState<'all' | SearchKind>('all');
+  const seenStorageKey = `skyline-seen-announcements-${clubId || 'default'}-${user?.email || 'anon'}`;
+  const [seenAnnouncementIds, setSeenAnnouncementIds] = useState<string[]>(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(seenStorageKey) : null;
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const wrapper = useRef<HTMLDivElement>(null),
     searchRef = useRef<HTMLInputElement>(null);
   const phoneDrawerOpen = phoneViewport && navOpen;
@@ -109,6 +118,28 @@ export default function Workspace() {
     setDebouncedQuery('');
     setSearchFilter('all');
   };
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(seenStorageKey);
+      setSeenAnnouncementIds(stored ? (JSON.parse(stored) as string[]) : []);
+    } catch {
+      setSeenAnnouncementIds([]);
+    }
+  }, [seenStorageKey]);
+  const markAnnouncementsSeen = () => {
+    const allIds = data.announcements.map((a) => a.id);
+    setSeenAnnouncementIds(allIds);
+    try {
+      localStorage.setItem(seenStorageKey, JSON.stringify(allIds));
+    } catch {
+      /* Ignore */
+    }
+  };
+  useEffect(() => {
+    if (location.pathname === '/app/announcements' && data.announcements.length > 0) {
+      markAnnouncementsSeen();
+    }
+  }, [location.pathname, data.announcements, seenStorageKey]);
   useEffect(() => {
     setMenu(null);
     closeSearch();
@@ -436,6 +467,9 @@ export default function Workspace() {
       .slice(0, searchFilter === 'all' ? 28 : 40);
   })();
   const searching = searchInput.trim().toLowerCase() !== debouncedQuery;
+  const unseenAnnouncements = data.announcements.filter(
+    (a) => !seenAnnouncementIds.includes(a.id),
+  ).length;
   const renderNav = (items: NavItem[]) =>
     items.map((item) => (
       <NavLink
@@ -446,12 +480,15 @@ export default function Workspace() {
         title={item.label}
         onClick={() => {
           if (!isDesktop()) setNavOpen(false);
+          if (item.to === '/app/announcements') {
+            markAnnouncementsSeen();
+          }
         }}
       >
         <Icon name={item.icon} size={22} />
         <span>{item.label}</span>
-        {item.to === '/app/announcements' && (
-          <span className="nav-count">{data.announcements.length}</span>
+        {item.to === '/app/announcements' && unseenAnnouncements > 0 && (
+          <span className="nav-count">{unseenAnnouncements}</span>
         )}
       </NavLink>
     ));
