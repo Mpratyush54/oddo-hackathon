@@ -1115,7 +1115,7 @@ td.numeric {
 .morning-brief-content {
   position: relative;
   z-index: 2;
-  max-width: 680px;
+  width: 100%;
 }
 
 .morning-brief-kicker {
@@ -1156,11 +1156,13 @@ td.numeric {
   color: rgba(255, 255, 255, 0.85);
   margin: 0 0 24px;
   line-height: 1.5;
+  max-width: 680px;
 }
 
 .morning-brief-stats {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: 14px;
   margin-bottom: 22px;
 }
@@ -1172,10 +1174,13 @@ td.numeric {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 10px 16px;
+  padding: 10px 18px;
   border-radius: 12px;
   color: #ffffff;
   text-decoration: none;
+  flex: 1 1 0px;
+  min-width: 200px;
+  max-width: 340px;
   transition:
     transform 0.2s ease,
     background 0.2s ease;
