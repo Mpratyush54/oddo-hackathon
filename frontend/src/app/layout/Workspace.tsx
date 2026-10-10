@@ -9,6 +9,7 @@ import { LinkButton } from '../../shared/ui/LinkButton';
 import { Logo } from '../../shared/ui/Logo';
 import { useStore } from '../state/StoreProvider';
 import { roleLabels, useSession } from '../../features/auth/session';
+import { useTheme } from '../../shared/theme/theme';
 import { backendPost, cloudMode } from '../../shared/api/client';
 import type { Role } from '../../features/auth/session';
 import { AdminDashboard } from '../../features/admin/pages/Dashboard';
@@ -64,20 +65,10 @@ export default function Workspace() {
   const [navOpen, setNavOpen] = useState(false),
     [menu, setMenu] = useState<'account' | 'clubs' | 'notifications' | null>(null),
     [search, setSearch] = useState('');
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('skyline-theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.body.classList.toggle('dark-theme', theme === 'dark');
-    localStorage.setItem('skyline-theme', theme);
-  }, [theme]);
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    toast(`Switched to ${next} mode.`);
+  const { theme, toggleTheme } = useTheme();
+  const handleToggleTheme = () => {
+    toggleTheme();
+    toast(`Switched to ${theme === 'dark' ? 'light' : 'dark'} mode.`);
   };
   const wrapper = useRef<HTMLDivElement>(null),
     searchRef = useRef<HTMLInputElement>(null);
@@ -405,7 +396,7 @@ export default function Workspace() {
               className="icon-button theme-toggle"
               aria-label="Toggle color theme"
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              onClick={toggleTheme}
+              onClick={handleToggleTheme}
             >
               <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
             </button>
@@ -513,6 +504,25 @@ export default function Workspace() {
                       {label}
                     </Link>
                   ))}
+                  <div className="account-theme-row">
+                    <div className="account-theme-info">
+                      <Icon name={theme === 'dark' ? 'Moon' : 'Sun'} size={17} />
+                      <span>
+                        Theme: <strong>{theme === 'dark' ? 'Dark' : 'Light'}</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`theme-pill-toggle ${theme === 'dark' ? 'is-dark' : 'is-light'}`}
+                      onClick={handleToggleTheme}
+                      role="switch"
+                      aria-checked={theme === 'dark'}
+                      aria-label="Toggle dark theme"
+                      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    >
+                      <span className="theme-pill-knob" />
+                    </button>
+                  </div>
                   {!cloudMode && (
                     <div className="persona-section">
                       <div className="popover-label">EXPLORE A DEMO PERSONA</div>

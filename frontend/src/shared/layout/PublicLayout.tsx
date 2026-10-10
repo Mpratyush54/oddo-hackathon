@@ -5,9 +5,12 @@ import { Logo } from '../ui/Logo';
 import '../styles/portal.css';
 import '../../features/landing/styles/landing.css';
 
+import { useTheme } from '../theme/theme';
+
 export function PublicNav({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const nav = useRef<HTMLElement>(null);
+  const { theme, toggleTheme } = useTheme();
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: PointerEvent) => {
@@ -33,14 +36,25 @@ export function PublicNav({ className = '' }: { className?: string }) {
       aria-label="Public navigation"
     >
       <Logo />
-      <button
-        className="public-menu-toggle icon-button"
-        aria-label={open ? 'Close site menu' : 'Open site menu'}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <Icon name={open ? 'X' : 'Menu'} />
-      </button>
+      <div className="public-nav-actions">
+        <button
+          type="button"
+          className="public-theme-toggle icon-button"
+          onClick={toggleTheme}
+          aria-label="Toggle color theme"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
+        </button>
+        <button
+          className="public-menu-toggle icon-button"
+          aria-label={open ? 'Close site menu' : 'Open site menu'}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <Icon name={open ? 'X' : 'Menu'} />
+        </button>
+      </div>
       <div className={open ? 'public-links is-open' : 'public-links'}>
         <Link to="/events" onClick={() => setOpen(false)}>
           Events
@@ -54,6 +68,14 @@ export function PublicNav({ className = '' }: { className?: string }) {
         <Link to="/login" onClick={() => setOpen(false)}>
           Login
         </Link>
+        <button
+          type="button"
+          className="mobile-public-theme-toggle button secondary"
+          onClick={toggleTheme}
+        >
+          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={17} />
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
       </div>
     </nav>
   );

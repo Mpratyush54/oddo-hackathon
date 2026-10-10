@@ -356,7 +356,73 @@
 }
 
 .landing-after-stage {
-  background: #f3f8f8;
+  background: var(--bg-page, #f4f7f5);
+  color: var(--text-strong, #183c35);
+}
+
+.landing-after-stage h1,
+.landing-after-stage h2,
+.landing-after-stage h3,
+.landing-after-stage h4 {
+  color: var(--text-strong, #183c35) !important;
+}
+
+.landing-after-stage p {
+  color: var(--text-muted, #4b6357) !important;
+}
+
+.public-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.public-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f1e6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.public-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.portal-public-nav:not(.landing-stage-nav) .public-theme-toggle {
+  border-color: var(--border, #e2e9e4);
+  background: var(--surface, #ffffff);
+  color: var(--text-strong, #183c35);
+}
+
+.portal-public-nav:not(.landing-stage-nav) .public-theme-toggle:hover {
+  background: var(--primary-50, #e5f1ed);
+  border-color: var(--primary, #0f6b66);
+  color: var(--primary, #0f6b66);
+}
+
+.mobile-public-theme-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mobile-public-theme-toggle {
+    display: flex;
+  }
 }
 
 @keyframes mosaic-drift {

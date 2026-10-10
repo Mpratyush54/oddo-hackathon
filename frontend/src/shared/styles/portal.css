@@ -567,24 +567,24 @@
 }
 
 [data-theme='dark'] .club-story-card {
-  background: var(--surface, #141f23);
-  border-color: var(--border, #22323a);
+  background: var(--surface, #102320);
+  border-color: var(--border, #1a3832);
 }
 [data-theme='dark'] .club-story-card:hover {
   box-shadow: 0 20px 38px -10px rgba(0, 0, 0, 0.5);
-  border-color: rgba(45, 212, 191, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
 }
 [data-theme='dark'] .club-story-meta h2 {
-  color: #f1f5f9;
+  color: #f1f7f4;
 }
 [data-theme='dark'] .club-story-desc {
-  color: #94a3b8;
+  color: #8ea89e;
 }
 [data-theme='dark'] .club-cadence-badge {
-  color: #2dd4bf;
+  color: #10b981;
 }
 [data-theme='dark'] .club-stats-pill {
-  color: #94a3b8;
+  color: #8ea89e;
 }
 
 .portal-auth {
@@ -1026,16 +1026,17 @@
   font-size: 38px;
   line-height: 1.25;
   margin: 20px 0;
+  color: var(--text-strong, #183c35);
 }
 .portal-roles-section p {
   font-size: 14px;
   line-height: 1.9;
-  color: #73816d;
+  color: var(--text-muted, #526b62);
   margin-bottom: 25px;
 }
 .portal-roles-section .portal-kicker {
   font-size: 14px;
-  color: #8a8f6e;
+  color: var(--primary, #0f6b66);
 }
 .portal-role-list {
   display: grid;
@@ -1046,13 +1047,20 @@
   align-items: center;
   gap: 17px;
   padding: 19px;
-  background: #fff;
-  border: 1px solid #e1e8da;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e1e8da);
   border-radius: 11px;
+  color: var(--text-strong, #183c35);
+  transition: all 0.2s ease;
+}
+.portal-role-list > a:hover {
+  background: var(--primary-50, #eef5f1);
+  border-color: var(--primary, #0f6b66);
 }
 .portal-role-list > a > span {
-  color: #9aa58d;
+  color: var(--primary, #0f6b66);
   font-size: 14px;
+  font-weight: 700;
 }
 .portal-role-list > a > div {
   flex: 1;
@@ -1060,15 +1068,16 @@
 .portal-role-list strong {
   font-size: 14px;
   display: block;
+  color: var(--text-strong, #183c35);
 }
 .portal-role-list small {
   font-size: 14px;
-  color: #73816d;
+  color: var(--text-muted, #526b62);
   display: block;
   margin-top: 3px;
 }
 .portal-role-list svg {
-  color: #4f795e;
+  color: var(--primary, #0f6b66);
 }
 .portal-public-cta {
   text-align: center;

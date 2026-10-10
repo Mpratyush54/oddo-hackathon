@@ -91,8 +91,9 @@
   top: 76px;
   left: 0;
   width: 290px;
-  background: white;
-  border: 1px solid var(--border);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e9e4);
+  color: var(--text-strong, #183c35);
   border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 10px;
@@ -101,7 +102,7 @@
 .popover-label {
   font-size: 14px;
   letter-spacing: 1.2px;
-  color: #748577;
+  color: var(--text-muted, #748577);
   font-weight: 650;
   padding: 8px 10px;
 }
@@ -114,10 +115,11 @@
   padding: 12px 10px;
   border-radius: 9px;
   background: none;
+  color: var(--text-strong, #183c35);
 }
 .club-option:hover,
 .club-option.selected {
-  background: #edf4ed;
+  background: var(--primary-50, #edf4ed);
 }
 .club-option > span:nth-child(2) {
   flex: 1;
@@ -125,11 +127,12 @@
 .club-option strong {
   font-size: 14px;
   display: block;
+  color: var(--text-strong, #183c35);
 }
 .club-option small {
   display: block;
   font-size: 14px;
-  color: #6f8075;
+  color: var(--text-muted, #6f8075);
   margin-top: 3px;
 }
 .club-popover > a {
@@ -137,7 +140,8 @@
   gap: 9px;
   padding: 12px 10px;
   font-size: 14px;
-  border-top: 1px solid var(--border);
+  color: var(--text-strong, #183c35);
+  border-top: 1px solid var(--border, #e2e9e4);
   margin-top: 7px;
 }
 .club-popover > a > svg:last-child {
@@ -160,8 +164,9 @@
   max-height: calc(100vh - 110px);
   overflow: auto;
   box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  background: white;
+  border: 1px solid var(--border, #e2e9e4);
+  background: var(--surface, #ffffff);
+  color: var(--text-strong, #183c35);
   border-radius: 17px;
   padding: 10px;
   z-index: 45;
@@ -172,15 +177,16 @@
   gap: 10px;
   padding: 10px 9px 16px;
   margin-bottom: 7px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border, #e2e9e4);
 }
 .account-summary strong {
   font-size: 14px;
   display: block;
+  color: var(--text-strong, #183c35);
 }
 .account-summary small {
   display: block;
-  color: #718274;
+  color: var(--text-muted, #718274);
   font-size: 14px;
   margin-top: 2px;
 }
@@ -194,14 +200,69 @@
   border-radius: 9px;
   background: none;
   font-size: 14px;
+  color: var(--text-strong, #183c35);
+}
+.account-popover > a > svg,
+.account-popover > button > svg {
+  color: var(--primary, #0f6b66);
 }
 .account-popover > a:hover,
 .account-popover > button:hover {
-  background: var(--primary-50);
+  background: var(--primary-50, #e5f1ed);
+}
+.account-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  margin: 6px 0;
+  border-radius: 9px;
+  background: var(--primary-50, #eef5f1);
+  border: 1px solid var(--border, #e2e9e4);
+  color: var(--text-strong, #183c35);
+}
+.account-theme-info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--text-strong, #183c35);
+}
+.account-theme-info svg {
+  color: var(--primary, #0f6b66);
+}
+.theme-pill-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #cbd5e1;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+.theme-pill-toggle.is-dark {
+  background: var(--primary, #10b981);
+}
+.theme-pill-knob {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(0);
+}
+.theme-pill-toggle.is-dark .theme-pill-knob {
+  transform: translateX(20px);
 }
 .persona-section {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border, #e2e9e4);
+  border-bottom: 1px solid var(--border, #e2e9e4);
   margin: 10px 0;
   padding: 6px 0;
 }
@@ -215,16 +276,17 @@
   width: 100%;
   text-align: left;
   font-size: 14px;
+  color: var(--text-strong, #183c35);
 }
 .persona-section button.selected {
-  background: var(--primary-50);
-  color: var(--primary);
+  background: var(--primary-50, #e5f1ed);
+  color: var(--primary, #0f6b66);
 }
 .persona-section button > svg:last-child:not(:first-child) {
   margin-left: auto;
 }
 .persona-section button:hover {
-  background: #f3f7f0;
+  background: var(--primary-50, #f3f7f0);
 }
 .demo-role-pill {
   display: flex;
