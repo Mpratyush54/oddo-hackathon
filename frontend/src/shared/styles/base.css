@@ -1125,13 +1125,15 @@ strong {
 }
 .finance-overview select {
   font-size: 14px;
-  min-height: 29px;
-  border: 1px solid #ffffff44;
-  border-radius: 7px;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
   color: #fff;
-  background: transparent;
-  padding: 0 6px;
-  width: 102px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  width: auto;
+  min-width: 145px;
+  box-sizing: border-box;
 }
 .finance-overview select option {
   color: var(--text-strong);
@@ -1932,7 +1934,9 @@ tbody tr:hover {
   border-radius: 9px;
   font-size: 14px;
   color: #748168;
-  max-width: 150px;
+  min-width: 145px;
+  width: auto;
+  max-width: 180px;
 }
 .view-toggle {
   display: flex;

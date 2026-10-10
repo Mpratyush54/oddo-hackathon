@@ -1438,3 +1438,12 @@ td.numeric {
 .brief-upcoming-card {
   padding: 20px;
 }
+
+.brief-finance-card select,
+.finance-overview select {
+  width: auto !important;
+  min-width: 148px !important;
+  max-width: 200px !important;
+  padding: 5px 12px !important;
+  box-sizing: border-box !important;
+}
