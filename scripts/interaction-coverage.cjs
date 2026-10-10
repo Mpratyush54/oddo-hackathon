@@ -386,12 +386,23 @@ async function auditFields(browser, route, role, report) {
             }
           } else if (info.type === 'checkbox' || info.type === 'radio') {
             const before = await element.isChecked();
-            await element.setChecked(!before);
-            const after = await element.isChecked();
-            if (info.type === 'checkbox' && after !== !before) throw new Error('Checkbox state did not toggle.');
-            if (info.type === 'radio' && !after) throw new Error('Radio option did not become selected.');
+            if (info.type === 'radio' && before) {
+              result.status = 'state-covered';
+              result.detail = 'Radio option was already selected; left unchanged.';
+            } else {
+              await element.setChecked(info.type === 'radio' ? true : !before);
+              const after = await element.isChecked();
+              if (info.type === 'checkbox' && after !== !before) throw new Error('Checkbox state did not toggle.');
+              if (info.type === 'radio' && !after) throw new Error('Radio option did not become selected.');
+              result.status = 'changed';
+              result.detail = info.type + ' state changed from ' + before + ' to ' + after + '.';
+            }
+          } else if (selector.includes('combobox') && info.tag !== 'input' && info.tag !== 'select') {
+            await element.focus();
+            await page.keyboard.press('ArrowDown');
+            await page.keyboard.press('Enter');
             result.status = 'changed';
-            result.detail = info.type + ' state changed from ' + before + ' to ' + after + '.';
+            result.detail = 'Keyboard interaction exercised the custom combobox.';
           } else if (info.type === 'range' || info.tag === 'div' && selector.includes('slider')) {
             await element.focus();
             await page.keyboard.press('End');
