@@ -17,7 +17,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +32,33 @@ jobs:
         env:
           VITE_BACKEND_MODE: aws
           VITE_API_URL: /api
+
+      - name: Install isolated Playwright runtime
+        run: npm install --no-save --package-lock=false playwright@1.64.0
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local demo application
+        run: |
+          mkdir -p artifacts
+          nohup npm run dev:demo > /tmp/skyline-demo.log 2>&1 &
+          echo $! > /tmp/skyline-demo.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5174/ > /dev/null; then
+              echo "Local demo is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/skyline-demo.log
+          exit 1
+
+      - name: Test UI interactions, forms, links, tables, and components
+        run: npm run test:browser
+        env:
+          PLAYWRIGHT_MODULE: playwright
+          TEST_URL: http://127.0.0.1:5174
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
