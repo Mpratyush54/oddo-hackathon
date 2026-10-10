@@ -114,6 +114,10 @@ function valueFor(type) {
   }
 }
 async function main() {
+  const hostname = new URL(BASE_URL).hostname;
+  if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+    throw new Error('Safety stop: form-control audit only runs against localhost. Do not target production or shared staging.');
+  }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const report = { baseUrl: BASE_URL, environment: 'LOCAL DEMO ONLY', startedAt: new Date().toISOString(), fields: [], failures: [], summary: {} };
   const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
