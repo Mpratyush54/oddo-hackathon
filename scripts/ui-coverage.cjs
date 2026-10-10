@@ -219,9 +219,11 @@ async function collectUiSnapshot(page) {
     };
 
     const buttons = Array.from(document.querySelectorAll('button, [role="button"]'))
-      .filter(visible)
-      .map((element, index) => ({
+      .map((element, domIndex) => ({ element, domIndex }))
+      .filter(({ element }) => visible(element))
+      .map(({ element, domIndex }, index) => ({
         index,
+        domIndex,
         name: nameOf(element),
         tag: element.tagName.toLowerCase(),
         role: element.getAttribute('role') || (element.tagName === 'BUTTON' ? 'button' : ''),
@@ -351,9 +353,9 @@ function classifyButton(button) {
   }
 
   return {
-    classification: 'visible-action-contract',
-    click: false,
-    reason: 'Inventoried and checked for an accessible name; add a dedicated behavior assertion before treating it as fully behavior-covered',
+    classification: 'isolated-click-probe',
+    click: true,
+    reason: 'Clicked in an isolated local demo context; verify no uncaught browser errors',
   };
 }
 
@@ -495,19 +497,49 @@ async function auditRoute(browser, testCase, report) {
 
     for (const index of safeIndexes) {
       await visit(page, testCase.route);
-      const liveButtons = page.locator('button:visible, [role="button"]:visible');
+      const liveButtons = page.locator('button, [role="button"]');
       const count = await liveButtons.count();
-      if (index >= count) {
-        entry.issues.push('Button index ' + index + ' disappeared after route reset');
+      const domIndex = snapshot.buttons[index].domIndex;
+      if (domIndex >= count) {
+        entry.issues.push('Button DOM index ' + domIndex + ' disappeared after route reset');
         continue;
       }
 
-      const button = liveButtons.nth(index);
+      const button = liveButtons.nth(domIndex);
       const liveName = await button.evaluate((element) => {
         const aria = element.getAttribute('aria-label');
         if (aria && aria.trim()) return aria.trim();
+
+        const labelledBy = element.getAttribute('aria-labelledby');
+        if (labelledBy) {
+          const text = labelledBy.split(/\s+/)
+            .map((id) => document.getElementById(id))
+            .filter(Boolean)
+            .map((node) => node.innerText || node.textContent || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (text) return text;
+        }
+
+        if (element.labels && element.labels.length) {
+          const text = Array.from(element.labels)
+            .map((node) => node.innerText || node.textContent || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (text) return text;
+        }
+
+        const label = element.closest('label');
+        if (label) {
+          const text = (label.innerText || label.textContent || '').replace(/\s+/g, ' ').trim();
+          if (text) return text;
+        }
+
         const text = (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim();
-        return text || element.getAttribute('title') || '';
+        if (text) return text;
+        return element.getAttribute('title') || element.getAttribute('alt') || element.getAttribute('placeholder') || '';
       });
       const expectedName = snapshot.buttons[index].name;
       if (liveName !== expectedName) {
