@@ -566,27 +566,6 @@
   color: var(--text-muted, #526b62);
 }
 
-[data-theme='dark'] .club-story-card {
-  background: var(--surface, #102320);
-  border-color: var(--border, #1a3832);
-}
-[data-theme='dark'] .club-story-card:hover {
-  box-shadow: 0 20px 38px -10px rgba(0, 0, 0, 0.5);
-  border-color: rgba(16, 185, 129, 0.4);
-}
-[data-theme='dark'] .club-story-meta h2 {
-  color: #f1f7f4;
-}
-[data-theme='dark'] .club-story-desc {
-  color: #8ea89e;
-}
-[data-theme='dark'] .club-cadence-badge {
-  color: #10b981;
-}
-[data-theme='dark'] .club-stats-pill {
-  color: #8ea89e;
-}
-
 .portal-auth {
   min-height: 100vh;
   display: grid;

@@ -5,12 +5,9 @@ import { Logo } from '../ui/Logo';
 import '../styles/portal.css';
 import '../../features/landing/styles/landing.css';
 
-import { useTheme } from '../theme/theme';
-
 export function PublicNav({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const nav = useRef<HTMLElement>(null);
-  const { theme, toggleTheme } = useTheme();
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: PointerEvent) => {
@@ -50,25 +47,7 @@ export function PublicNav({ className = '' }: { className?: string }) {
           <Link to="/login" onClick={() => setOpen(false)}>
             Login
           </Link>
-          <button
-            type="button"
-            className="mobile-public-theme-row"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={16} />
-            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-          </button>
         </div>
-        <button
-          type="button"
-          className={`public-theme-toggle public-theme-toggle-btn ${theme === 'dark' ? 'shift-to-light' : 'shift-to-dark'}`}
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        >
-          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={17} />
-        </button>
         <button
           className="public-menu-toggle icon-button"
           aria-label={open ? 'Close site menu' : 'Open site menu'}
