@@ -1,27 +1,33 @@
 .campus-calendar {
-  border: 1px solid #dfe7d7;
-  border-radius: 20px;
+  border: 1px solid #d4e0d7;
+  border-radius: 24px;
   overflow: hidden;
-  background: #fff;
+  background: #ffffff;
+  box-shadow: 0 12px 36px rgba(15, 107, 102, 0.05);
 }
 .campus-calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 25px;
-  padding: 27px 30px;
-  border-bottom: 1px solid #e2e8dc;
+  padding: 30px 34px;
+  background: linear-gradient(135deg, #0f6b66 0%, #115e59 50%, #0d4a46 100%);
+  color: #ffffff;
+  border-bottom: 0;
 }
 .campus-calendar-overline {
-  font-size: 14px;
-  letter-spacing: 1.4px;
-  color: #95a086;
-  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: #99f6e4;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 .campus-calendar-header h2 {
-  font-size: 27px;
-  margin-top: 7px;
-  color: #33583d;
+  font-size: 32px;
+  margin-top: 6px;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  font-weight: 700;
 }
 .campus-calendar-controls {
   display: flex;
@@ -30,36 +36,47 @@
 }
 .campus-calendar-controls > .button {
   font-size: 14px;
-  min-height: 36px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 16px;
+  background: #ffffff;
+  color: #0f6b66;
+  font-weight: 600;
+  border: none;
 }
 .campus-calendar-controls .icon-button {
-  width: 32px;
-  height: 34px;
-  background: #f4f7ee;
-  border: 1px solid #e1e8d9;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  color: #ffffff;
+  transition: all 0.15s ease;
+}
+.campus-calendar-controls .icon-button:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 .campus-calendar-view {
   display: flex;
-  background: #eef3e8;
-  border: 1px solid #dfe8d4;
-  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
   padding: 4px;
   margin-left: 9px;
   gap: 4px;
 }
 .campus-calendar-view button {
   font-size: 14px;
-  padding: 7px 13px;
+  padding: 7px 14px;
   background: transparent;
-  border-radius: 5px;
-  color: #7a8e6a;
+  border-radius: 6px;
+  color: #ccfbf1;
+  font-weight: 600;
 }
 .campus-calendar-view button.active {
-  background: #fff;
-  color: #3c633e;
-  box-shadow: 0 1px 5px #31522e13;
+  background: #ffffff;
+  color: #0f6b66;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 .campus-calendar-agenda {
   padding: 30px;
@@ -505,3 +522,66 @@
     transition: none;
   }
 }
+
+/* Event thumbnail in agenda */
+.event-thumb-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid #d4e0d7;
+}
+
+.event-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.campus-agenda-event.atmospheric-event {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  border: 1px solid #e2ece4;
+  background: #ffffff;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.campus-agenda-event.atmospheric-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 107, 102, 0.08);
+  border-color: #0f6b66;
+}
+
+.campus-agenda-event.atmospheric-event .agenda-event-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.campus-calendar-cell.is-selected {
+  background: #eaf6f4 !important;
+  box-shadow: inset 0 0 0 2px #0f6b66;
+}
+
+[data-theme="dark"] .campus-calendar {
+  background: #141f23;
+  border-color: #22323a;
+}
+
+[data-theme="dark"] .campus-agenda-event.atmospheric-event {
+  background: #141f23;
+  border-color: #22323a;
+}
+
+[data-theme="dark"] .campus-agenda-event.atmospheric-event:hover {
+  border-color: #2dd4bf;
+}
+
+[data-theme="dark"] .campus-calendar-cell.is-selected {
+  background: #134e4a38 !important;
+  box-shadow: inset 0 0 0 2px #2dd4bf;
+}
+

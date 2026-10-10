@@ -80,14 +80,19 @@ export default function CampusCalendar() {
   const renderEvent = (event: (typeof data.events)[number]) => {
     const phase = eventPhase(event);
     return (
-      <Link className="campus-agenda-event" key={event.id} to={`/app/events/${event.id}`}>
+      <Link className="campus-agenda-event atmospheric-event" key={event.id} to={`/app/events/${event.id}`}>
+        {event.image && (
+          <div className="event-thumb-wrap">
+            <img src={event.image} alt={event.title} className="event-thumb-img" />
+          </div>
+        )}
         <span className="campus-agenda-time">
           {event.time}
           <small>
             {phase === 'past' ? 'Finished' : phase === 'ongoing' ? 'Live now' : 'Starts at'}
           </small>
         </span>
-        <div>
+        <div className="agenda-event-details">
           <h3>{event.title}</h3>
           <p>
             <Icon name="MapPin" size={14} />
