@@ -227,9 +227,10 @@ async function collectUiSnapshot(page) {
         name: nameOf(element),
         tag: element.tagName.toLowerCase(),
         role: element.getAttribute('role') || (element.tagName === 'BUTTON' ? 'button' : ''),
-        type: element.tagName === 'BUTTON'
-          ? element.type
-          : element.getAttribute('type') || '',
+        type: element.getAttribute('type') ||
+          (element.tagName === 'BUTTON'
+            ? (element.closest('form') ? 'submit' : 'button')
+            : ''),
         disabled: Boolean(element.disabled || element.getAttribute('aria-disabled') === 'true'),
         expanded: element.getAttribute('aria-expanded'),
         hasPopup: element.getAttribute('aria-haspopup'),
