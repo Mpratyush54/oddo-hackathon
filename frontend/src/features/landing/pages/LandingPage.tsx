@@ -48,6 +48,23 @@ export const mosaicExtras = [
   },
 ];
 
+const defaultMosaicImages = [
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1000&q=80',
+  'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1000&q=80',
+];
+
 export function LandingPage() {
   const { allClubs, organizations } = useStore();
   const afterRef = useRef<HTMLDivElement>(null);
@@ -68,7 +85,12 @@ export function LandingPage() {
       href: '/events',
       ...item,
     })),
-  ].slice(0, 14);
+  ]
+    .slice(0, 14)
+    .map((card, i) => ({
+      ...card,
+      image: card.image || defaultMosaicImages[i % defaultMosaicImages.length],
+    }));
 
   return (
     <div className="portal-public landing-root">
@@ -84,7 +106,18 @@ export function LandingPage() {
                 style={{ '--pop-delay': `${Math.min(420, i * 35)}ms` } as CSSProperties}
                 tabIndex={-1}
               >
-                <img src={card.image} alt="" loading={i < 6 ? 'eager' : 'lazy'} />
+                <img
+                  src={card.image}
+                  alt=""
+                  loading="eager"
+                  decoding="async"
+                  onError={(e) => {
+                    const fallback = defaultMosaicImages[i % defaultMosaicImages.length];
+                    if (e.currentTarget.src !== fallback) {
+                      e.currentTarget.src = fallback;
+                    }
+                  }}
+                />
                 <div className="landing-mosaic-meta">
                   <span className="tl">{card.club}</span>
                   <span className="tr">{card.title}</span>
