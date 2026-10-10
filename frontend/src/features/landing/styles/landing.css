@@ -377,37 +377,44 @@
   gap: 10px;
 }
 
-.public-theme-toggle {
+.public-theme-toggle-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f7f1e6;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.public-theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
-  transform: translateY(-1px);
+.public-theme-toggle-btn.shift-to-dark {
+  background: #0f1715;
+  border: 1.5px solid #2b3e39;
+  color: #10b981;
 }
 
-.portal-public-nav:not(.landing-stage-nav) .public-theme-toggle {
-  border-color: var(--border, #e2e9e4);
-  background: var(--surface, #ffffff);
-  color: var(--text-strong, #183c35);
+.public-theme-toggle-btn.shift-to-dark:hover {
+  background: #142320;
+  border-color: #10b981;
+  color: #34d399;
+  transform: scale(1.1);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
 }
 
-.portal-public-nav:not(.landing-stage-nav) .public-theme-toggle:hover {
-  background: var(--primary-50, #e5f1ed);
-  border-color: var(--primary, #0f6b66);
-  color: var(--primary, #0f6b66);
+.public-theme-toggle-btn.shift-to-light {
+  background: #f4f7f5;
+  border: 1.5px solid #dce5df;
+  color: #0f6b66;
+}
+
+.public-theme-toggle-btn.shift-to-light:hover {
+  background: #ffffff;
+  border-color: #0f6b66;
+  color: #eab308;
+  transform: scale(1.1);
+  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35);
 }
 
 .mobile-public-theme-toggle {

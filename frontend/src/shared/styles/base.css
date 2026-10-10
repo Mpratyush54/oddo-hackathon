@@ -1811,7 +1811,7 @@ tbody tr:hover {
 .field select:focus,
 .field textarea:focus {
   border-color: var(--primary);
-  background: #fff;
+  background: var(--surface);
 }
 .field small {
   color: var(--text-muted);

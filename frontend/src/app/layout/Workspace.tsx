@@ -393,9 +393,9 @@ export default function Workspace() {
           <div className="topbar-right">
             <button
               type="button"
-              className="icon-button theme-toggle"
-              aria-label="Toggle color theme"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className={`theme-toggle-btn ${theme === 'dark' ? 'shift-to-light' : 'shift-to-dark'}`}
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
               onClick={handleToggleTheme}
             >
               <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />

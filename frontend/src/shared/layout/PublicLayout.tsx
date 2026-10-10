@@ -39,10 +39,10 @@ export function PublicNav({ className = '' }: { className?: string }) {
       <div className="public-nav-actions">
         <button
           type="button"
-          className="public-theme-toggle icon-button"
+          className={`public-theme-toggle-btn ${theme === 'dark' ? 'shift-to-light' : 'shift-to-dark'}`}
           onClick={toggleTheme}
-          aria-label="Toggle color theme"
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
           <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
         </button>
