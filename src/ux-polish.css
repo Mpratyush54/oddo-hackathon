@@ -355,20 +355,194 @@
     flex: 1;
   }
 }
-/* Tablet: collapse multi-column tools that previously waited until 540px. */
+/* ==========================================================================
+   Issue #12: Responsive Multi-Column Collapsing (~900px) & Mobile Table Cards (~768px)
+   ========================================================================== */
+
+/* 1. Collapse cramped multi-column tools by 900px */
 @media (max-width: 900px) {
   .dashboard-top,
+  .dashboard-lower,
+  .brief-stream-grid,
+  .brief-actions-grid,
+  .module-grid,
   .kanban-board,
   .checkin-layout,
+  .check-in-layout,
+  .checkin-grid,
   .checkout-layout,
+  .shop-checkout-layout,
+  .cart-layout,
   .personal-task-grid,
-  .finance-charts {
+  .finance-charts,
+  .finance-split,
+  .club-stories-grid,
+  .portal-club-grid,
+  .portal-auth,
+  .settings-grid {
     grid-template-columns: 1fr !important;
   }
+
   .kanban-board {
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+
+  .morning-brief-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 22px;
+    gap: 20px;
+  }
+
+  .morning-brief-hero .community-art {
+    display: none;
+  }
+
+  .morning-brief-stats {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .brief-stat-pill {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .brief-stream-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .four-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2. Mobile table cards for dense tables by 768px */
+@media (max-width: 768px) {
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .table-scroll table {
+    display: block;
+    width: 100%;
+    white-space: normal !important;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+
+  .table-scroll thead {
+    display: none;
+  }
+
+  .table-scroll tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .table-scroll tbody tr {
+    display: block;
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: normal;
+  }
+
+  .table-scroll tbody tr:hover {
+    background: var(--surface, #ffffff);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .table-scroll tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    white-space: normal;
+    font-size: 13px;
+    text-align: right;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .table-scroll tbody td:first-child {
+    padding-top: 2px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    justify-content: flex-start;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .table-scroll tbody td:last-child {
+    border-bottom: none;
+    padding-top: 10px;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .table-scroll tbody tr.expense-row {
+    border-left: 4px solid #f59e0b !important;
+  }
+
+  .table-scroll tbody tr.income-row {
+    border-left: 4px solid #10b981 !important;
+  }
+
+  /* Dark mode table card styling */
+  [data-theme="dark"] .table-scroll tbody tr {
+    background: var(--surface, #141f23);
+    border-color: var(--border, #22323a);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  [data-theme="dark"] .table-scroll tbody tr:hover {
+    background: #19272c;
+  }
+
+  [data-theme="dark"] .table-scroll tbody td {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="dark"] .table-scroll tbody td:first-child {
+    border-bottom-color: var(--border, #22323a);
+  }
+}
+
+/* 3. Small mobile screens (<540px) */
+@media (max-width: 540px) {
+  .four-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .morning-brief-hero h2 {
+    font-size: 24px;
+  }
+
+  .morning-brief-lead {
+    font-size: 14px;
+  }
+
+  .brief-action-card {
+    padding: 16px;
+  }
+
+  .table-scroll tbody tr {
+    padding: 12px 14px;
   }
 }
 
