@@ -416,23 +416,125 @@
   display: grid;
   grid-template-columns: 1.05fr 1fr;
   gap: 28px;
+  align-items: start;
 }
 .shop-modal-preview {
+  display: flex;
+  flex-direction: column;
   background: #edf2e9;
-  border-radius: 15px;
+  border-radius: 16px;
   overflow: hidden;
   align-self: start;
+  min-width: 0;
+}
+.shop-preview-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px;
+  background: #e3ebe3;
+  border-bottom: 1px solid #d5e0d4;
+}
+.shop-preview-toggle button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: transparent;
+  color: #5f7364;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.shop-preview-toggle button:hover {
+  background: rgb(255 255 255 / 55%);
+  color: #264f3d;
+}
+.shop-preview-toggle button.active {
+  background: #fff;
+  color: #1f4638;
+  box-shadow: 0 1px 2px rgb(32 66 51 / 10%);
+}
+.shop-preview-toggle button:focus-visible {
+  outline: 2px solid var(--primary, #0f6b66);
+  outline-offset: 2px;
+}
+.shop-modal-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1.05;
+  min-height: 280px;
+  max-height: 420px;
+  background: #e7eee4;
+  overflow: hidden;
+}
+.shop-modal-media .shop-product-photo,
+.shop-modal-media .product-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 0;
+}
+.shop-modal-media .product-art {
+  display: grid;
+  place-items: center;
+}
+.shop-modal-media .garment-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #eef1e9;
+  display: flex;
+  flex-direction: column;
+}
+.shop-modal-media .garment-preview-top {
+  padding: 14px 16px 0;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  flex-shrink: 0;
+}
+.shop-modal-media .garment-stage {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.shop-modal-media .garment-preview-note {
+  flex-shrink: 0;
+  padding: 10px 16px 14px;
+  font-size: 12px;
 }
 .shop-modal-preview > p {
-  padding: 17px 20px;
+  padding: 14px 18px 16px;
   color: #819077;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.65;
   border-top: 1px solid #dce6d5;
+  margin: 0;
+}
+.shop-modal-details {
+  min-width: 0;
+  padding-top: 2px;
+}
+.shop-modal-details .shop-overline {
+  display: block;
+  margin-bottom: 4px;
 }
 .shop-modal-details h2 {
   font-size: 25px;
-  margin: 10px 0 12px;
+  margin: 8px 0 12px;
 }
 .shop-modal-details > p {
   font-size: 14px;
@@ -846,8 +948,20 @@
   .shop-product-modal {
     grid-template-columns: 1fr;
   }
+  .shop-preview-toggle {
+    padding: 8px;
+  }
+  .shop-preview-toggle button {
+    min-height: 38px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .shop-modal-media {
+    min-height: 240px;
+    max-height: 340px;
+  }
   .shop-modal-preview > p {
-    font-size: 14px;
+    font-size: 13px;
   }
   .shop-modal-details h2 {
     font-size: 23px;
@@ -890,7 +1004,17 @@
 }
 
 .modal.wide:has(.shop-product-modal) {
-  width: 960px;
+  width: min(960px, calc(100vw - 32px));
+}
+.modal.wide:has(.shop-product-modal) > .modal-heading {
+  padding-bottom: 16px;
+}
+.modal.wide:has(.shop-product-modal) > .modal-heading h2 {
+  font-size: 20px;
+  line-height: 1.25;
+}
+.modal.wide:has(.shop-product-modal) > .modal-heading p {
+  margin-top: 4px;
 }
 
 .shop-product-photo {

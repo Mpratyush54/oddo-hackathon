@@ -557,19 +557,33 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         >
           <div className="shop-product-modal">
             <div className="shop-modal-preview">
-              <div className="shop-preview-toggle">
-                <button className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>
+              <div className="shop-preview-toggle" role="tablist" aria-label="Product preview mode">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!preview}
+                  className={!preview ? 'active' : ''}
+                  onClick={() => setPreview(false)}
+                >
                   Product photo
                 </button>
-                <button className={preview ? 'active' : ''} onClick={() => setPreview(true)}>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={preview}
+                  className={preview ? 'active' : ''}
+                  onClick={() => setPreview(true)}
+                >
                   Interactive preview
                 </button>
               </div>
-              {preview ? (
-                <GarmentPreview kind={product.type} color={color} onColorChange={setColor} />
-              ) : (
-                <ProductPhoto product={product} />
-              )}
+              <div className="shop-modal-media">
+                {preview ? (
+                  <GarmentPreview kind={product.type} color={color} onColorChange={setColor} />
+                ) : (
+                  <ProductPhoto product={product} />
+                )}
+              </div>
               <p>
                 Catalog photography and preview colours are illustrative. Stocked colour:{' '}
                 {product.color}.

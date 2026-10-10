@@ -33,7 +33,6 @@ export function FinancePage() {
     [kind, setKind] = useState('expense'),
     [receipt, setReceipt] = useState<File | null>(null),
     [compact, setCompact] = useState(false),
-    [ledgerLayout, setLedgerLayout] = useState<'statement' | 'table'>('statement'),
     [descending, setDescending] = useState(true),
     [saving, setSaving] = useState(false),
     [error, setError] = useState('');
@@ -254,22 +253,6 @@ export function FinancePage() {
                 ))}
               </select>
               <button
-                className={`icon-button ${ledgerLayout === 'statement' ? 'selected' : ''}`}
-                title="Statement timeline artifact"
-                aria-label="Statement timeline artifact"
-                onClick={() => setLedgerLayout('statement')}
-              >
-                <Icon name="FileText" size={18} />
-              </button>
-              <button
-                className={`icon-button ${ledgerLayout === 'table' ? 'selected' : ''}`}
-                title="Table grid view"
-                aria-label="Table grid view"
-                onClick={() => setLedgerLayout('table')}
-              >
-                <Icon name="Columns3" size={18} />
-              </button>
-              <button
                 className="icon-button"
                 aria-label="Toggle table density"
                 onClick={() => setCompact(!compact)}
@@ -279,161 +262,26 @@ export function FinancePage() {
             </div>
           </div>
 
-          {ledgerLayout === 'statement' ? (
-            <div className="statement-artifact">
-              <div className="statement-artifact-header">
-                <div className="statement-club-stamp">
-                  <span className="statement-stamp-badge">OFFICIAL STATEMENT</span>
-                  <h3>Campus Treasury · Activity Statement</h3>
-                  <small>
-                    Generated for{' '}
-                    {period === 'month' ? 'October 2026' : 'Academic Semester 2026–27'}
-                  </small>
-                </div>
-                <div className="statement-net-summary">
-                  <small>Net Activity</small>
-                  <strong className={income - expense >= 0 ? 'amount-in' : 'amount-out'}>
-                    {money(income - expense)}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="statement-timeline">
-                {filtered.map((t, idx) => (
-                  <article
-                    className={`statement-item ${t.amount < 0 ? 'expense-row' : 'income-row'}`}
-                    key={t.id}
-                  >
-                    <div className="statement-item-date">
-                      <strong>{new Date(`${t.date}T12:00:00`).getDate()}</strong>
-                      <small>{date(t.date, { month: 'short' }).toUpperCase()}</small>
-                    </div>
-                    <div className="statement-item-bullet">
-                      <span className={`statement-dot ${t.amount < 0 ? 'out' : 'in'}`} />
-                      {idx !== filtered.length - 1 && <span className="statement-line" />}
-                    </div>
-                    <div className="statement-item-body">
-                      <div className="statement-item-main">
-                        <div className="statement-item-title-row">
-                          <h4>{t.title}</h4>
-                          <Badge
-                            tone={
-                              t.category === 'Tickets'
-                                ? 'purple'
-                                : t.category === 'Merchandise'
-                                  ? 'gold'
-                                  : t.category === 'Fundraiser'
-                                    ? 'green'
-                                    : t.category === 'Expenses'
-                                      ? 'neutral'
-                                      : 'teal'
-                            }
-                          >
-                            {t.category}
-                          </Badge>
-                        </div>
-                        <div className="statement-item-meta">
-                          <span>Ref: {t.id}</span>
-                          {t.eventId && (
-                            <span>
-                              Event:{' '}
-                              {data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}
-                            </span>
-                          )}
-                          {t.receipt && (
-                            <button
-                              type="button"
-                              className="statement-receipt-tag"
-                              onClick={() => receiptLink(t)}
-                            >
-                              <Icon name="Paperclip" size={13} /> {t.receipt}
-                            </button>
-                          )}
-                          {t.rejectionReason && (
-                            <span className="rejection-note">Note: {t.rejectionReason}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="statement-item-side">
-                        <strong
-                          className={`statement-amount ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}
-                        >
-                          {t.amount > 0 ? '+' : '−'}
-                          {money(Math.abs(t.amount))}
-                        </strong>
-                        <Badge
-                          tone={
-                            t.status === 'Completed'
-                              ? 'green'
-                              : t.status === 'Rejected'
-                                ? 'neutral'
-                                : 'gold'
-                          }
-                        >
-                          {t.status}
-                        </Badge>
-                        {t.status === 'Pending' && can('approve_expense') && (
-                          <div className="review-actions" style={{ marginTop: '8px' }}>
-                            <Button
-                              variant="secondary"
-                              icon="Check"
-                              disabled={t.createdBy === user.id}
-                              onClick={() => {
-                                if (!can('approve_expense') || t.createdBy === user.id) {
-                                  toast('A different treasurer must review your own request.');
-                                  return;
-                                }
-                                update((d) => ({
-                                  ...d,
-                                  transactions: d.transactions.map((tx) =>
-                                    tx.id === t.id &&
-                                    tx.status === 'Pending' &&
-                                    tx.createdBy !== user.id
-                                      ? { ...tx, status: 'Completed', reviewedBy: user.id }
-                                      : tx,
-                                  ),
-                                }));
-                                toast('Expense approved and recorded in the balance.');
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              disabled={t.createdBy === user.id}
-                              onClick={() => setRejecting(t)}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="table-scroll">
-              <table className={compact ? 'compact' : ''}>
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>
-                      <button className="table-sort" onClick={() => setDescending(!descending)}>
-                        Date
-                        <Icon name="ArrowDownUp" size={12} />
-                      </button>
-                    </th>
-                    <th className="numeric">Amount</th>
-                    <th>Receipt</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((t) => (
+          <div className="table-scroll">
+            <table className={compact ? 'compact' : ''}>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>
+                    <button className="table-sort" onClick={() => setDescending(!descending)}>
+                      Date
+                      <Icon name="ArrowDownUp" size={12} />
+                    </button>
+                  </th>
+                  <th className="numeric">Amount</th>
+                  <th>Receipt</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t) => (
                     <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
                       <td>
                         <div className="transaction-cell">
@@ -553,7 +401,6 @@ export function FinancePage() {
                 </tbody>
               </table>
             </div>
-          )}
           {!filtered.length && (
             <Empty
               title="The books are quiet here"
