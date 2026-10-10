@@ -249,13 +249,12 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     const club = params.get('club');
     if (club && organizations.some((c) => c.id === club) && selectedClub !== club) selectClub(club);
     const id = params.get('product');
-    // Ops desk never opens the campus-collection product modal.
     if (showOps) {
       setProductId('');
       if (id) setParams({}, { replace: true });
       return;
     }
-    if (id) setProductId(id);
+    if (id) setParams({}, { replace: true });
   }, [params, organizations, selectedClub, selectClub, showOps, setParams]);
   const openProduct = (id: string) => {
     if (showOps) return;

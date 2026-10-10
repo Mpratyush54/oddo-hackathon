@@ -71,8 +71,8 @@ export function PublicClub() {
         <div className="event-grid">
           {data.events.map((e) => (
             <article className="event-card" key={e.id}>
-              <Link to={`/e/${club.id}/${e.id}`} className="event-image">
-                <img src={e.image} alt={`${e.title} event`} />
+              <Link to={`/e/${club.id}/${e.id}`} className="event-image" aria-label={`View ${e.title}`}>
+                <img src={e.image} alt="" />
               </Link>
               <div className="event-card-content">
                 <Badge tone={eventPhase(e) === 'past' ? 'gold' : 'teal'}>
