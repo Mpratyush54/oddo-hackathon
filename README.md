@@ -90,7 +90,7 @@ API tests cover JWT/CSRF/session rotation and revocation, role isolation, concur
 
 The Playwright UI audit visits the public routes and the role-specific workspace routes for admin, organizer, treasurer, member, and college users. On each route it inventories visible buttons, links, inputs, selects, forms, tabs, and tables; checks accessible names and table column consistency; probes safe button and internal-link interactions; and fills/toggles fields without submitting forms.
 
-Buttons that submit forms or represent destructive, business-data, or provider actions are listed as requiring a dedicated workflow instead of being blindly clicked. Outbound links and provider calls are blocked by the UI audit. The test target is restricted to localhost unless a developer explicitly opts into a remote target.
+Every enabled button visible on a tested route is click-probed in a fresh browser context. Submit and state-changing actions are therefore isolated from each other; outbound links and selected provider endpoints are blocked by the audit. This verifies that controls are actionable and do not cause uncaught browser errors, while the existing focused smoke tests assert the outcomes of key business flows. The test target is restricted to localhost unless a developer explicitly opts into a remote target.
 
 Install Playwright once, start the labelled demo app, then run the browser suite from a second terminal:
 
