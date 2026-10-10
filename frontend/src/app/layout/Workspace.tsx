@@ -136,20 +136,20 @@ export default function Workspace() {
     ? 'Merch stock'
     : can('manage_orders')
       ? 'Merch orders'
-      : 'Merchandise';
+      : 'Merch';
   const merchNavIcon = can('manage_inventory') || can('manage_orders') ? 'Package' : 'ShoppingBag';
   const mainNav =
     role === 'college'
       ? [
-          { to: '/app', label: 'Campus overview', icon: 'LayoutDashboard' },
-          { to: '/app/college-clubs', label: 'Club registry', icon: 'UsersRound' },
-          { to: '/app/club-summary', label: 'Selected club', icon: 'PanelsTopLeft' },
-        ]
+        { to: '/app', label: 'Campus overview', icon: 'LayoutDashboard' },
+        { to: '/app/college-clubs', label: 'Club registry', icon: 'UsersRound' },
+        { to: '/app/club-summary', label: 'Selected club', icon: 'PanelsTopLeft' },
+      ]
       : operational
-          .filter((n) => !n.permission || can(n.permission))
-          .map((n) =>
-            n.to === '/app/merchandise' ? { ...n, label: merchNavLabel, icon: merchNavIcon } : n,
-          );
+        .filter((n) => !n.permission || can(n.permission))
+        .map((n) =>
+          n.to === '/app/merchandise' ? { ...n, label: merchNavLabel, icon: merchNavIcon } : n,
+        );
   const managementNav = mainNav.filter(
     (item) => !['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
   );
@@ -157,12 +157,12 @@ export default function Workspace() {
     role === 'college'
       ? mainNav
       : [
-          ...mainNav.filter((item) =>
-            ['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
-          ),
-          { to: '/app/my-tickets', label: 'My tickets', icon: 'Ticket' },
-          { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
-        ];
+        ...mainNav.filter((item) =>
+          ['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
+        ),
+        { to: '/app/my-tickets', label: 'My tickets', icon: 'Ticket' },
+        { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
+      ];
   const myNav =
     role === 'college'
       ? [{ to: '/app/profile', label: 'My profile', icon: 'UserRound' }]
@@ -171,11 +171,11 @@ export default function Workspace() {
     role === 'college'
       ? []
       : [
-          { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
-          ...(can('check_in')
-            ? [{ to: '/app/check-in', label: 'Check-in scanner', icon: 'ScanLine' }]
-            : []),
-        ];
+        { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
+        ...(can('check_in')
+          ? [{ to: '/app/check-in', label: 'Check-in scanner', icon: 'ScanLine' }]
+          : []),
+      ];
   const visibleNotifications = data.notifications.filter((n) => {
     if (n.to.includes('@')) return n.to.toLowerCase() === user.email.toLowerCase();
     if (!n.audience || can('publish_announcement')) return true;
@@ -468,16 +468,16 @@ export default function Workspace() {
       <nav className="mobile-quick-nav" aria-label="Quick navigation">
         {(role === 'college'
           ? [
-              { to: '/app/college', label: 'Campus', icon: 'LayoutDashboard' },
-              { to: '/app/college-clubs', label: 'Clubs', icon: 'UsersRound' },
-              { to: '/app/profile', label: 'You', icon: 'UserRound' },
-            ]
+            { to: '/app/college', label: 'Campus', icon: 'LayoutDashboard' },
+            { to: '/app/college-clubs', label: 'Clubs', icon: 'UsersRound' },
+            { to: '/app/profile', label: 'You', icon: 'UserRound' },
+          ]
           : [
-              { to: '/app', label: 'Home', icon: 'LayoutDashboard' },
-              { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
-              { to: '/app/my-tickets', label: 'Tickets', icon: 'Ticket' },
-              { to: '/app/profile', label: 'You', icon: 'UserRound' },
-            ]
+            { to: '/app', label: 'Home', icon: 'LayoutDashboard' },
+            { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
+            { to: '/app/my-tickets', label: 'Tickets', icon: 'Ticket' },
+            { to: '/app/profile', label: 'You', icon: 'UserRound' },
+          ]
         ).map((item) => (
           <NavLink key={item.to} to={item.to} end>
             <Icon name={item.icon} size={20} />
@@ -636,9 +636,9 @@ export default function Workspace() {
                     ...(role === 'college'
                       ? []
                       : [
-                          ['BadgeCheck', 'Membership card', '/app/my-card'],
-                          ['Ticket', 'Tickets & orders', '/app/my-tickets'],
-                        ]),
+                        ['BadgeCheck', 'Membership card', '/app/my-card'],
+                        ['Ticket', 'Tickets & orders', '/app/my-tickets'],
+                      ]),
                   ].map(([icon, label, to]) => (
                     <Link key={to} to={to}>
                       <Icon name={icon} size={17} />
