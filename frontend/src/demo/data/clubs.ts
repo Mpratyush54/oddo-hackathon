@@ -43,7 +43,7 @@ export const seed: Store = {
       status: 'Pending',
       joined: '2026-10-08',
       expires: '2027-07-31',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-005',
@@ -63,7 +63,7 @@ export const seed: Store = {
       status: 'Expiring',
       joined: '2025-10-20',
       expires: '2026-10-20',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-007',
@@ -73,7 +73,7 @@ export const seed: Store = {
       status: 'Pending',
       joined: '2026-10-09',
       expires: '2027-07-31',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-008',
@@ -93,7 +93,7 @@ export const seed: Store = {
       status: 'Expiring',
       joined: '2025-10-24',
       expires: '2026-10-24',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-010',
@@ -103,7 +103,7 @@ export const seed: Store = {
       status: 'Active',
       joined: '2026-09-15',
       expires: '2027-07-31',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-011',
@@ -113,7 +113,7 @@ export const seed: Store = {
       status: 'Active',
       joined: '2026-09-18',
       expires: '2027-07-31',
-      role: 'Member',
+      role: 'Volunteer',
     },
     {
       id: 'MEM-012',
@@ -123,7 +123,7 @@ export const seed: Store = {
       status: 'Pending',
       joined: '2026-10-10',
       expires: '2027-07-31',
-      role: 'Member',
+      role: 'Volunteer',
     },
   ],
   events: [
@@ -548,7 +548,7 @@ export function makeClub(id: string): Store {
         email: `${name.split(' ')[0].toLowerCase()}@skyline.edu`,
         course: ['Computer Science', 'Economics', 'Media Studies', 'Architecture'][i % 4],
         status: i % 8 === 0 ? 'Pending' : 'Active',
-        role: i % 5 === 0 ? 'Volunteer' : 'Member',
+        role: 'Volunteer',
         joined: `2026-09-${String(i + 1).padStart(2, '0')}`,
         expires: '2027-07-31',
         whatsappOptIn: false,

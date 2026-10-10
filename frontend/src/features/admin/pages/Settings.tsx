@@ -68,7 +68,6 @@ export function SettingsPage() {
                     <option>Treasurer</option>
                     <option>Events lead</option>
                     <option>Volunteer</option>
-                    <option>Member</option>
                   </select>
                 </Field>
                 <div className="form-footer">

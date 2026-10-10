@@ -393,7 +393,7 @@ test('parallel feature actions keep users and club state independent', async () 
   assert.equal(canvas.members[0].userId, other.id);
   assert.equal(skyline.members[0].course, 'Science');
   assert.equal(canvas.members[0].course, 'Design');
-  assert.equal(skyline.members[0].role, 'Member');
+  assert.equal(skyline.members[0].role, 'Volunteer');
 });
 test('WhatsApp reads consent from DynamoDB, persists timeout deduplication, and verifies webhook signatures', async () => {
   const { repo, domain } = await fixture();
@@ -407,7 +407,7 @@ test('WhatsApp reads consent from DynamoDB, persists timeout deduplication, and 
       status: 'Active',
       joined: '2026-10-10',
       expires: '2099-07-31',
-      role: 'Member',
+      role: 'Volunteer',
       phone: '+919876543210',
       whatsappOptIn: true,
     },

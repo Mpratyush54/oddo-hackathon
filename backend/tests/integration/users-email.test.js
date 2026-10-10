@@ -107,7 +107,7 @@ test('user management is scoped, validates before writes, protects self access a
     course: 'CS',
     status: 'Active',
     expires: '2099-07-31',
-    memberRole: 'Member',
+    memberRole: 'Volunteer',
   };
   await assert.rejects(users.update(student, 'skyline', input), (e) => e.status === 403);
   await assert.rejects(users.update(admin, 'canvas', input), (e) => e.status === 403);
@@ -199,7 +199,7 @@ test('Express signup sends verification, confirmation works signed out, and user
       status: 'Active',
       course: 'CS',
       expires: '2099-07-31',
-      memberRole: 'Member',
+      memberRole: 'Volunteer',
     };
     assert.equal(
       (

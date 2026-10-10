@@ -229,7 +229,7 @@ export function placeOrder(
               ...m,
               status: 'Active',
               expires: '2027-07-31',
-              role: m.role === 'Pending' ? 'Member' : m.role,
+              role: m.role === 'Pending' ? 'Volunteer' : m.role,
             }
           : m,
       );
@@ -243,7 +243,7 @@ export function placeOrder(
         status: 'Active',
         joined: today,
         expires: '2027-07-31',
-        role: 'Member',
+        role: 'Volunteer',
         participationPoints: 0,
         volunteerPoints: 0,
         contributionPoints: 0,

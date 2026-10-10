@@ -6031,6 +6031,11 @@ body > .modal-backdrop > .modal {
   color: var(--muted, #557264);
   margin-top: 4px;
 }
+.users-verify-note {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
 .email-verification-notice {
   display: flex;
   flex-wrap: wrap;

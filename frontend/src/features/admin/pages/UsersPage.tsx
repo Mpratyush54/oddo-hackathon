@@ -180,8 +180,8 @@ export function UsersPage() {
                     accessRole: 'member',
                     course: 'Campus community',
                     status: 'Pending',
-                    expires: new Date().toISOString().slice(0, 10),
-                    role: 'Member',
+                    expires: '2027-07-31',
+                    role: 'Volunteer',
                   },
                 );
               } catch (err) {
@@ -204,7 +204,11 @@ export function UsersPage() {
       {editing && (
         <Modal
           title={`Manage ${editing.name}`}
-          description={editing.email}
+          description={
+            editing.emailVerified
+              ? editing.email
+              : `${editing.email} · email not verified — staff roles locked`
+          }
           onClose={() => {
             if (!busy) setEditing(null);
           }}
@@ -213,27 +217,64 @@ export function UsersPage() {
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
+              const nextRole = String(f.get('accessRole') || 'member') as Role;
+              if (
+                nextRole !== 'member' &&
+                nextRole !== editing.accessRole &&
+                !editing.emailVerified
+              ) {
+                setError(
+                  'This user must verify their email before receiving a staff role (organizer, treasurer, or admin).',
+                );
+                return;
+              }
+              const expires = String(f.get('expires') || '');
+              if (
+                ['Active', 'Expiring'].includes(String(f.get('status'))) &&
+                expires < new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+              ) {
+                setError('Active membership needs a current or future expiry date.');
+                return;
+              }
               void save('update', {
                 userId: editing.userId,
-                role: f.get('accessRole'),
+                role: nextRole,
                 status: f.get('status'),
                 course: f.get('course'),
-                expires: f.get('expires'),
+                expires,
                 memberRole: f.get('memberRole'),
               });
             }}
           >
+            {!editing.emailVerified && (
+              <p role="status" className="info-banner users-verify-note">
+                Ask them to open the verification link from their inbox (or resend from Account
+                settings) before promoting to treasurer or another staff role.
+              </p>
+            )}
             <Field
               label="Access role"
               hint="Club roles: student, organizer, treasurer, admin. College admin is campus-wide."
             >
               <select name="accessRole" defaultValue={editing.accessRole}>
-                {(['member', 'organizer', 'treasurer', 'admin', 'college'] as Role[]).map((r) => (
-                  <option key={r} value={r} disabled={r === 'college'}>
-                    {roleLabels[r]}
-                    {r === 'college' ? ' — campus grant only' : ''}
-                  </option>
-                ))}
+                {(['member', 'organizer', 'treasurer', 'admin', 'college'] as Role[]).map((r) => {
+                  const staffLocked =
+                    !editing.emailVerified && r !== 'member' && r !== editing.accessRole;
+                  return (
+                    <option
+                      key={r}
+                      value={r}
+                      disabled={r === 'college' || staffLocked}
+                    >
+                      {roleLabels[r]}
+                      {r === 'college'
+                        ? ' — campus grant only'
+                        : staffLocked
+                          ? ' — verify email first'
+                          : ''}
+                    </option>
+                  );
+                })}
               </select>
             </Field>
             <Field label="Membership status">
@@ -247,18 +288,11 @@ export function UsersPage() {
               <select
                 name="memberRole"
                 defaultValue={
-                  [
-                    'Member',
-                    'Volunteer',
-                    'Events lead',
-                    'Treasurer',
-                    'President',
-                  ].includes(editing.role)
+                  ['Volunteer', 'Events lead', 'Treasurer', 'President'].includes(editing.role)
                     ? editing.role
-                    : 'Member'
+                    : 'Volunteer'
                 }
               >
-                <option>Member</option>
                 <option>Volunteer</option>
                 <option>Events lead</option>
                 <option>Treasurer</option>

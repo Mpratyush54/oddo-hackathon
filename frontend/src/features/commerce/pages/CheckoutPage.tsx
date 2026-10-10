@@ -376,7 +376,7 @@ export function CheckoutPage() {
                             status: 'Active' as const,
                             joined: today,
                             expires: '2027-07-31',
-                            role: 'Member',
+                            role: 'Volunteer',
                             participationPoints: 0,
                             volunteerPoints: 0,
                             contributionPoints: 0,

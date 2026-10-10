@@ -35,7 +35,7 @@ const baseStore = () =>
         status: 'Pending',
         joined: '2026-10-10',
         expires: '2027-07-31',
-        role: 'Member',
+        role: 'Volunteer',
       },
     ],
     events: [

@@ -484,8 +484,7 @@ export function MembersPage() {
               <input name="course" required placeholder="e.g. Computer Science" />
             </Field>
             <Field label="Club role">
-              <select name="role">
-                <option>Member</option>
+              <select name="role" defaultValue="Volunteer">
                 <option>Volunteer</option>
                 <option>Events lead</option>
                 <option>Treasurer</option>

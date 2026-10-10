@@ -154,6 +154,102 @@
   gap: 10px;
   margin: 16px 0 8px;
 }
+.member-card-page {
+  max-width: 1100px;
+}
+.member-card-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 28px;
+  align-items: start;
+}
+.member-card-face {
+  position: relative;
+}
+.member-card-qr-empty {
+  width: 150px;
+  height: 150px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 12%);
+  display: grid;
+  place-items: center;
+  color: #a4c9b6;
+}
+.member-card-aside {
+  display: grid;
+  gap: 14px;
+}
+.member-card-panel {
+  background: #fff;
+  border: 1px solid #dce8df;
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+.member-card-panel h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: #1a3832;
+}
+.member-card-panel > p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #667a71;
+}
+.member-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.member-card-benefits ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.member-card-benefits li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #3f5a4d;
+}
+.member-card-benefits li svg {
+  color: var(--primary, #0f6b66);
+}
+@media (max-width: 900px) {
+  .member-card-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  body.printing-member-card .sidebar,
+  body.printing-member-card .topbar,
+  body.printing-member-card .mobile-quick-nav,
+  body.printing-member-card .page-heading,
+  body.printing-member-card .member-card-aside,
+  body.printing-member-card .info-banner,
+  body.printing-member-card .email-verification-notice {
+    display: none !important;
+  }
+  body.printing-member-card .main-shell {
+    margin: 0 !important;
+  }
+  body.printing-member-card .content {
+    padding: 0 !important;
+  }
+  body.printing-member-card .member-card-layout {
+    display: block;
+    max-width: none;
+  }
+  body.printing-member-card .member-card-face {
+    break-inside: avoid;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
 .portal-note {
   display: flex;
   align-items: flex-start;

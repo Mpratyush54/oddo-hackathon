@@ -25,7 +25,9 @@ export class MembershipService extends ClubActionService {
       name: target.name,
       email: target.email,
       course: input.member.course || 'Campus community',
-      role: input.member?.role === 'Volunteer' ? 'Volunteer' : 'Member',
+      role: ['Volunteer', 'Events lead', 'Treasurer', 'President'].includes(input.member?.role)
+        ? input.member.role
+        : 'Volunteer',
       status: active ? 'Active' : 'Pending',
       joined: this.now,
       expires: active ? `${Number(this.now.slice(0, 4)) + 1}-07-31` : this.now,
@@ -62,7 +64,7 @@ export class MembershipService extends ClubActionService {
       status: 'Pending',
       joined: this.now,
       expires: this.now,
-      role: 'Member',
+      role: 'Volunteer',
       whatsappOptIn: false,
       participationPoints: 0,
       volunteerPoints: 0,
