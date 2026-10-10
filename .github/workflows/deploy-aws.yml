@@ -66,6 +66,15 @@ jobs:
           PLAYWRIGHT_MODULE: playwright
           TEST_URL: http://127.0.0.1:5174
 
+      - name: Upload detailed UI coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-coverage-report
+          path: artifacts/ui-coverage.json
+          if-no-files-found: warn
+          retention-days: 7
+
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: verify
