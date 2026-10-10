@@ -61,9 +61,9 @@ export function AccountSettings() {
   return (
     <>
       <PageHeader
-        eyebrow="MAKE YOURSELF AT HOME"
-        title="Account settings"
-        description="Your preferences, your workspace, and the connections behind it."
+        eyebrow="YOUR ACCOUNT"
+        title="Settings"
+        description="Preferences for this club, sign-in details, and workspace export."
       />
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Settings sections">

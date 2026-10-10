@@ -10,7 +10,7 @@ import { Logo } from '../../../shared/ui/Logo';
 import { Modal } from '../../../shared/ui/Modal';
 import { ProductArt } from '../../../shared/ui/ProductArt';
 import { SearchField } from '../../../shared/ui/SearchField';
-import { money, today } from '../../../shared/utils/format';
+import { exportInvoicePdf, money, today } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { Product, Store } from '../../../shared/types/domain';
 import { clubRequest } from '../../commerce/api/commerce.api';
@@ -936,12 +936,35 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 Your order appears in your personal workspace.
               </p>
             </div>
-            <LinkButton to="/app/my-orders" icon="ShoppingBag">
-              View my orders
-            </LinkButton>
-            <Button variant="secondary" onClick={() => setReceipt(null)}>
-              Keep exploring
-            </Button>
+            <div className="shop-order-success-actions">
+              <Button
+                icon="Download"
+                variant="secondary"
+                onClick={() =>
+                  exportInvoicePdf(`${receipt.refs[0] || 'order'}-invoice.pdf`, {
+                    title: 'Skyline merchandise invoice',
+                    reference: receipt.refs.join(', '),
+                    customer: user.name,
+                    email: user.email,
+                    lines: [
+                      { label: 'Item', value: receipt.name },
+                      { label: 'Quantity', value: String(receipt.quantity) },
+                      { label: 'Size', value: receipt.size },
+                      { label: 'Payment', value: 'Demo payment — no money charged' },
+                    ],
+                    total: money(receipt.amount),
+                  })
+                }
+              >
+                Download invoice PDF
+              </Button>
+              <LinkButton to="/app/my-orders" icon="ShoppingBag">
+                View my orders
+              </LinkButton>
+              <Button variant="secondary" onClick={() => setReceipt(null)}>
+                Keep exploring
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

@@ -691,7 +691,7 @@
   color: #8b9980;
   word-break: break-word;
 }
-.shop-order-success > div {
+.shop-order-success > div:not(.shop-order-success-actions) {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -703,6 +703,15 @@
   font-size: 14px;
   color: #6c8161;
   line-height: 1.8;
+}
+.shop-order-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 0 !important;
+  background: transparent !important;
 }
 .shop-order-success > .button {
   margin: 5px;
@@ -972,7 +981,7 @@
   .shop-order-success {
     padding: 10px 0;
   }
-  .shop-order-success > div {
+  .shop-order-success > div:not(.shop-order-success-actions) {
     padding: 17px;
     font-size: 14px;
   }
@@ -1283,6 +1292,17 @@
   font-size: 12px;
   color: #7b9487;
   flex-wrap: wrap;
+}
+.promo-ticket-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+.promo-ticket-artifact.paused {
+  opacity: 0.72;
+}
+.promo-ticket-artifact.paused .promo-ticket-stub {
+  background: linear-gradient(135deg, #5a6b63, #7a8b82);
 }
 
 /* Scoreboard Grid */

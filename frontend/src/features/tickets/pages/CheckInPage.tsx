@@ -196,14 +196,17 @@ export function CheckInPage() {
     <>
       <Revealed>
         <PageHeader
-          eyebrow="A WARM WELCOME AT THE DOOR"
-          title="You’re in good company"
-          description="Scan a ticket, say hello, and keep the line moving."
+          eyebrow="DOOR TEAM"
+          title="Check-in"
+          description="Scan an event ticket or verify a membership card. Use the camera or type a code."
         />
-        <div className="segmented scanner-mode">
+        <div className="segmented scanner-mode" role="tablist" aria-label="Check-in mode">
           {['ticket', 'membership'].map((m) => (
             <button
               key={m}
+              type="button"
+              role="tab"
+              aria-selected={mode === m}
               className={mode === m ? 'selected' : ''}
               onClick={() => {
                 setMode(m);
@@ -213,7 +216,7 @@ export function CheckInPage() {
                 setCamera(false);
               }}
             >
-              {m === 'ticket' ? 'Event ticket check-in' : 'Verify membership'}
+              {m === 'ticket' ? 'Event tickets' : 'Membership cards'}
             </button>
           ))}
         </div>

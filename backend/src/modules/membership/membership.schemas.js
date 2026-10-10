@@ -6,7 +6,9 @@ export const addMemberSchema = z.object({
     email: z.email().max(254),
     course: z.string().max(100).optional(),
     status: z.enum(['Active', 'Pending', 'Expiring', 'Expired']).optional(),
-    role: z.enum(['Member', 'Volunteer']).optional(),
+    role: z
+      .enum(['Member', 'Volunteer', 'Events lead', 'Treasurer', 'President'])
+      .optional(),
   }),
 });
 export const joinMembershipSchema = z.object({ course: z.string().max(100).optional() });

@@ -9,18 +9,32 @@ import { useStore } from '../../../app/state/StoreProvider';
 import { cloudMode } from '../../../shared/api/client';
 import '../../../app/layout/workspace.css';
 
+const actionLabels: Record<string, string> = {
+  'membership.join': 'Joined club',
+  'membership.demo-dues': 'Paid membership dues',
+  'users.update': 'Updated user',
+  'users.remove': 'Removed user',
+  'users.add': 'Added user',
+  'orders.place': 'Placed order',
+  'promos.save': 'Saved promo',
+  'points.award': 'Awarded points',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+};
+
 export function AuditPage() {
   const { data } = useStore();
   const [query, setQuery] = useState('');
-  const entries = data.audit.filter((a) =>
-    `${a.actor} ${a.detail} ${a.action}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  const entries = data.audit.filter((a) => {
+    const label = actionLabels[a.action] || a.action;
+    return `${a.actor} ${a.detail} ${a.action} ${label}`.toLowerCase().includes(query.toLowerCase());
+  });
   return (
     <>
       <PageHeader
-        eyebrow="ACCOUNTABILITY, BUILT IN"
+        eyebrow="CLUB RECORD"
         title="Activity & audit"
-        description="Who changed what, and when. A clear record for your club."
+        description="Search who joined, updated users, or changed club data — then export the log."
         action={
           <Button
             variant="secondary"
@@ -28,11 +42,18 @@ export function AuditPage() {
             onClick={() =>
               exportCSV('skyline-audit.csv', [
                 ['Time', 'Actor', 'Action', 'Entity', 'Reference', 'Details'],
-                ...entries.map((a) => [a.date, a.actor, a.action, a.entity, a.entityId, a.detail]),
+                ...entries.map((a) => [
+                  a.date,
+                  a.actor,
+                  actionLabels[a.action] || a.action,
+                  a.entity,
+                  a.entityId,
+                  a.detail,
+                ]),
               ])
             }
           >
-            Export log
+            Export CSV
           </Button>
         }
       />
@@ -40,16 +61,16 @@ export function AuditPage() {
         <Icon name="ShieldCheck" />
         <p>
           {cloudMode
-            ? 'Business changes are recorded in the shared club audit history.'
-            : 'This local demo records business changes automatically in editable browser storage.'}
+            ? 'Includes student joins (membership.join), user updates, orders, and finance reviews.'
+            : 'Local demo records club changes in this browser. Search “joined” to find membership joins.'}
         </p>
       </div>
       <section className="card table-card">
         <div className="table-toolbar">
-          <h2>{entries.length} recorded actions</h2>
+          <h2>{entries.length} actions</h2>
           <input
             className="audit-search"
-            placeholder="Search actor or action..."
+            placeholder="Search joined, updated, actor…"
             aria-label="Search audit log"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -78,7 +99,7 @@ export function AuditPage() {
                         a.action === 'Rejected' ? 'red' : a.action === 'Approved' ? 'green' : 'teal'
                       }
                     >
-                      {a.action}
+                      {actionLabels[a.action] || a.action}
                     </Badge>
                   </td>
                   <td>

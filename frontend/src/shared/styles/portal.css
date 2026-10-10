@@ -148,6 +148,12 @@
 .portal-latest {
   margin-top: 25px;
 }
+.portal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 8px;
+}
 .portal-note {
   display: flex;
   align-items: flex-start;

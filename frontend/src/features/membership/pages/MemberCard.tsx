@@ -90,9 +90,23 @@ export function MemberCard() {
                 : 'Membership benefits become available once your dues are recorded. Contact the club team for renewal.'}
             </p>
           </div>
-          <LinkButton to="/app/events" icon="ArrowRight">
-            Find your next event
-          </LinkButton>
+          <div className="portal-card-actions">
+            {member && (
+              <Button
+                variant="secondary"
+                icon="Download"
+                onClick={() => window.print()}
+              >
+                Print / save card
+              </Button>
+            )}
+            <LinkButton to="/app/events" icon="ArrowRight">
+              Find your next event
+            </LinkButton>
+            <LinkButton to="/app/settings" variant="secondary">
+              Account settings
+            </LinkButton>
+          </div>
           {member && (!valid || member.status === 'Expiring') && (
             <Button
               variant="secondary"

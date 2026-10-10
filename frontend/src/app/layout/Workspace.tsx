@@ -536,7 +536,13 @@ export default function Workspace() {
           {cloudMode && role !== 'college' && !data.members.some((m) => m.email === user.email) && (
             <div className="info-banner">
               <Icon name="UsersRound" />
-              <p>Join this club to get your membership card and save WhatsApp preferences.</p>
+              <div>
+                <strong>Join as a student member</strong>
+                <p>
+                  Get your membership card, member prices, and club updates. You can activate dues
+                  later from your card.
+                </p>
+              </div>
               <Button
                 onClick={() => {
                   void backendPost<{ state: typeof data }>(`/clubs/${clubId}/actions`, {
@@ -544,7 +550,10 @@ export default function Workspace() {
                     args: {},
                     idempotencyKey: crypto.randomUUID(),
                   })
-                    .then(() => window.dispatchEvent(new Event('skyline-data-changed')))
+                    .then(() => {
+                      toast('You joined the club. Open My card to see your membership.');
+                      window.dispatchEvent(new Event('skyline-data-changed'));
+                    })
                     .catch((error) => toast(error.message));
                 }}
               >

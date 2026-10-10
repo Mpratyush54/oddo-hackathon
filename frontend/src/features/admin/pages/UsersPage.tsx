@@ -223,11 +223,15 @@ export function UsersPage() {
               });
             }}
           >
-            <Field label="Access role">
+            <Field
+              label="Access role"
+              hint="Club roles: student, organizer, treasurer, admin. College admin is campus-wide."
+            >
               <select name="accessRole" defaultValue={editing.accessRole}>
-                {(['member', 'organizer', 'treasurer', 'admin'] as Role[]).map((r) => (
-                  <option key={r} value={r}>
+                {(['member', 'organizer', 'treasurer', 'admin', 'college'] as Role[]).map((r) => (
+                  <option key={r} value={r} disabled={r === 'college'}>
                     {roleLabels[r]}
+                    {r === 'college' ? ' — campus grant only' : ''}
                   </option>
                 ))}
               </select>
@@ -242,10 +246,23 @@ export function UsersPage() {
             <Field label="Membership type">
               <select
                 name="memberRole"
-                defaultValue={editing.role === 'Volunteer' ? 'Volunteer' : 'Member'}
+                defaultValue={
+                  [
+                    'Member',
+                    'Volunteer',
+                    'Events lead',
+                    'Treasurer',
+                    'President',
+                  ].includes(editing.role)
+                    ? editing.role
+                    : 'Member'
+                }
               >
                 <option>Member</option>
                 <option>Volunteer</option>
+                <option>Events lead</option>
+                <option>Treasurer</option>
+                <option>President</option>
               </select>
             </Field>
             <Field label="Course">

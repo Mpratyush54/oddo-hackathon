@@ -11,6 +11,6 @@ export const userUpdateSchema = z.strictObject({
   status: z.enum(['Active', 'Pending', 'Expiring', 'Expired']),
   course: z.string().trim().min(1).max(120),
   expires: z.iso.date(),
-  memberRole: z.enum(['Member', 'Volunteer']),
+  memberRole: z.enum(['Member', 'Volunteer', 'Events lead', 'Treasurer', 'President']),
 });
 export const userRemoveSchema = z.strictObject({ userId: z.string().min(1).max(250) });

@@ -197,6 +197,28 @@ export function ContributionsPage() {
                         {promo.maxRedemptions != null ? `/${promo.maxRedemptions}` : ''} redeemed
                       </span>
                     </div>
+                    {can('manage_inventory') && (
+                      <div className="promo-ticket-actions">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            update((d) => ({
+                              ...d,
+                              promos: (d.promos || []).map((p) =>
+                                p.id === promo.id ? { ...p, active: !p.active } : p,
+                              ),
+                            }));
+                            toast(
+                              promo.active
+                                ? `${promo.code} revoked — it can no longer be used at checkout.`
+                                : `${promo.code} is active again.`,
+                            );
+                          }}
+                        >
+                          {promo.active ? 'Revoke' : 'Reactivate'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}
