@@ -552,12 +552,12 @@ async function auditRoute(browser, testCase, report) {
           if (aria && aria.trim()) return aria.trim();
           const labelledBy = element.getAttribute('aria-labelledby');
           if (labelledBy) {
-            const labelText = labelledBy.split(/\\s+/)
+            const labelText = labelledBy.split(/\s+/)
               .map((id) => document.getElementById(id))
               .filter(Boolean)
               .map((node) => node.innerText || node.textContent || '')
               .join(' ')
-              .replace(/\\s+/g, ' ')
+              .replace(/\s+/g, ' ')
               .trim();
             if (labelText) return labelText;
           }
@@ -565,18 +565,18 @@ async function auditRoute(browser, testCase, report) {
             const labelText = Array.from(element.labels)
               .map((node) => node.innerText || node.textContent || '')
               .join(' ')
-              .replace(/\\s+/g, ' ')
+              .replace(/\s+/g, ' ')
               .trim();
             if (labelText) return labelText;
           }
           const label = element.closest('label');
           if (label) {
             const labelText = (label.innerText || label.textContent || '')
-              .replace(/\\s+/g, ' ')
+              .replace(/\s+/g, ' ')
               .trim();
             if (labelText) return labelText;
           }
-          const text = (element.innerText || element.textContent || '').replace(/\\s+/g, ' ').trim();
+          const text = (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim();
           if (text) return text;
           return element.getAttribute('title') || element.getAttribute('alt') || element.getAttribute('placeholder') || '';
         });
