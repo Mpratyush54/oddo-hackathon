@@ -34,6 +34,8 @@ The `.github/workflows/deploy-aws.yml` workflow tests and builds pull requests. 
 
 AWS OIDC trusts only this repository's `main` branch. The role can read this stack's outputs, update this Lambda's code, and upload to the existing private artifact/frontend buckets. It has no direct secret-read, database-write or IAM permissions. AWS credentials are temporary; provider credentials and JWT keys remain in Secrets Manager. [GitHub's AWS OIDC guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
 
+This repository uses GitHub's immutable OIDC subject with owner/repository IDs. The setup script reads that setting and creates the corresponding exact AWS trust condition.
+
 The repository variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `AWS_STACK_NAME`, and `AWS_ARTIFACT_BUCKET` are already configured. The workflow pins official actions to verified commit hashes. Deployments run serially. Infrastructure changes and new club initialization use the local `npm run deploy:aws` command; automatic code deployments preserve existing accounts, memberships, secrets and receipts.
 
 `node scripts/setup-github-deploy.js` recreates or updates the OIDC role and repository variables using authorized local AWS and GitHub credentials.

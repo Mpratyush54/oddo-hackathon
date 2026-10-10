@@ -13,6 +13,17 @@ const cliEnv = {
   PYTHONUTF8: '1',
   PYTHONIOENCODING: 'utf-8',
 };
+const github = JSON.parse(execFileSync('gh', ['api', `repos/${repository}`], { encoding: 'utf8' }));
+const oidc = JSON.parse(
+  execFileSync('gh', ['api', `repos/${repository}/actions/oidc/customization/sub`], {
+    encoding: 'utf8',
+  }),
+);
+if (!oidc.use_default)
+  throw new Error('This setup requires the repository default OIDC subject format.');
+const subjectPrefix = oidc.use_immutable_subject
+  ? `repo:${github.owner.login}@${github.owner.id}/${github.name}@${github.id}`
+  : `repo:${github.full_name}`;
 function aws(args) {
   return JSON.parse(
     execFileSync('aws', [...args, '--region', region, '--output', 'json', '--no-cli-pager'], {
@@ -52,7 +63,7 @@ const trust = {
       Condition: {
         StringEquals: {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          'token.actions.githubusercontent.com:sub': `repo:${repository}:ref:refs/heads/${branch}`,
+          'token.actions.githubusercontent.com:sub': `${subjectPrefix}:ref:refs/heads/${branch}`,
         },
       },
     },
