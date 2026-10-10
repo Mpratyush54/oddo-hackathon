@@ -123,23 +123,94 @@
   font-size: 16px;
   min-height: 52px;
 }
-.login-role-summary {
+.auth-testimonial-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-top: 15px;
+  color: #e2ede5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-testimonial-card p {
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0;
+  color: #d6e8dc;
+}
+.auth-testimonial-card small {
+  font-size: 12px;
+  color: #a4c4af;
+  font-weight: 500;
+}
+.auth-persona-selector {
+  margin-bottom: 24px;
+}
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 12px;
+}
+.auth-role-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.auth-role-tile {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin: 20px 0 28px;
-  padding: 20px;
-  border: 1px solid #dfe7df;
-  border-radius: 16px;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1.5px solid #dce4da;
+  border-radius: 14px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
-.login-role-summary strong {
-  font-size: 16px;
+.auth-role-tile:hover {
+  border-color: #0f6b66;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(15, 107, 102, 0.08);
 }
-.login-role-summary p {
-  font-size: 14px;
-  margin-top: 6px;
-  line-height: 1.5;
-  color: #68766c;
+.auth-role-tile.selected {
+  border-color: #0f6b66;
+  background: #f2f8f5;
+  box-shadow: 0 0 0 1px #0f6b66;
+}
+.auth-role-tile-info {
+  flex: 1;
+}
+.auth-role-tile-info strong {
+  display: block;
+  font-size: 15px;
+  color: #1a3832;
+}
+.auth-role-tile-info small {
+  display: block;
+  font-size: 13px;
+  color: #63756b;
+  margin-top: 2px;
+}
+.auth-role-check {
+  color: #0f6b66;
+  display: flex;
+  align-items: center;
+}
+.auth-demo-credentials {
+  margin-bottom: 20px;
+}
+.auth-demo-credentials input {
+  background: #f7faf8 !important;
+  color: #4b6359 !important;
+  font-family: monospace;
+  font-size: 13px !important;
 }
 .streamlined-auth .login-demo-note {
   font-size: 14px;

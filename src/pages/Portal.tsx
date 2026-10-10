@@ -960,6 +960,26 @@ export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
           <em>Show up.</em>
         </h1>
         <p>Your events, tickets and community in one place.</p>
+        <div className="portal-auth-proof">
+          <div className="avatar-stack">
+            {['Alex Morgan', 'Priya Sharma', 'Jordan Lee', 'Aisha Patel'].map((n, i) => (
+              <Avatar key={n} name={n} index={i} small />
+            ))}
+          </div>
+          <div>
+            <strong>120+ active student leaders</strong>
+            <small style={{ display: 'block', color: '#9fb8a4', marginTop: '2px' }}>
+              Organizing events & managing clubs today
+            </small>
+          </div>
+        </div>
+        <div className="auth-testimonial-card">
+          <Icon name="Quote" size={18} />
+          <p>
+            "Skyline replaced three spreadsheets and an email list for our club. Everything just works."
+          </p>
+          <small>— Priya Sharma, Skyline Lead Organizer</small>
+        </div>
         <Link to="/events">← Keep exploring events</Link>
       </aside>
       <main>
@@ -968,7 +988,7 @@ export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
         <p>
           {returnTo
             ? 'Continue to your selected event or item after choosing a demo view.'
-            : 'Start with your student view. Club teams can choose their role below.'}
+            : 'Select your role or persona below to instantly experience the tailored workspace.'}
         </p>
         <form
           onSubmit={(event) => {
@@ -977,29 +997,60 @@ export function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
             navigate(selectedRole === 'college' ? '/app/college' : returnTo || '/app');
           }}
         >
-          <Field label="Choose a demo view">
-            <select
-              value={selectedRole}
-              onChange={(event) => setSelectedRole(event.target.value as typeof selectedRole)}
-            >
-              {roles.map((role) => (
-                <option key={role.role} value={role.role}>
-                  {role.title}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="login-role-summary">
-            <span className="icon-tile">
-              <Icon name={selected.icon} />
-            </span>
-            <div>
-              <strong>{selected.title}</strong>
-              <p>{selected.text}</p>
+          <div className="auth-persona-selector">
+            <label className="field-label">Select persona & role</label>
+            <div className="auth-role-grid" role="radiogroup" aria-label="Select demo role">
+              {roles.map((role) => {
+                const isSelected = selectedRole === role.role;
+                return (
+                  <button
+                    key={role.role}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`auth-role-tile ${isSelected ? 'selected' : ''}`}
+                    onClick={() => setSelectedRole(role.role)}
+                  >
+                    <span className="icon-tile">
+                      <Icon name={role.icon} />
+                    </span>
+                    <div className="auth-role-tile-info">
+                      <strong>{role.title}</strong>
+                      <small>{role.text}</small>
+                    </div>
+                    {isSelected && (
+                      <span className="auth-role-check">
+                        <Icon name="Check" size={16} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          <div className="auth-demo-credentials">
+            <Field label="Active Persona Email (Demo Mode)">
+              <input
+                type="text"
+                readOnly
+                value={
+                  selectedRole === 'member'
+                    ? 'alex@skyline.edu'
+                    : selectedRole === 'organizer'
+                      ? 'priya@skyline.edu'
+                      : selectedRole === 'treasurer'
+                        ? 'jordan@skyline.edu'
+                        : selectedRole === 'college'
+                          ? 'admin@campus.edu'
+                          : 'president@skyline.edu'
+                }
+              />
+            </Field>
+          </div>
+
           <Button type="submit" icon="ArrowRight" className="full-width">
-            Continue to workspace
+            Continue as {selected.title}
           </Button>
         </form>
         <p className="login-demo-note">
