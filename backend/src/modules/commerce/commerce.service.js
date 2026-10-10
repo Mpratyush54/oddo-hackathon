@@ -28,6 +28,8 @@ import { ClubActionService } from '../clubs/club-action.service.js';
 export class CommerceService extends ClubActionService {
   placeOrder(input) {
     input = parseRequest(orderRequestSchema, input);
+    if (this.data.products.find((product) => product.id === input.productId)?.delisted)
+      throw new HttpError(409, 'This product is no longer available.');
 
     const result = placeOrder(this.data, {
       productId: input.productId,

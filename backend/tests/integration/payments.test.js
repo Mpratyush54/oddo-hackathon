@@ -226,6 +226,17 @@ test('membership checkout only pays the current member and blocks direct simulat
   const { verify } = await f.start('membership.demo-dues', {});
   assert.equal((await f.service.verify(verify, user)).state.members[0].status, 'Active');
 });
+
+test('a product delisted during checkout is refunded rather than fulfilled', async () => {
+  const f = await fixture(),
+    { verify } = await f.start('orders', { productId: 'product', size: 'M', quantity: 1 });
+  const state = await f.repo.get(clubKey('skyline'), 'STATE');
+  state.data.products[0].delisted = true;
+  await f.repo.put(state);
+  assert.equal((await f.service.verify(verify, user)).status, 'Refunded');
+  assert.equal((await f.domain.load('skyline')).data.orders.length, 0);
+  assert.equal(f.refunds(), 1);
+});
 test('lost browser callback recovers through status; last-seat race refunds the loser once', async () => {
   const f = await fixture();
   const first = await f.start(),
