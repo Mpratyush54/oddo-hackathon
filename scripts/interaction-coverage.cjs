@@ -118,6 +118,10 @@ async function nameOf(locator) {
       const value = ids.split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ');
       if (value) return value;
     }
+    const nativeLabel = el.labels && [...el.labels].map((label) => label.textContent.trim()).filter(Boolean).join(' ');
+    if (nativeLabel) return nativeLabel;
+    const wrappingLabel = el.closest('label')?.textContent?.trim();
+    if (wrappingLabel) return wrappingLabel.replace(/\s+/g, ' ');
     return (el.getAttribute('title') || '').trim() || (el.value || '').trim() ||
       (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
   });
@@ -250,7 +254,7 @@ async function inspectRoute(browser, route, role, report) {
   } finally { await context.close(); }
 }
 async function clickButton(browser, route, role, steps, report) {
-  const result = { route, role, path: steps.map((step) => step.name), name: steps[steps.length - 1].name, status: 'pending' };
+  const result = { route, role, index: steps[steps.length - 1].index, elementTag: steps[steps.length - 1].tag, path: steps.map((step) => step.name), name: steps[steps.length - 1].name, status: 'pending' };
   const errors = [], dialogs = [];
   const { context, page } = await newPage(browser, role, errors, dialogs);
   try {
@@ -526,13 +530,13 @@ async function main() {
           if (completed.has(key)) continue;
           completed.add(key);
           const outcome = await clickButton(browser, routeCase.path, role, item.steps, report);
-          if (item.steps.length === 1 && outcome.revealedControls?.length) {
+          if (outcome.revealedControls?.length) {
             for (const child of outcome.revealedControls) {
-              const names = [item.names[0], child.name];
+              const names = item.names.concat(child.name);
               const childKey = role + '|' + routeCase.path + '|' + names.join(' -> ');
               if (completed.has(childKey) || queue.some((qItem) => qItem.names.join(' -> ') === names.join(' -> '))) continue;
               queue.push({
-                steps: [item.steps[0], { index: child.index, name: child.name, tag: child.tag }],
+                steps: item.steps.concat({ index: child.index, name: child.name, tag: child.tag }),
                 names,
               });
             }
@@ -571,6 +575,15 @@ async function main() {
     routeRoleVisits: report.routes.length,
     initialVisibleButtons: report.routes.reduce((sum, item) => sum + item.visibleButtonCount, 0),
     buttonScenarios: report.buttons.length,
+    initialButtonsCovered: report.routes.reduce((sum, route) => {
+      const matched = report.buttons.filter((item) =>
+        item.role === route.role &&
+        item.route === route.requestedRoute &&
+        Number.isInteger(item.index) &&
+        item.path.length === 1
+      );
+      return sum + new Set(matched.map((item) => item.index)).size;
+    }, 0),
     buttonsClicked: count(report.buttons, 'clicked'),
     disabledStateCovered: count(report.buttons, 'disabled-state-covered'),
     providerButtonsSafetySkipped: count(report.buttons, 'safety-skipped'),
