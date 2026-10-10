@@ -459,6 +459,9 @@
             "$ref": "#/$defs/promo"
           }
         },
+        "pointRules": {
+          "$ref": "#/$defs/pointRules"
+        },
         "eventReviews": {
           "type": "array",
           "items": {
@@ -1360,6 +1363,9 @@
         },
         "description": {
           "$ref": "#/$defs/__schema8"
+        },
+        "productId": {
+          "$ref": "#/$defs/__schema0"
         }
       },
       "required": [
@@ -1369,6 +1375,43 @@
         "value",
         "active",
         "redemptions"
+      ],
+      "additionalProperties": false
+    },
+    "pointRules": {
+      "type": "object",
+      "properties": {
+        "checkInEnabled": {
+          "type": "boolean"
+        },
+        "checkInPoints": {
+          "maximum": 500,
+          "$ref": "#/$defs/__schema4"
+        },
+        "merchEnabled": {
+          "type": "boolean"
+        },
+        "merchRupeesPerPoint": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "$ref": "#/$defs/__schema4"
+        },
+        "taskEnabled": {
+          "type": "boolean"
+        },
+        "taskDonePoints": {
+          "maximum": 500,
+          "$ref": "#/$defs/__schema4"
+        }
+      },
+      "required": [
+        "checkInEnabled",
+        "checkInPoints",
+        "merchEnabled",
+        "merchRupeesPerPoint",
+        "taskEnabled",
+        "taskDonePoints"
       ],
       "additionalProperties": false
     },
