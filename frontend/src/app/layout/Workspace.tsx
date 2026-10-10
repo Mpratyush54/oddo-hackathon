@@ -127,7 +127,9 @@ export default function Workspace() {
           { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
         ];
   const myNav =
-    role === 'college' ? [] : personal.filter((n) => !n.permission || can(n.permission));
+    role === 'college'
+      ? [{ to: '/app/settings', label: 'Account settings', icon: 'Settings2' }]
+      : personal.filter((n) => !n.permission || can(n.permission));
   const tools =
     role === 'college'
       ? []
@@ -300,17 +302,6 @@ export default function Workspace() {
           )}
         </div>
         <div className="sidebar-fixed-bottom">
-          <NavLink
-            to="/app/settings"
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <Icon name="Settings2" />
-            <span>Account settings</span>
-          </NavLink>
-          <Link to="/" className="nav-item">
-            <Icon name="ArrowUpRight" />
-            <span>Public website</span>
-          </Link>
           <div className="sidebar-footer">
             <span className="live-dot" />
             {cloudMode
