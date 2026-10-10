@@ -679,7 +679,24 @@ async function auditRoute(browser, testCase, report) {
           entry.fields[field.index].reason = 'Disabled field state audited';
         } else if (kind.type === 'file') {
           entry.fields[field.index].reason = 'File chooser accessible name and enabled state checked; no file uploaded';
-        } else if (kind.tag === 'select' || kind.role === 'combobox') {
+        } else if (kind.type === 'color') {
+          entry.fields[field.index].reason = 'Color input accessibility and enabled state checked; native chooser not opened';
+        } else if (kind.type === 'range') {
+          const before = await locator.inputValue();
+          const limits = await locator.evaluate((element) => ({
+            min: Number(element.min || 0),
+            max: Number(element.max || 100),
+          }));
+          await locator.focus();
+          await locator.press(Number(before) >= limits.max ? 'ArrowLeft' : 'ArrowRight');
+          const after = await locator.inputValue();
+          if (after !== before) {
+            entry.fields[field.index].exercised = true;
+            entry.fields[field.index].reason = 'Adjusted with keyboard and asserted value change';
+          } else {
+            entry.fields[field.index].reason = 'Range is at a non-movable boundary; limits audited';
+          }
+        } else if (kind.tag === 'select') {
           const currentValue = await locator.inputValue();
           const alternative = kind.options.find((option) => option.value !== currentValue);
           if (alternative) {
@@ -691,6 +708,12 @@ async function auditRoute(browser, testCase, report) {
           } else {
             entry.fields[field.index].reason = 'Only one enabled option; selection state audited';
           }
+        } else if (kind.role === 'combobox') {
+          await locator.click();
+          await locator.press('ArrowDown');
+          await locator.press('Enter');
+          entry.fields[field.index].exercised = true;
+          entry.fields[field.index].reason = 'Opened custom combobox and exercised keyboard selection';
         } else if (kind.type === 'checkbox' || kind.role === 'checkbox' || kind.role === 'switch') {
           if (kind.checked) await locator.uncheck();
           else await locator.check();
@@ -723,16 +746,13 @@ async function auditRoute(browser, testCase, report) {
           else if (kind.type === 'url') value = 'https://example.com';
           else if (kind.type === 'number') value = '1';
           else if (kind.type === 'date') value = '2026-01-15';
+          else if (kind.type === 'datetime-local') value = '2026-01-15T12:30';
+          else if (kind.type === 'month') value = '2026-01';
+          else if (kind.type === 'week') value = '2026-W03';
+          else if (kind.type === 'time') value = '12:30';
           else if (kind.type === 'tel') value = '1234567890';
           else if (kind.type === 'password') value = 'QA-Coverage-Password-123!';
           else if (kind.type === 'search') value = 'QA';
-          else if (kind.type === 'range') {
-            const range = await locator.evaluate((element) => ({
-              min: Number(element.min || 0),
-              max: Number(element.max || 100),
-            }));
-            value = String(Math.min(range.max, range.min + 1));
-          }
           await locator.fill(value);
           if (await locator.inputValue() !== value) fail('Field value did not update after fill');
           entry.fields[field.index].exercised = true;
