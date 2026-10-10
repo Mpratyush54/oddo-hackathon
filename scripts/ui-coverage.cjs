@@ -340,9 +340,9 @@ function classifyButton(button) {
   if (button.disabled) return { classification: 'disabled-state', click: false, reason: 'Disabled control' };
   if (button.type === 'submit' || SIDE_EFFECT_ACTION.test(button.name)) {
     return {
-      classification: 'dedicated-workflow-required',
-      click: false,
-      reason: 'Submit, destructive, business-data, or provider action is exercised only in an isolated workflow test',
+      classification: 'isolated-action-probe',
+      click: true,
+      reason: 'Clicked in a fresh local demo context; outbound and provider endpoints are blocked',
     };
   }
 
@@ -527,68 +527,85 @@ async function auditRoute(browser, testCase, report) {
       .map((item) => item.index);
 
     for (const index of safeIndexes) {
-      await visit(page, testCase.route);
-      const liveButtons = page.locator('button, [role="button"]');
-      const count = await liveButtons.count();
-      const domIndex = snapshot.buttons[index].domIndex;
-      if (domIndex >= count) {
-        entry.issues.push('Button DOM index ' + domIndex + ' disappeared after route reset');
-        continue;
-      }
-
-      const button = liveButtons.nth(domIndex);
-      const liveName = await button.evaluate((element) => {
-        const aria = element.getAttribute('aria-label');
-        if (aria && aria.trim()) return aria.trim();
-
-        const labelledBy = element.getAttribute('aria-labelledby');
-        if (labelledBy) {
-          const text = labelledBy.split(/\s+/)
-            .map((id) => document.getElementById(id))
-            .filter(Boolean)
-            .map((node) => node.innerText || node.textContent || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (text) return text;
+      const probeContext = await buildContext(browser, testCase.role);
+      const probePage = await probeContext.newPage();
+      const probeErrors = [];
+      probePage.on('pageerror', (error) => probeErrors.push(error.message));
+      try {
+        await visit(probePage, testCase.route);
+        const liveButtons = probePage.locator('button, [role="button"]');
+        const count = await liveButtons.count();
+        const domIndex = snapshot.buttons[index].domIndex;
+        if (domIndex >= count) {
+          entry.issues.push('Button DOM index ' + domIndex + ' disappeared after fresh route load');
+          continue;
         }
 
-        if (element.labels && element.labels.length) {
-          const text = Array.from(element.labels)
-            .map((node) => node.innerText || node.textContent || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (text) return text;
+        const button = liveButtons.nth(domIndex);
+        if (!(await button.isVisible())) {
+          entry.issues.push('Button "' + snapshot.buttons[index].name + '" is not visible in fresh route state');
+          continue;
         }
 
-        const label = element.closest('label');
-        if (label) {
-          const text = (label.innerText || label.textContent || '').replace(/\s+/g, ' ').trim();
+        const liveName = await button.evaluate((element) => {
+          const aria = element.getAttribute('aria-label');
+          if (aria && aria.trim()) return aria.trim();
+          const labelledBy = element.getAttribute('aria-labelledby');
+          if (labelledBy) {
+            const labelText = labelledBy.split(/\\s+/)
+              .map((id) => document.getElementById(id))
+              .filter(Boolean)
+              .map((node) => node.innerText || node.textContent || '')
+              .join(' ')
+              .replace(/\\s+/g, ' ')
+              .trim();
+            if (labelText) return labelText;
+          }
+          if (element.labels && element.labels.length) {
+            const labelText = Array.from(element.labels)
+              .map((node) => node.innerText || node.textContent || '')
+              .join(' ')
+              .replace(/\\s+/g, ' ')
+              .trim();
+            if (labelText) return labelText;
+          }
+          const label = element.closest('label');
+          if (label) {
+            const labelText = (label.innerText || label.textContent || '')
+              .replace(/\\s+/g, ' ')
+              .trim();
+            if (labelText) return labelText;
+          }
+          const text = (element.innerText || element.textContent || '').replace(/\\s+/g, ' ').trim();
           if (text) return text;
+          return element.getAttribute('title') || element.getAttribute('alt') || element.getAttribute('placeholder') || '';
+        });
+        const expectedName = snapshot.buttons[index].name;
+        if (liveName !== expectedName) {
+          entry.issues.push(
+            'Control order changed at button #' + index +
+            ' (expected "' + expectedName + '", received "' + liveName + '")',
+          );
+          continue;
         }
 
-        const text = (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim();
-        if (text) return text;
-        return element.getAttribute('title') || element.getAttribute('alt') || element.getAttribute('placeholder') || '';
-      });
-      const expectedName = snapshot.buttons[index].name;
-      if (liveName !== expectedName) {
+        const errorsBeforeClick = probeErrors.length;
+        await button.click({ timeout: 3000 });
+        await probePage.waitForTimeout(80);
+        entry.buttons[index].exercised = true;
+        entry.buttons[index].reason = entry.buttons[index].reason || 'Clicked in isolated local demo context';
+        if (probeErrors.length > errorsBeforeClick) {
+          entry.issues.push(
+            'Clicking "' + expectedName + '" raised: ' + probeErrors.slice(errorsBeforeClick).join(' | '),
+          );
+        }
+      } catch (error) {
         entry.issues.push(
-          'Control order changed on reset at button #' + index +
-          ' (expected "' + expectedName + '", received "' + liveName + '")',
+          'Button "' + snapshot.buttons[index].name + '" probe failed: ' +
+          (error && error.message ? error.message : String(error)),
         );
-        continue;
-      }
-
-      const errorsBeforeClick = pageErrors.length;
-      await button.click({ timeout: 3000 });
-      await page.waitForTimeout(80);
-      entry.buttons[index].exercised = true;
-      if (pageErrors.length > errorsBeforeClick) {
-        entry.issues.push(
-          'Clicking "' + expectedName + '" raised: ' + pageErrors.slice(errorsBeforeClick).join(' | '),
-        );
+      } finally {
+        await probeContext.close();
       }
     }
 
