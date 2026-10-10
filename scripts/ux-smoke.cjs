@@ -1,7 +1,5 @@
 const assert = require('node:assert/strict');
-const {
-  chromium,
-} = require('C:/Users/Pratyush Mishra/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async () => {
   const b = await chromium.launch();
   const context = await b.newContext({
