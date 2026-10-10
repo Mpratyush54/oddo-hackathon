@@ -510,49 +510,52 @@ export function makeClub(id: string): Store {
     phone: i < 6 ? `+9198000010${String(i).padStart(2, '0')}` : undefined,
     whatsappOptIn: i < 5,
   }));
-  if (id === 'skyline') {
-    const names = [
-      'Zara Khan',
-      'Liam Cooper',
-      'Isha Gupta',
-      'Dev Kumar',
-      'Sophie Martin',
-      'Kabir Singh',
-      'Grace Thomas',
-      'Rohan Das',
-      'Ananya Roy',
-      'Lucas Clark',
-      'Nisha Rao',
-      'Leo Walker',
-      'Sara Ali',
-      'Vihaan Shah',
-      'Chloe Evans',
-      'Aditya Jain',
-      'Mia Roberts',
-      'Aryan Kapoor',
-      'Isabel Hall',
-      'Neil Bose',
-      'Riya Sen',
-      'Oscar Green',
-      'Tara Nair',
-      'Henry Scott',
-      'Meera Iyer',
-      'Finn Adams',
-      'Diya Verma',
-      'Ben Harris',
+  const targetMembers = 200;
+  const extraNeeded = targetMembers - club.members.length;
+  if (extraNeeded > 0) {
+    const firstNames = [
+      'Aarav', 'Aditi', 'Aisha', 'Amit', 'Ananya', 'Anika', 'Arjun', 'Aryan',
+      'Devika', 'Farhan', 'Gautam', 'Isha', 'Ishita', 'Kabir', 'Kavya', 'Krishna',
+      'Lakshya', 'Maya', 'Meera', 'Mira', 'Nadia', 'Neel', 'Nikhil', 'Nisha',
+      'Om', 'Pallavi', 'Pranav', 'Priya', 'Rahul', 'Raj', 'Riya', 'Rohan',
+      'Sahil', 'Sana', 'Sara', 'Shruti', 'Siddharth', 'Simran', 'Tanvi', 'Tara',
+      'Uday', 'Vaani', 'Veer', 'Vikram', 'Vihaan', 'Yash', 'Zara', 'Zoya',
     ];
+    const lastNames = [
+      'Sharma', 'Patel', 'Kumar', 'Singh', 'Gupta', 'Iyer', 'Nair', 'Das',
+      'Bose', 'Jain', 'Mehta', 'Rao', 'Shah', 'Verma', 'Chopra', 'Malhotra',
+      'Kapoor', 'Desai', 'Ganesh', 'Pillai',
+    ];
+    const courses = [
+      'Computer Science',
+      'Economics',
+      'Media Studies',
+      'Architecture',
+      'Mechanical Engineering',
+      'Psychology',
+      'Business Administration',
+      'Visual Communication',
+    ];
+    const domain = id === 'codecraft' ? 'codecraft.edu' : id === 'canvas' ? 'canvas.edu' : 'skyline.edu';
+    const offset = id === 'codecraft' ? 17 : id === 'canvas' ? 34 : 0;
     club.members.push(
-      ...names.map((name, i): Member => ({
-        id: `MEM-${String(i + 13).padStart(3, '0')}`,
-        name,
-        email: `${name.split(' ')[0].toLowerCase()}@skyline.edu`,
-        course: ['Computer Science', 'Economics', 'Media Studies', 'Architecture'][i % 4],
-        status: i % 8 === 0 ? 'Pending' : 'Active',
-        role: 'Volunteer',
-        joined: `2026-09-${String(i + 1).padStart(2, '0')}`,
-        expires: '2027-07-31',
-        whatsappOptIn: false,
-      })),
+      ...Array.from({ length: extraNeeded }, (_, i): Member => {
+        const fn = firstNames[(i + offset) % firstNames.length];
+        const ln = lastNames[Math.floor((i + offset) / firstNames.length) % lastNames.length];
+        const name = `${fn} ${ln}`;
+        const num = club.members.length + 1;
+        return {
+          id: `MEM-${String(num).padStart(3, '0')}`,
+          name,
+          email: `${fn.toLowerCase()}.${ln.toLowerCase()}@${domain}`,
+          course: courses[i % courses.length],
+          status: i % 10 === 0 ? 'Pending' : i % 15 === 0 ? 'Expiring' : 'Active',
+          role: i % 5 === 0 ? 'Volunteer' : 'Member',
+          joined: `2026-${String((i % 9) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
+          expires: '2027-07-31',
+          whatsappOptIn: i % 3 === 0,
+        };
+      }),
     );
   }
   const counts =
