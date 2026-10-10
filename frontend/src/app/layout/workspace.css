@@ -210,56 +210,6 @@
 .account-popover > button:hover {
   background: var(--primary-50, #e5f1ed);
 }
-.account-theme-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  margin: 6px 0;
-  border-radius: 9px;
-  background: var(--primary-50, #eef5f1);
-  border: 1px solid var(--border, #e2e9e4);
-  color: var(--text-strong, #183c35);
-}
-.account-theme-info {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 14px;
-  color: var(--text-strong, #183c35);
-}
-.account-theme-info svg {
-  color: var(--primary, #0f6b66);
-}
-.theme-pill-toggle {
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  background: #cbd5e1;
-  border: 0;
-  padding: 2px;
-  cursor: pointer;
-  position: relative;
-  transition: background-color 0.2s ease;
-  display: flex;
-  align-items: center;
-}
-.theme-pill-toggle.is-dark {
-  background: var(--primary, #10b981);
-}
-.theme-pill-knob {
-  display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateX(0);
-}
-.theme-pill-toggle.is-dark .theme-pill-knob {
-  transform: translateX(20px);
-}
 .persona-section {
   border-top: 1px solid var(--border, #e2e9e4);
   border-bottom: 1px solid var(--border, #e2e9e4);
@@ -409,41 +359,6 @@
 .workspace-v2 .topbar {
   position: sticky;
   top: 0;
-}
-.theme-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.theme-toggle-btn.shift-to-dark {
-  background: #0f1715;
-  border: 1.5px solid #2b3e39;
-  color: #10b981;
-}
-.theme-toggle-btn.shift-to-dark:hover {
-  background: #142320;
-  border-color: #10b981;
-  color: #34d399;
-  transform: scale(1.1);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
-}
-.theme-toggle-btn.shift-to-light {
-  background: #f4f7f5;
-  border: 1.5px solid #dce5df;
-  color: #0f6b66;
-}
-.theme-toggle-btn.shift-to-light:hover {
-  background: #ffffff;
-  border-color: #0f6b66;
-  color: #eab308;
-  transform: scale(1.1);
-  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35);
 }
 .access-state {
   text-align: center;
