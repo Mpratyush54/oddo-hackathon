@@ -322,8 +322,8 @@ async function clickButtonPath(browser, route, role, steps, report) {
   try {
     await page.goto(testUrl(route, role), { waitUntil: 'domcontentloaded' });
     await waitReady(page);
-    let previousUrl = page.url();
-    let previousText = await page.locator('body').innerText();
+    const initialUrl = page.url();
+    const initialText = await page.locator('body').innerText();
     let finalControls = [];
     let downloadObserved = false;
     for (const step of steps) {
@@ -352,25 +352,26 @@ async function clickButtonPath(browser, route, role, steps, report) {
       const text = await page.locator('body').innerText().catch(() => '');
       if (!text.trim()) throw new Error('Click left the page blank.');
       finalControls = await listControls(page);
-      previousUrl = page.url();
-      previousText = text;
     }
     const nowUrl = page.url();
+    const finalText = await page.locator('body').innerText().catch(() => '');
     const modalCount = await page.locator('[role="dialog"], dialog, [aria-modal="true"]').count();
     record.status = 'clicked';
     record.resultUrl = nowUrl;
     record.downloadObserved = downloadObserved;
     record.nativeDialogsDismissed = dialogs;
-    if (new URL(nowUrl).pathname !== new URL(testUrl(route, role)).pathname) {
+    if (new URL(nowUrl).pathname !== new URL(initialUrl).pathname) {
       record.effect = 'route-change';
     } else if (modalCount > 0) {
       record.effect = 'dialog-present';
     } else if (downloadObserved) {
       record.effect = 'download';
-    } else if (previousText !== '') {
-      record.effect = 'click-completed';
+    } else if (finalText !== initialText) {
+      record.effect = 'visible-content-change';
+    } else {
+      record.effect = 'no-visible-change';
       record.reviewRequired = true;
-      record.detail = 'Click executed; verify the specific business outcome with a focused test.';
+      record.detail = 'Click was executed, but no visible effect was detected; add a focused assertion or document an intentional no-op.';
       report.warnings.push({ type: 'specific-outcome-required', route, role, control: record.path.join(' -> '), detail: record.detail });
     }
     record.revealedControls = [];
@@ -536,6 +537,261 @@ async function auditTableRowActions(browser, route, role, report) {
     await context.close().catch(() => {});
   }
 }
+
+async function findReactClickSurfaces(page) {
+  return page.evaluate(() => {
+    const semantic = 'button, a[href], input[type="button"], input[type="submit"], input[type="reset"], summary, [role="button"], [role="tab"], [role="menuitem"]';
+    const visible = (el) => {
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const nameOf = (el) => {
+      const label = el.getAttribute('aria-label') || el.getAttribute('title');
+      if (label && label.trim()) return label.trim();
+      const labelledBy = el.getAttribute('aria-labelledby');
+      if (labelledBy) {
+        const value = labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ');
+        if (value) return value;
+      }
+      return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    };
+    const found = [];
+    for (const el of document.querySelectorAll('body *')) {
+      if (!visible(el) || el.matches(semantic) || el.closest(semantic)) continue;
+      const propKey = Object.keys(el).find((key) => key.startsWith('__reactProps
+  const result = { route, role, name: link.name, href: link.href, status: 'pending' };
+  let url;
+  try { url = new URL(link.href, BASE_URL); } catch {}
+  if (!url || !link.href || url.protocol === 'javascript:') {
+    result.status = 'failed';
+    result.detail = 'Missing or invalid link target.';
+    report.failures.push({ type: 'link-target', route, role, name: link.name, detail: result.detail });
+    return result;
+  }
+  if (!link.name) {
+    result.status = 'failed';
+    result.detail = 'Link has no accessible name.';
+    report.failures.push({ type: 'link-name', route, role, detail: link.href + ' has no accessible name.' });
+    return result;
+  }
+  if (!isLocalInternalLink(link.href) || ['mailto:', 'tel:'].includes(url.protocol) || link.target === '_blank' || link.download !== null) {
+    result.status = 'safety-skipped';
+    result.detail = 'External, download, new-tab, email or telephone link was inventoried but not activated.';
+    return result;
+  }
+  if (!CLICK_LINKS) {
+    result.status = 'destination-validated';
+    return result;
+  }
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(testUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await waitReady(page);
+    const links = page.locator(LINKS);
+    if (link.index >= await links.count()) throw new Error('Link index not found on a clean route load.');
+    const el = links.nth(link.index);
+    if (await el.evaluate((node) => node.href || '') !== link.href || await accessibleName(el) !== link.name) {
+      throw new Error('Link identity changed between inventory and execution.');
+    }
+    await el.click({ timeout: TIMEOUT });
+    await page.waitForTimeout(100);
+    if (errors.length) throw new Error('Browser error: ' + errors.join(' | '));
+    if (!(await page.locator('body').innerText()).trim()) throw new Error('Link click left a blank page.');
+    result.status = 'clicked';
+    result.resultUrl = page.url();
+  } catch (error) {
+    result.status = 'failed';
+    result.detail = error instanceof Error ? error.message : String(error);
+    report.failures.push({ type: 'link-click', route, role, name: link.name, detail: result.detail });
+  } finally {
+    await context.close().catch(() => {});
+  }
+  return result;
+}
+async function main() {
+  const hostname = new URL(BASE_URL).hostname;
+  if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+    throw new Error('Safety stop: this audit only runs against localhost. Do not point it at production or shared staging.');
+  }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const report = {
+    repository: 'Mpratyush54/oddo-hackathon',
+    baseUrl: BASE_URL,
+    environment: 'LOCAL DEMO ONLY',
+    startedAt: new Date().toISOString(),
+    routes: [], buttons: [], links: [], fields: [], tableActions: [], customClickSurfaces: [], failures: [], warnings: [], summary: {},
+  };
+  const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
+  try {
+    const cases = PUBLIC_ROUTES.map((route) => ({ path: route, roles: ['member'] })).concat(ROUTES_BY_ROLE);
+    for (const routeCase of cases) {
+      for (const role of routeCase.roles) {
+        const inventory = await inspectRoute(browser, routeCase.path, role, report);
+        await auditFormFields(browser, routeCase.path, role, report);
+        await auditTableRowActions(browser, routeCase.path, role, report);
+        const surfaceErrors = [], surfaceDialogs = [];
+        const surfaceContext = await newPage(browser, role, surfaceErrors, surfaceDialogs);
+        let surfaces = [];
+        try {
+          await surfaceContext.page.goto(testUrl(routeCase.path, role), { waitUntil: 'domcontentloaded' });
+          await waitReady(surfaceContext.page);
+          surfaces = await findReactClickSurfaces(surfaceContext.page);
+        } finally {
+          await surfaceContext.context.close().catch(() => {});
+        }
+        for (const surface of surfaces) {
+          report.customClickSurfaces.push(await clickReactSurface(browser, routeCase.path, role, surface, report));
+        }
+        const queue = inventory.controls.map((control) => ({
+          steps: [{ index: control.index, name: control.name, tag: control.tag }],
+          keyParts: [control.index + ':' + control.name],
+        }));
+        const attempted = new Set();
+        for (let cursor = 0; cursor < queue.length; cursor++) {
+          const item = queue[cursor];
+          const key = role + '|' + routeCase.path + '|' + item.keyParts.join(' -> ');
+          if (attempted.has(key)) continue;
+          attempted.add(key);
+          const outcome = await clickButtonPath(browser, routeCase.path, role, item.steps, report);
+          report.buttons.push(outcome);
+          for (const child of outcome.revealedControls || []) {
+            const childParts = item.keyParts.concat(child.index + ':' + child.name);
+            const childKey = role + '|' + routeCase.path + '|' + childParts.join(' -> ');
+            if (attempted.has(childKey) || queue.some((entry) => entry.keyParts.join(' -> ') === childParts.join(' -> '))) continue;
+            queue.push({
+              steps: item.steps.concat({ index: child.index, name: child.name, tag: child.tag }),
+              keyParts: childParts,
+            });
+          }
+        }
+        for (const link of inventory.links) report.links.push(await clickLink(browser, routeCase.path, role, link, report));
+      }
+    }
+    for (const probe of FORBIDDEN_ROUTE_PROBES) {
+      const errors = [], dialogs = [];
+      const { context, page } = await newPage(browser, probe.role, errors, dialogs);
+      try {
+        await page.goto(testUrl(probe.path, probe.role), { waitUntil: 'domcontentloaded' });
+        await waitReady(page);
+        const current = new URL(page.url());
+        const isBlocked = current.pathname.indexOf('/login') >= 0 ||
+          await page.getByRole('heading', { name: /responsibility|not authorized|access denied|administrator/i }).count() > 0;
+        if (!isBlocked) report.failures.push({
+          type: 'role-route-guard',
+          route: probe.path, role: probe.role,
+          detail: 'Role "' + probe.role + '" was not clearly blocked from ' + probe.path + '. Final URL: ' + current.pathname,
+        });
+      } catch (error) {
+        report.failures.push({ type: 'role-route-guard', route: probe.path, role: probe.role, detail: error instanceof Error ? error.message : String(error) });
+      } finally {
+        await context.close().catch(() => {});
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+  const count = (items, status) => items.filter((item) => item.status === status).length;
+  report.finishedAt = new Date().toISOString();
+  report.summary = {
+    routeRoleVisits: report.routes.length,
+    visibleButtonsInventoried: report.routes.reduce((sum, route) => sum + route.buttonCount, 0),
+    buttonScenarios: report.buttons.length,
+    buttonsClicked: count(report.buttons, 'clicked'),
+    disabledButtonsCovered: count(report.buttons, 'disabled-state-covered'),
+    buttonsSafetySkipped: count(report.buttons, 'safety-skipped'),
+    buttonFailures: count(report.buttons, 'failed'),
+    customClickSurfacesInventoried: report.customClickSurfaces.length,
+    customClickSurfacesClicked: count(report.customClickSurfaces, 'clicked'),
+    customClickSurfaceFailures: count(report.customClickSurfaces, 'failed'),
+    fieldsInventoried: report.fields.length,
+    fieldsInteracted: count(report.fields, 'interacted'),
+    fieldStateCovered: count(report.fields, 'state-covered') + count(report.fields, 'metadata-covered') + count(report.fields, 'focus-covered'),
+    fieldFailures: count(report.fields, 'failed'),
+    tablesAudited: report.routes.reduce((sum, route) => sum + route.tableCount, 0),
+    tableRoutesInspected: report.tableActions.length,
+    tableRowsInspected: report.tableActions.reduce((sum, table) => sum + table.rows.length, 0),
+    linksInventoried: report.links.length,
+    linksClicked: count(report.links, 'clicked'),
+    linksSafetySkipped: count(report.links, 'safety-skipped'),
+    linkFailures: count(report.links, 'failed'),
+    failures: report.failures.length,
+    warnings: report.warnings.length,
+  };
+  fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
+  console.log(JSON.stringify({ report: REPORT_PATH, summary: report.summary }, null, 2));
+  if (report.failures.length) {
+    console.error('Interaction coverage found ' + report.failures.length + ' failure(s). Inspect ' + REPORT_PATH + '.');
+    process.exitCode = 1;
+  }
+}
+main().catch((error) => { console.error(error); process.exitCode = 1; });
+) && typeof el[key]?.onClick === 'function');
+      if (!propKey) continue;
+      const name = nameOf(el);
+      if (!name) continue;
+      const index = found.length;
+      el.setAttribute('data-qa-react-surface', String(index));
+      found.push({
+        index,
+        name,
+        tag: el.tagName.toLowerCase(),
+        role: el.getAttribute('role') || '',
+        className: typeof el.className === 'string' ? el.className.slice(0, 100) : '',
+      });
+    }
+    return found;
+  });
+}
+async function clickReactSurface(browser, route, role, surface, report) {
+  const result = { route, role, name: surface.name, index: surface.index, tag: surface.tag, status: 'pending' };
+  const safety = skipReason(surface.name);
+  if (safety) {
+    result.status = 'safety-skipped';
+    result.detail = safety;
+    return result;
+  }
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(testUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await waitReady(page);
+    const candidates = await findReactClickSurfaces(page);
+    const candidate = candidates.find((item) => item.index === surface.index);
+    if (!candidate || candidate.name !== surface.name || candidate.tag !== surface.tag) {
+      throw new Error('Custom React click target changed between inventory and execution.');
+    }
+    const target = page.locator('[data-qa-react-surface="' + surface.index + '"]');
+    const initialUrl = page.url();
+    const initialText = await page.locator('body').innerText();
+    await target.click({ timeout: TIMEOUT });
+    await page.waitForTimeout(100);
+    const finalText = await page.locator('body').innerText().catch(() => '');
+    if (errors.length) throw new Error('Browser error: ' + errors.join(' | '));
+    if (!finalText.trim()) throw new Error('Click left the page blank.');
+    result.status = 'clicked';
+    result.resultUrl = page.url();
+    result.effect = new URL(result.resultUrl).pathname !== new URL(initialUrl).pathname
+      ? 'route-change'
+      : (await page.locator('[role="dialog"], dialog, [aria-modal="true"]').count()) > 0
+        ? 'dialog-present'
+        : finalText !== initialText ? 'visible-content-change' : 'no-visible-change';
+    if (result.effect === 'no-visible-change') {
+      result.reviewRequired = true;
+      result.detail = 'Custom click executed with no detectable visual effect; verify intended behavior with a focused test.';
+      report.warnings.push({ type: 'custom-click-effect-unverified', route, role, control: surface.name, detail: result.detail });
+    }
+  } catch (error) {
+    result.status = 'failed';
+    result.detail = error instanceof Error ? error.message : String(error);
+    report.failures.push({ type: 'custom-react-click', route, role, control: surface.name, detail: result.detail });
+  } finally {
+    await context.close().catch(() => {});
+  }
+  return result;
+}
+
 async function clickLink(browser, route, role, link, report) {
   const result = { route, role, name: link.name, href: link.href, status: 'pending' };
   let url;
