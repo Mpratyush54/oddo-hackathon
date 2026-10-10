@@ -142,6 +142,15 @@ export const promoSchema = z.strictObject({
   minSubtotal: nonnegative.optional(),
   expires: date.optional(),
   description: text.optional(),
+  productId: id.optional(),
+});
+export const pointRulesSchema = z.strictObject({
+  checkInEnabled: z.boolean(),
+  checkInPoints: count.max(500),
+  merchEnabled: z.boolean(),
+  merchRupeesPerPoint: count.min(1).max(10000),
+  taskEnabled: z.boolean(),
+  taskDonePoints: count.max(500),
 });
 export const pointSchema = z.strictObject({
   id,
@@ -241,6 +250,7 @@ export const clubDataSchema = z.strictObject({
   waitlist: z.array(waitlistSchema),
   pointLedger: z.array(pointSchema),
   promos: z.array(promoSchema),
+  pointRules: pointRulesSchema.optional(),
   eventReviews: z.array(reviewSchema).optional(),
   profile: z.object({ name: text, email: text, role: text }).optional(),
   preferences: preferences.optional(),

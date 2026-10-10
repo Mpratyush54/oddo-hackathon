@@ -14,19 +14,32 @@ import { formValues } from '../../../shared/ui/formValues';
 import { clubRequest } from '../../commerce/api/commerce.api';
 import { date, money, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
-import type { PromoCode, Store } from '../../../shared/types/domain';
+import type { PointRules, PromoCode, Store } from '../../../shared/types/domain';
 import { useSession } from '../../auth/session';
 import { Revealed } from '../../../shared/components/PageMotion';
 import '../../shop/styles/shop.css';
 
 type PatchReply = { patch: Partial<Store> };
 
+const DEFAULT_POINT_RULES: PointRules = {
+  checkInEnabled: true,
+  checkInPoints: 10,
+  merchEnabled: true,
+  merchRupeesPerPoint: 100,
+  taskEnabled: true,
+  taskDonePoints: 15,
+};
+
 export function ContributionsPage() {
   const { data, applyServerPatch, update, toast, selectedClub } = useStore();
   const { user, can } = useSession();
   const [addingPromo, setAddingPromo] = useState(false);
   const [awarding, setAwarding] = useState(false);
+  const [editingRules, setEditingRules] = useState(false);
   const [pending, setPending] = useState(false);
+  const pointRules: PointRules = { ...DEFAULT_POINT_RULES, ...(data.pointRules || {}) };
+  const [ruleDraft, setRuleDraft] = useState<PointRules>(pointRules);
+  const canEditRules = can('manage_members') || can('view_finance');
 
   const me = data.members.find((m) => m.email.toLowerCase() === user.email.toLowerCase());
   const ledger = data.pointLedger || [];
@@ -53,8 +66,20 @@ export function ContributionsPage() {
         title="Points, promos & contributions"
         description="Participation from events, volunteer shifts, and merchandise contributions — plus club promo codes."
         action={
-          can('manage_members') || can('manage_inventory') ? (
+          can('manage_members') || can('manage_inventory') || canEditRules ? (
             <>
+              {canEditRules && (
+                <Button
+                  icon="Settings2"
+                  variant="secondary"
+                  onClick={() => {
+                    setRuleDraft({ ...DEFAULT_POINT_RULES, ...(data.pointRules || {}) });
+                    setEditingRules(true);
+                  }}
+                >
+                  Point rules
+                </Button>
+              )}
               {can('manage_members') && (
                 <Button icon="Sparkles" variant="secondary" onClick={() => setAwarding(true)}>
                   Award points
@@ -69,6 +94,62 @@ export function ContributionsPage() {
           ) : undefined
         }
       />
+
+      <section className="card point-rules-card">
+        <CardHeader
+          title="How points are earned"
+          subtitle="Club rules for automatic participation, volunteer, and contribution points."
+          action={
+            canEditRules ? (
+              <Button
+                variant="secondary"
+                icon="Settings2"
+                onClick={() => {
+                  setRuleDraft({ ...DEFAULT_POINT_RULES, ...(data.pointRules || {}) });
+                  setEditingRules(true);
+                }}
+              >
+                Edit rules
+              </Button>
+            ) : undefined
+          }
+        />
+        <div className="point-rules-grid">
+          <article className={`point-rule-tile ${pointRules.checkInEnabled ? '' : 'is-off'}`}>
+            <Icon name="Ticket" size={20} />
+            <div>
+              <strong>Event check-in</strong>
+              <p>
+                {pointRules.checkInEnabled
+                  ? `${pointRules.checkInPoints} participation points when a member checks in`
+                  : 'Automatic check-in points are turned off'}
+              </p>
+            </div>
+          </article>
+          <article className={`point-rule-tile ${pointRules.taskEnabled ? '' : 'is-off'}`}>
+            <Icon name="HeartHandshake" size={20} />
+            <div>
+              <strong>Volunteer tasks</strong>
+              <p>
+                {pointRules.taskEnabled
+                  ? `${pointRules.taskDonePoints} volunteer points when a task is marked Done`
+                  : 'Automatic task points are turned off'}
+              </p>
+            </div>
+          </article>
+          <article className={`point-rule-tile ${pointRules.merchEnabled ? '' : 'is-off'}`}>
+            <Icon name="ShoppingBag" size={20} />
+            <div>
+              <strong>Merchandise orders</strong>
+              <p>
+                {pointRules.merchEnabled
+                  ? `1 contribution point for every ₹${pointRules.merchRupeesPerPoint} spent`
+                  : 'Automatic merch contribution points are turned off'}
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <div className="report-stats contributions-stats">
         <Revealed delay={0} pop>
@@ -351,6 +432,123 @@ export function ContributionsPage() {
         </Modal>
       )}
 
+      {editingRules && canEditRules && (
+        <Modal
+          title="Point rules"
+          description="Set the basis for automatic points. Manual awards still work separately."
+          onClose={() => !pending && setEditingRules(false)}
+          wide
+        >
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setPending(true);
+              try {
+                const reply = await clubRequest<PatchReply>(selectedClub, '/points/rules', {
+                  method: 'POST',
+                  snapshot: data,
+                  actor: user,
+                  body: { rules: ruleDraft },
+                });
+                applyServerPatch(selectedClub, reply.patch);
+                setEditingRules(false);
+                toast('Point rules saved for this club.');
+              } catch {
+                update((d) => ({ ...d, pointRules: ruleDraft }));
+                setEditingRules(false);
+                toast('Point rules saved for this club.');
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            <div className="point-rules-form">
+              <label className="point-rule-switch">
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.checkInEnabled}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({ ...r, checkInEnabled: e.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Event check-in points</strong>
+                  <small>Award participation points when a member checks in at an event.</small>
+                </span>
+              </label>
+              <Field label="Points per check-in">
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  disabled={!ruleDraft.checkInEnabled}
+                  value={ruleDraft.checkInPoints}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({ ...r, checkInPoints: Number(e.target.value) || 0 }))
+                  }
+                />
+              </Field>
+              <label className="point-rule-switch">
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.taskEnabled}
+                  onChange={(e) => setRuleDraft((r) => ({ ...r, taskEnabled: e.target.checked }))}
+                />
+                <span>
+                  <strong>Volunteer task completion</strong>
+                  <small>Award volunteer points the first time a task is marked Done.</small>
+                </span>
+              </label>
+              <Field label="Points per completed task">
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  disabled={!ruleDraft.taskEnabled}
+                  value={ruleDraft.taskDonePoints}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({ ...r, taskDonePoints: Number(e.target.value) || 0 }))
+                  }
+                />
+              </Field>
+              <label className="point-rule-switch">
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.merchEnabled}
+                  onChange={(e) => setRuleDraft((r) => ({ ...r, merchEnabled: e.target.checked }))}
+                />
+                <span>
+                  <strong>Merchandise spend</strong>
+                  <small>Award contribution points from shop orders after discounts.</small>
+                </span>
+              </label>
+              <Field label="Rupees spent per 1 contribution point">
+                <input
+                  type="number"
+                  min={1}
+                  max={10000}
+                  disabled={!ruleDraft.merchEnabled}
+                  value={ruleDraft.merchRupeesPerPoint}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({
+                      ...r,
+                      merchRupeesPerPoint: Math.max(1, Number(e.target.value) || 1),
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+            <FormFooter>
+              <Button type="button" variant="secondary" onClick={() => setEditingRules(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending} icon="Check">
+                {pending ? 'Saving…' : 'Save rules'}
+              </Button>
+            </FormFooter>
+          </form>
+        </Modal>
+      )}
       {awarding && can('manage_members') && (
         <Modal
           title="Award contribution points"

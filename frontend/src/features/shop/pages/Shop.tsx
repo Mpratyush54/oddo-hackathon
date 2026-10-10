@@ -10,9 +10,17 @@ import { Logo } from '../../../shared/ui/Logo';
 import { Modal } from '../../../shared/ui/Modal';
 import { ProductArt } from '../../../shared/ui/ProductArt';
 import { SearchField } from '../../../shared/ui/SearchField';
-import { date, exportCSV, exportInvoicePdf, money, moneyPdf, today } from '../../../shared/utils/format';
+import {
+  date,
+  exportCSV,
+  exportInvoicePdf,
+  money,
+  moneyPdf,
+  today,
+  uid,
+} from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
-import type { OrderStatus, Product, Store } from '../../../shared/types/domain';
+import type { OrderStatus, Product, PromoCode, Store } from '../../../shared/types/domain';
 const orderStatuses: OrderStatus[] = ['Placed', 'Ready for pickup', 'Picked up', 'Cancelled'];
 const orderStatusTone = (status?: string) =>
   status === 'Picked up'
@@ -86,7 +94,18 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   const canManageOrders = can('manage_orders');
   const canManageInventory = can('manage_inventory');
   const isOpsRole = !publicView && (canManageOrders || canManageInventory);
-  const [staff, setStaff] = useState(isOpsRole);
+  const [staff, setStaff] = useState(false);
+  const [listing, setListing] = useState(false);
+  const [listName, setListName] = useState('');
+  const [listType, setListType] = useState<'Hoodie' | 'T-shirt' | 'Tote bag' | 'Other'>('T-shirt');
+  const [listColor, setListColor] = useState('teal');
+  const [listPrice, setListPrice] = useState('799');
+  const [listMemberPrice, setListMemberPrice] = useState('649');
+  const [listStock, setListStock] = useState('12');
+  const [listImage, setListImage] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValue, setCouponValue] = useState('50');
+  const [couponType, setCouponType] = useState<'fixed' | 'percent'>('fixed');
   const [receipt, setReceipt] = useState<{
     refs: string[];
     name: string;
@@ -106,9 +125,6 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [inventorySize, setInventorySize] = useState(''),
     [delta, setDelta] = useState('1'),
     [inventoryReason, setInventoryReason] = useState('');
-  useEffect(() => {
-    if (isOpsRole) setStaff(true);
-  }, [isOpsRole, selectedClub]);
   const organization = organizations.find((c) => c.id === selectedClub);
   const clubOrders = data.orders;
   const product = data.products.find((p) => p.id === productId);
@@ -151,6 +167,9 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setPromoCode('');
     setPromoDiscount(0);
     setPromoMessage('');
+    setCouponCode('');
+    setCouponValue('50');
+    setCouponType('fixed');
     setError('');
   }, [productId, selectedClub]);
   useEffect(() => {
@@ -289,115 +308,152 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       setPending(false);
     }
   };
+  const openListing = () => {
+    setListing(true);
+    setError('');
+    setListName('');
+    setListType('T-shirt');
+    setListColor('teal');
+    setListPrice('799');
+    setListMemberPrice('649');
+    setListStock('12');
+    setListImage('');
+  };
+  const createListing = async () => {
+    if (!canManageInventory) return;
+    setPending(true);
+    setError('');
+    const price = Number(listPrice);
+    const memberPrice = Number(listMemberPrice);
+    const stockUnits = Math.max(0, Number(listStock) || 0);
+    const stock =
+      listType === 'Tote bag'
+        ? { 'One size': stockUnits }
+        : { S: Math.max(0, Math.floor(stockUnits * 0.2)), M: stockUnits, L: Math.max(0, Math.floor(stockUnits * 0.5)), XL: Math.max(0, Math.floor(stockUnits * 0.2)) };
+    try {
+      const reply = await clubRequest<ServerReply & { product?: Product }>(selectedClub, '/products', {
+        method: 'POST',
+        snapshot: data,
+        actor: user,
+        body: {
+          name: listName.trim(),
+          type: listType,
+          color: listColor.trim() || 'teal',
+          price,
+          memberPrice,
+          stock,
+          image: listImage.trim(),
+        },
+      });
+      applyServerPatch(selectedClub, reply.patch);
+      setListing(false);
+      setStaff(false);
+      if (reply.product?.id) openProduct(reply.product.id);
+      toast('New piece listed in the campus collection.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not list this piece.');
+    } finally {
+      setPending(false);
+    }
+  };
   const showOps = staff && isOpsRole;
   const content = (
     <div className={`sky-shop ${showOps ? 'sky-shop-ops' : ''}`}>
       <div className="shop-breadcrumb">
         <Link to={publicView ? '/' : '/app'}>Skyline</Link>
         <Icon name="ChevronRight" size={13} />
-        <span>{showOps ? 'Merchandise desk' : 'The campus collection'}</span>
+        <span>{showOps ? 'Stock & orders' : 'The campus collection'}</span>
       </div>
-      {showOps ? (
-        <header className="sky-shop-heading shop-ops-heading">
+      <>
+        <header className="sky-shop-heading">
           <div>
-            <span className="shop-overline">
-              {canManageInventory ? 'INVENTORY & ORDERS' : 'CLUB ORDERS'}
-            </span>
-            <h1>{canManageInventory ? 'Merchandise desk' : 'Order desk'}</h1>
+            <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
+            <h1>
+              A little more
+              <br />
+              <em>you. A little more us.</em>
+            </h1>
           </div>
           <p>
-            {canManageInventory
-              ? 'Adjust stock, track pickups, and keep the collection moving.'
-              : 'Track merchandise orders and campus pickups. Inventory stays with the club admin.'}
+            Thoughtful pieces for everyday campus life.
+            <br />
+            Wear your community. Support what comes next.
           </p>
         </header>
-      ) : (
-        <>
-          <header className="sky-shop-heading">
-            <div>
-              <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
-              <h1>
-                A little more
-                <br />
-                <em>you. A little more us.</em>
-              </h1>
-            </div>
-            <p>
-              Thoughtful pieces for everyday campus life.
-              <br />
-              Wear your community. Support what comes next.
-            </p>
-          </header>
-          <section className="sky-shop-hero">
-            <div className="sky-shop-hero-copy">
-              <Badge tone="gold">THE EVERYDAY EDIT</Badge>
-              <h2>
-                Belonging
-                <br />
-                looks good on you.
-              </h2>
-              <p>From the first coffee to the last study session. Meet your next campus staple.</p>
-              <Button
-                icon="ArrowUpRight"
-                onClick={() => {
-                  const p = data.products.find((p) => p.type === 'Hoodie') || data.products[0];
-                  if (p) openProduct(p.id);
-                }}
-              >
-                Explore the collection
-              </Button>
-              <span>{organization?.name} · Student-led, community-first</span>
-            </div>
-            <div className="sky-shop-hero-art">
-              <ProductPhoto
-                product={
-                  data.products.find((p) => p.type === 'Hoodie') ||
-                  data.products[0] || {
-                    id: 'hero',
-                    name: 'Hoodie',
-                    type: 'Hoodie',
-                    color: 'teal',
-                    price: 0,
-                    memberPrice: 0,
-                    stock: {},
+        {!showOps && (
+          <>
+            <section className="sky-shop-hero">
+              <div className="sky-shop-hero-copy">
+                <Badge tone="gold">THE EVERYDAY EDIT</Badge>
+                <h2>
+                  Belonging
+                  <br />
+                  looks good on you.
+                </h2>
+                <p>From the first coffee to the last study session. Meet your next campus staple.</p>
+                <Button
+                  icon="ArrowUpRight"
+                  onClick={() => {
+                    const p = data.products.find((p) => p.type === 'Hoodie') || data.products[0];
+                    if (p) openProduct(p.id);
+                  }}
+                >
+                  Explore the collection
+                </Button>
+                <span>{organization?.name} · Student-led, community-first</span>
+              </div>
+              <div className="sky-shop-hero-art">
+                <ProductPhoto
+                  product={
+                    data.products.find((p) => p.type === 'Hoodie') ||
+                    data.products[0] || {
+                      id: 'hero',
+                      name: 'Hoodie',
+                      type: 'Hoodie',
+                      color: 'teal',
+                      price: 0,
+                      memberPrice: 0,
+                      stock: {},
+                    }
                   }
-                }
-              />
-              <span className="shop-hero-stamp">
-                MADE TO
-                <br />
-                <strong>BELONG.</strong>
+                />
+                <span className="shop-hero-stamp">
+                  MADE TO
+                  <br />
+                  <strong>BELONG.</strong>
+                </span>
+              </div>
+            </section>
+            <div className="shop-value-strip">
+              <span>
+                <Icon name="MapPin" size={17} />
+                Easy campus pickup
+              </span>
+              <span>
+                <Icon name="BadgeCheck" size={17} />
+                Member prices, verified
+              </span>
+              <span>
+                <Icon name="Heart" size={17} />
+                Every order supports your club
               </span>
             </div>
-          </section>
-          <div className="shop-value-strip">
-            <span>
-              <Icon name="MapPin" size={17} />
-              Easy campus pickup
-            </span>
-            <span>
-              <Icon name="BadgeCheck" size={17} />
-              Member prices, verified
-            </span>
-            <span>
-              <Icon name="Heart" size={17} />
-              Every order supports your club
-            </span>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </>
       {isOpsRole && (
-        <div className="shop-staff-toggle">
+        <div className="shop-seller-bar">
+          {canManageInventory && (
+            <Button icon="Plus" onClick={openListing}>
+              List something new
+            </Button>
+          )}
           <Button
             variant="secondary"
-            icon={staff ? 'ShoppingBag' : canManageInventory ? 'Package' : 'Package'}
+            icon={staff ? 'ShoppingBag' : 'Package'}
             onClick={() => setStaff(!staff)}
           >
-            {staff
-              ? 'Browse catalog'
-              : canManageInventory
-                ? 'Inventory & orders'
-                : 'View club orders'}
+            {staff ? 'Back to shop' : canManageInventory ? 'Stock & orders' : 'Club orders'}
           </Button>
         </div>
       )}
@@ -407,6 +463,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
             {canManageInventory && (
               <Button
                 icon="Package"
+                variant="secondary"
                 onClick={() => {
                   setInventory(true);
                   setError('');
@@ -416,11 +473,6 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               >
                 Adjust stock
               </Button>
-            )}
-            {canManageInventory && (
-              <LinkButton to="/app/contributions" variant="secondary" icon="HeartHandshake">
-                Promos & points
-              </LinkButton>
             )}
             <Button
               variant="secondary"
@@ -444,49 +496,54 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
           </div>
 
           {canManageInventory && (
-            <section className="card table-card shop-ops-card">
-              <div className="table-toolbar">
-                <h2>Stock levels</h2>
+            <section className="shop-stock-board">
+              <div className="shop-stock-board-head">
+                <div>
+                  <h2>In the collection</h2>
+                  <p>Stock across campus pickup sizes — tap a piece to restock.</p>
+                </div>
+                <Button icon="Plus" onClick={openListing}>
+                  List something new
+                </Button>
               </div>
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Type</th>
-                      <th>Sizes in stock</th>
-                      <th className="numeric">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.products.map((p) => {
-                      const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
-                      return (
-                        <tr key={p.id}>
-                          <td>
-                            <strong>{p.name}</strong>
-                          </td>
-                          <td>{p.type}</td>
-                          <td>
-                            {Object.entries(p.stock)
-                              .map(([s, n]) => `${s}: ${n}`)
-                              .join(' · ') || '—'}
-                          </td>
-                          <td className="numeric">
-                            <Badge tone={total < 10 ? 'gold' : 'green'}>{total}</Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="shop-stock-grid">
+                {data.products.map((p) => {
+                  const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
+                  return (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className="shop-stock-card"
+                      onClick={() => {
+                        setInventory(true);
+                        setError('');
+                        setInventoryProduct(p.id);
+                        setInventorySize(Object.keys(p.stock)[0] || '');
+                      }}
+                    >
+                      <ProductPhoto product={p} />
+                      <div>
+                        <strong>{p.name}</strong>
+                        <small>
+                          {p.type} · {money(p.price)}
+                        </small>
+                        <span className="shop-stock-sizes">
+                          {Object.entries(p.stock)
+                            .map(([s, n]) => `${s} ${n}`)
+                            .join(' · ') || 'No sizes'}
+                        </span>
+                        <Badge tone={total < 10 ? 'gold' : 'green'}>{total} in stock</Badge>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </section>
           )}
 
           <section className="card table-card shop-ops-card">
             <div className="table-toolbar">
-              <h2>Orders ({clubOrders.length})</h2>
+              <h2>Recent pickups ({clubOrders.length})</h2>
             </div>
             {clubOrders.length ? (
               <div className="table-scroll">
@@ -890,25 +947,122 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   </label>
                 </div>
               )}
-              <div className="shop-promo-input">
-                <input
-                  aria-label="Promo code"
-                  placeholder="Promo code"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                />
-                <Button
-                  variant="secondary"
-                  disabled={pending || !promoCode.trim()}
-                  onClick={quotePromo}
-                >
-                  Apply
-                </Button>
+              <div className="shop-coupon-panel">
+                <div className="shop-coupon-panel-head">
+                  <Icon name="Ticket" size={16} />
+                  <strong>Have a coupon?</strong>
+                </div>
+                <p>Add it here while you view this piece — no separate promos page needed.</p>
+                <div className="shop-promo-input">
+                  <input
+                    aria-label="Coupon code"
+                    placeholder="Enter coupon code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={pending || !promoCode.trim()}
+                    onClick={quotePromo}
+                  >
+                    Apply coupon
+                  </Button>
+                </div>
+                {promoMessage && (
+                  <p className="shop-promo-message" role="status">
+                    {promoMessage}
+                  </p>
+                )}
+                {(data.promos || [])
+                  .filter((p) => p.active && (!p.productId || p.productId === product.id))
+                  .slice(0, 3)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="shop-coupon-chip"
+                      onClick={() => {
+                        setPromoCode(p.code);
+                        setPromoMessage('');
+                        setPromoDiscount(0);
+                      }}
+                    >
+                      {p.code}
+                      <small>
+                        {p.type === 'percent' ? `${p.value}% off` : `₹${p.value} off`}
+                        {p.productId ? ' · this piece' : ''}
+                      </small>
+                    </button>
+                  ))}
               </div>
-              {promoMessage && (
-                <p className="shop-promo-message" role="status">
-                  {promoMessage}
-                </p>
+              {canManageInventory && product && (
+                <div className="shop-coupon-create">
+                  <div className="shop-coupon-panel-head">
+                    <Icon name="Plus" size={16} />
+                    <strong>Add a coupon for this piece</strong>
+                  </div>
+                  <p>Creates a code that only works on {product.name}.</p>
+                  <div className="form-two">
+                    <Field label="Code">
+                      <input
+                        value={couponCode}
+                        maxLength={24}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="HOODIE50"
+                      />
+                    </Field>
+                    <Field label="Type">
+                      <select
+                        value={couponType}
+                        onChange={(e) => setCouponType(e.target.value as 'fixed' | 'percent')}
+                      >
+                        <option value="fixed">Fixed ₹ off</option>
+                        <option value="percent">Percent off</option>
+                      </select>
+                    </Field>
+                  </div>
+                  <Field label={couponType === 'percent' ? 'Percent' : 'Amount (₹)'}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={couponType === 'percent' ? 100 : 100000}
+                      value={couponValue}
+                      onChange={(e) => setCouponValue(e.target.value)}
+                    />
+                  </Field>
+                  <Button
+                    variant="secondary"
+                    icon="Check"
+                    disabled={!couponCode.trim() || Number(couponValue) <= 0}
+                    onClick={() => {
+                      const code = couponCode.trim().toUpperCase();
+                      const value = Number(couponValue);
+                      if ((data.promos || []).some((p) => p.code === code)) {
+                        toast('That coupon code already exists.');
+                        return;
+                      }
+                      const promo: PromoCode = {
+                        id: uid('PROMO'),
+                        code,
+                        type: couponType,
+                        value,
+                        active: true,
+                        redemptions: 0,
+                        maxRedemptions: 100,
+                        memberOnly: false,
+                        minSubtotal: 0,
+                        productId: product.id,
+                        description: `${couponType === 'percent' ? `${value}%` : `₹${value}`} off ${product.name}`,
+                      };
+                      update((d) => ({ ...d, promos: [promo, ...(d.promos || [])] }));
+                      setCouponCode('');
+                      setPromoCode(code);
+                      toast(`Coupon ${code} added for this piece.`);
+                    }}
+                  >
+                    Save coupon on this item
+                  </Button>
+                </div>
               )}
               <dl className="shop-checkout-breakdown">
                 <div>
@@ -975,6 +1129,107 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               </div>
             </div>
           </div>
+        </Modal>
+      )}
+      {listing && (
+        <Modal
+          title="List something new"
+          description="Add a piece to the campus collection. Students can buy it with member prices."
+          onClose={() => {
+            if (!pending) setListing(false);
+          }}
+          wide
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createListing();
+            }}
+          >
+            <Field label="Name">
+              <input
+                required
+                maxLength={80}
+                value={listName}
+                onChange={(e) => setListName(e.target.value)}
+                placeholder="Wear your community"
+              />
+            </Field>
+            <div className="form-two">
+              <Field label="Type">
+                <select
+                  value={listType}
+                  onChange={(e) => setListType(e.target.value as typeof listType)}
+                >
+                  <option value="T-shirt">T-shirt</option>
+                  <option value="Hoodie">Hoodie</option>
+                  <option value="Tote bag">Tote bag</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Color">
+                <input
+                  required
+                  maxLength={40}
+                  value={listColor}
+                  onChange={(e) => setListColor(e.target.value)}
+                  placeholder="teal"
+                />
+              </Field>
+            </div>
+            <div className="form-two">
+              <Field label="Price (₹)">
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={listPrice}
+                  onChange={(e) => setListPrice(e.target.value)}
+                />
+              </Field>
+              <Field label="Member price (₹)">
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={listMemberPrice}
+                  onChange={(e) => setListMemberPrice(e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field
+              label={listType === 'Tote bag' ? 'Starting stock (one size)' : 'Starting stock (M base)'}
+              hint={
+                listType === 'Tote bag'
+                  ? 'One-size tote inventory.'
+                  : 'We seed nearby sizes from this count so the piece is ready to sell.'
+              }
+            >
+              <input
+                type="number"
+                required
+                min={0}
+                value={listStock}
+                onChange={(e) => setListStock(e.target.value)}
+              />
+            </Field>
+            <Field label="Image URL (optional)">
+              <input
+                type="url"
+                value={listImage}
+                onChange={(e) => setListImage(e.target.value)}
+                placeholder="https://…"
+              />
+            </Field>
+            {error && (
+              <p className="inline-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" disabled={pending || !listName.trim()} icon="Plus">
+              {pending ? 'Listing…' : 'Publish to shop'}
+            </Button>
+          </form>
         </Modal>
       )}
       {inventory && (

@@ -8,10 +8,12 @@ import {
   cancelTicket,
   checkInWithPoints,
   CommerceError,
+  createProduct,
   ensureCommerceFields,
   joinWaitlist,
   placeOrder,
   quotePromo,
+  savePointRules,
 } from '../src/modules/commerce/commerce.domain.js';
 
 export { loadLocalEnvironment } from '../src/config/environment.js';
@@ -223,6 +225,10 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
         const store = requireSnapshot(body);
         return adjustInventory(store, body);
       }
+      if (path === '/products') {
+        const store = requireSnapshot(body);
+        return createProduct(store, body);
+      }
       if (path === '/tickets/cancel') {
         const store = requireSnapshot(body);
         return cancelTicket(store, body);
@@ -234,6 +240,10 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
       if (path === '/points/award') {
         const store = requireSnapshot(body);
         return awardPoints(store, body);
+      }
+      if (path === '/points/rules') {
+        const store = requireSnapshot(body);
+        return savePointRules(store, body);
       }
       if (path === '/check-in') {
         const store = requireSnapshot(body);

@@ -122,55 +122,41 @@ h3,
   color: #106b65;
   flex-shrink: 0;
 }
-/* All navigation is a dismissible drawer, at every viewport size. */
+/* Desktop: persistent sidebar. Phone: collapsible drawer only. */
+.workspace-v2 {
+  --sidebar-width: 234px;
+  overflow-x: clip;
+}
 .workspace-v2 .main-shell {
-  margin-left: 0;
-  width: 100%;
+  margin-left: var(--sidebar-width);
+  width: auto;
   min-width: 0;
+  flex: 1;
 }
 .workspace-v2 .menu-button,
-.workspace-v2 .mobile-close {
-  display: flex;
+.workspace-v2 .mobile-close,
+.workspace-v2 .nav-scrim {
+  display: none;
 }
 .workspace-v2 .sidebar {
-  --drawer-width: 300px;
-  width: var(--drawer-width);
-  max-width: min(300px, 86vw);
+  width: var(--sidebar-width);
+  max-width: none;
   inset: 0 auto 0 0;
   height: 100dvh;
-  transform: translateX(-105%);
-  transition:
-    transform 0.24s ease,
-    visibility 0s linear 0.24s;
-  z-index: 110;
-  visibility: hidden;
-  pointer-events: none;
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 40;
   border: 0;
   border-right: 1px solid #d4e2d7;
   border-radius: 0;
   box-shadow: none;
   background: var(--bg-sidebar, #edf3ef);
+  transition: none;
 }
 .workspace-v2 .sidebar.is-open {
-  transform: translateX(0);
-  visibility: visible;
-  pointer-events: auto;
-  transition:
-    transform 0.24s ease,
-    visibility 0s;
-  box-shadow: 8px 0 28px #132f1820;
-}
-.workspace-v2 .nav-scrim {
-  display: block;
-  position: fixed;
-  inset: 0;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  background: #132f3866;
-  backdrop-filter: blur(2px);
-  z-index: 95;
-  cursor: pointer;
+  transform: none;
+  box-shadow: none;
 }
 .workspace-v2 .sidebar .brand > span:last-child,
 .workspace-v2 .sidebar .nav-item > span,
@@ -220,10 +206,20 @@ h3,
   gap: 20px;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 30;
 }
 .workspace-v2 .global-search {
   margin-left: 16px;
+}
+@media (max-width: 1100px) and (min-width: 769px) {
+  .workspace-v2 {
+    --sidebar-width: 80px;
+  }
+  .workspace-v2 .sidebar {
+    padding-left: 12px;
+    padding-right: 12px;
+    align-items: center;
+  }
 }
 .public-navigation {
   position: relative;
@@ -364,37 +360,53 @@ h3,
   }
 }
 
-.workspace-v2 {
-  --drawer-width: 300px;
-  overflow-x: clip;
-}
-
-/* Desktop/tablet: push content when the drawer is open. */
-@media (min-width: 769px) {
-  .workspace-v2 .main-shell {
-    transition:
-      margin-left 0.26s cubic-bezier(0.2, 0.75, 0.3, 1),
-      width 0.26s cubic-bezier(0.2, 0.75, 0.3, 1);
-  }
-  .workspace-v2.navigation-open .main-shell {
-    margin-left: var(--drawer-width);
-    width: calc(100% - var(--drawer-width));
-  }
-  .workspace-v2.navigation-open .nav-scrim {
-    display: none;
-  }
-}
-
-/* Phone: overlay drawer + bottom quick nav. Never shove the page sideways. */
+/* Phone only: collapsible overlay drawer + bottom quick nav. */
 @media (max-width: 768px) {
   .workspace-v2 {
-    --drawer-width: min(300px, 86vw);
+    --sidebar-width: min(300px, 86vw);
   }
   .workspace-v2 .main-shell,
   .workspace-v2.navigation-open .main-shell {
     margin-left: 0;
     width: 100%;
     transform: none;
+  }
+  .workspace-v2 .menu-button,
+  .workspace-v2 .mobile-close {
+    display: flex;
+  }
+  .workspace-v2 .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: #132f3866;
+    backdrop-filter: blur(2px);
+    z-index: 95;
+    cursor: pointer;
+  }
+  .workspace-v2 .sidebar {
+    transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 110;
+    transition:
+      transform 0.24s ease,
+      visibility 0s linear 0.24s;
+  }
+  .workspace-v2 .sidebar.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    box-shadow: 8px 0 28px #132f1820;
+    transition:
+      transform 0.24s ease,
+      visibility 0s;
+  }
+  .workspace-v2 .topbar {
+    z-index: 100;
   }
   .workspace-v2 .content {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
@@ -445,8 +457,7 @@ h3,
 
 @media (prefers-reduced-motion: reduce) {
   .workspace-v2 .sidebar,
-  .workspace-v2 .sidebar.is-open,
-  .workspace-v2 .main-shell {
+  .workspace-v2 .sidebar.is-open {
     transition: none;
   }
 }

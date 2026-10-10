@@ -84,6 +84,8 @@ export type PromoCode = {
   minSubtotal?: number;
   expires?: string;
   description?: string;
+  /** When set, coupon only applies to this product. */
+  productId?: string;
 };
 
 export type PointEntry = {
@@ -96,6 +98,17 @@ export type PointEntry = {
   eventId?: string;
   orderId?: string;
   taskId?: string;
+};
+
+/** Club-configurable basis for automatic contribution points. */
+export type PointRules = {
+  checkInEnabled: boolean;
+  checkInPoints: number;
+  merchEnabled: boolean;
+  /** Spend this many rupees (after discount) to earn 1 contribution point. */
+  merchRupeesPerPoint: number;
+  taskEnabled: boolean;
+  taskDonePoints: number;
 };
 
 export type Announcement = {
@@ -212,4 +225,5 @@ export type Store = {
   eventReviews?: EventReview[];
   promos?: PromoCode[];
   pointLedger?: PointEntry[];
+  pointRules?: PointRules;
 };

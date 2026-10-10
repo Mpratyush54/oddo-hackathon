@@ -3,9 +3,11 @@ export function registerCommerceRoutes(app, controller) {
   const aliases = {
     '/orders': 'orders',
     '/inventory': 'inventory',
+    '/products': 'products.create',
     '/tickets/cancel': 'tickets.cancel',
     '/waitlist/join': 'waitlist.join',
     '/points/award': 'points.award',
+    '/points/rules': 'points.rules',
     '/check-in': 'check-in',
     '/tickets/book': 'tickets.book',
   };

@@ -96,6 +96,9 @@ export function actionFromChange(
   if (JSON.stringify(before.preferences) !== JSON.stringify(after.preferences)) {
     return { type: 'profile.preferences', args: { preferences: after.preferences } };
   }
+  if (JSON.stringify(before.pointRules || null) !== JSON.stringify(after.pointRules || null)) {
+    return { type: 'points.rules', args: { rules: after.pointRules } };
+  }
   if (JSON.stringify(before) === JSON.stringify(after)) return null;
   throw new Error('This action is not yet available in the AWS workspace. No data was changed.');
 }

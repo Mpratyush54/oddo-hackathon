@@ -2,15 +2,19 @@ import { parseRequest } from '../../shared/request-validation.js';
 import {
   orderRequestSchema,
   inventoryRequestSchema,
+  createProductSchema,
   updateOrderSchema,
   awardPointsSchema,
+  savePointRulesSchema,
   savePromoSchema,
 } from './commerce.schemas.js';
 import { HttpError, recordId } from '../../shared/records.js';
 import {
   adjustInventory,
   awardPoints,
+  createProduct,
   placeOrder,
+  savePointRules,
   updateOrderStatus,
 } from './commerce.domain.js';
 import { staff, requireRole } from '../../shared/authorization.js';
@@ -67,6 +71,14 @@ export class CommerceService extends ClubActionService {
     return result;
   }
 
+  createProduct(input) {
+    input = parseRequest(createProductSchema, input);
+    requireRole(this.role, ['admin']);
+    const result = createProduct(this.data, { ...input, actor: this.actor });
+    this.data = { ...this.data, ...result.patch };
+    return result;
+  }
+
   awardPoints(input) {
     input = parseRequest(awardPointsSchema, input);
 
@@ -74,6 +86,14 @@ export class CommerceService extends ClubActionService {
     const result = awardPoints(this.data, { ...input, actor: this.actor });
     this.data = { ...this.data, ...result.patch };
 
+    return result;
+  }
+
+  savePointRules(input) {
+    input = parseRequest(savePointRulesSchema, input);
+    requireRole(this.role, ['admin', 'treasurer']);
+    const result = savePointRules(this.data, { rules: input.rules, actor: this.actor });
+    this.data = { ...this.data, ...result.patch };
     return result;
   }
 
@@ -98,6 +118,7 @@ export class CommerceService extends ClubActionService {
       memberOnly: promo.memberOnly,
       minSubtotal: promo.minSubtotal,
       description: promo.description,
+      ...(promo.productId ? { productId: promo.productId } : {}),
     };
     this.data.promos = [next, ...this.data.promos.filter((p) => p.id !== next.id)];
 

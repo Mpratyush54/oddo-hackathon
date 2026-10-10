@@ -32,6 +32,22 @@ export const inventoryRequestSchema = z.object({
     .refine((value) => value !== 0, 'Enter a stock adjustment.'),
   reason: requiredText(200).min(4),
 });
+export const createProductSchema = z
+  .object({
+    name: requiredText(80),
+    type: z.enum(['Hoodie', 'T-shirt', 'Tote bag', 'Other']),
+    color: z.string().trim().min(1).max(40).default('teal'),
+    price: moneyAmount,
+    memberPrice: moneyAmount,
+    stock: z
+      .record(z.string().trim().min(1).max(20), z.number().int().min(0).max(5000))
+      .refine((value) => Object.keys(value).length > 0, 'Add at least one size.'),
+    image: z.string().trim().max(500).optional(),
+  })
+  .refine((value) => value.memberPrice <= value.price, {
+    message: 'Member price cannot exceed the regular price.',
+    path: ['memberPrice'],
+  });
 export const updateOrderSchema = z.object({
   orderId: entityId,
   status: z.enum(['Placed', 'Ready for pickup', 'Picked up', 'Cancelled']),
@@ -44,6 +60,17 @@ export const awardPointsSchema = z.object({
   eventId: entityId.optional(),
   taskId: entityId.optional(),
 });
+export const pointRulesSchema = z.object({
+  checkInEnabled: z.boolean(),
+  checkInPoints: z.number().int().min(0).max(500),
+  merchEnabled: z.boolean(),
+  merchRupeesPerPoint: z.number().int().min(1).max(10000),
+  taskEnabled: z.boolean(),
+  taskDonePoints: z.number().int().min(0).max(500),
+});
+export const savePointRulesSchema = z.object({
+  rules: pointRulesSchema,
+});
 const promoFields = {
   id: entityId.optional(),
   code: promoCodeSchema,
@@ -52,6 +79,7 @@ const promoFields = {
   memberOnly: z.boolean().default(false),
   minSubtotal: z.number().nonnegative().default(0),
   description: z.string().max(300).default(''),
+  productId: entityId.optional(),
 };
 export const savePromoSchema = z.object({
   promo: z.discriminatedUnion('type', [

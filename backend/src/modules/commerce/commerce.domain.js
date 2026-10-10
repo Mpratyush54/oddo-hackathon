@@ -4,11 +4,25 @@ import {
   quoteRequestSchema,
   orderRequestSchema,
   inventoryRequestSchema,
+  createProductSchema,
   awardPointsSchema,
 } from './commerce.schemas.js';
 
 export const MEMBERSHIP_FEE = 500;
 export const DEMO_TODAY = '2026-10-10';
+
+export const DEFAULT_POINT_RULES = {
+  checkInEnabled: true,
+  checkInPoints: 10,
+  merchEnabled: true,
+  merchRupeesPerPoint: 100,
+  taskEnabled: true,
+  taskDonePoints: 15,
+};
+
+export function resolvePointRules(store) {
+  return { ...DEFAULT_POINT_RULES, ...(store?.pointRules || {}) };
+}
 
 export const PRODUCT_IMAGES = {
   Hoodie:
@@ -85,6 +99,7 @@ export function ensureCommerceFields(store) {
     ...store,
     promos: Array.isArray(store.promos) ? store.promos : structuredClone(DEFAULT_PROMOS),
     pointLedger: Array.isArray(store.pointLedger) ? store.pointLedger : [],
+    pointRules: resolvePointRules(store),
     waitlist: Array.isArray(store.waitlist) ? store.waitlist : [],
     orders: (Array.isArray(store.orders) ? store.orders : []).map((o) => ({
       ...o,
@@ -132,6 +147,8 @@ export function quotePromo(
   const subtotal = unit * qty;
   const promo = findPromo(club, code);
   if (!promo) throw new CommerceError(400, 'That promo code is not valid.');
+  if (promo.productId && promo.productId !== productId)
+    throw new CommerceError(400, 'This coupon is for a different piece in the shop.');
   if (promo.maxRedemptions != null && promo.redemptions >= promo.maxRedemptions)
     throw new CommerceError(400, 'This promo code has reached its redemption limit.');
   if (promo.memberOnly && !treatedAsMember)
@@ -296,8 +313,13 @@ export function placeOrder(
     createdBy: actor.id || member?.id,
   });
 
-  // Contribution points: 1 point per ₹100 spent on merchandise (after discount, before membership fee)
-  const contributionEarn = Math.floor(Math.max(0, subtotal - promoDiscount) / 100);
+  // Contribution points from club point rules (default: 1 point per ₹100 spent)
+  const rules = resolvePointRules(club);
+  const rupeesPerPoint = Math.max(1, Number(rules.merchRupeesPerPoint) || 100);
+  const contributionEarn =
+    rules.merchEnabled === false
+      ? 0
+      : Math.floor(Math.max(0, subtotal - promoDiscount) / rupeesPerPoint);
   if (member && contributionEarn > 0) {
     const mid = member.id;
     members = members.map((m) =>
@@ -367,6 +389,44 @@ export function updateOrderStatus(store, { orderId, status, actor }) {
   return {
     patch: {
       orders,
+      audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
+    },
+  };
+}
+
+export function createProduct(store, input) {
+  const parsed = parseRequest(createProductSchema, input);
+  const club = ensureCommerceFields(store);
+  if (!input?.actor?.name) throw new CommerceError(400, 'Staff actor required.');
+  const typeLabel = parsed.type === 'Other' ? 'Merchandise' : parsed.type;
+  const imageUrl =
+    parsed.image && /^https?:\/\//i.test(parsed.image)
+      ? parsed.image
+      : PRODUCT_IMAGES[parsed.type] || PRODUCT_IMAGES.Hoodie;
+  const product = {
+    id: uid('P'),
+    name: parsed.name,
+    type: typeLabel,
+    color: parsed.color,
+    price: parsed.price,
+    memberPrice: parsed.memberPrice,
+    stock: parsed.stock,
+    image: imageUrl,
+  };
+  const units = Object.values(product.stock).reduce((sum, n) => sum + n, 0);
+  const auditEntry = {
+    id: uid('AUD'),
+    actor: input.actor.name,
+    action: 'products.create',
+    entity: 'products',
+    entityId: product.id,
+    date: new Date().toISOString(),
+    detail: `Listed ${product.name} · ${typeLabel} · ${units} units`,
+  };
+  return {
+    product,
+    patch: {
+      products: [product, ...(club.products || [])],
       audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
     },
   };
@@ -569,13 +629,14 @@ export function checkInWithPoints(store, { ticketId, actor, today = DEMO_TODAY }
   const tickets = club.tickets.map((t) => (t.id === ticketId ? { ...t, checkedIn: true } : t));
   let patch = { tickets };
   const member = isActiveMember(club, ticket.email, today);
-  if (member) {
+  const rules = resolvePointRules(club);
+  if (member && rules.checkInEnabled !== false && Number(rules.checkInPoints) > 0) {
     const awarded = awardPoints(
       { ...club, tickets },
       {
         memberId: member.id,
         kind: 'participation',
-        points: 10,
+        points: Math.min(500, Math.max(1, Number(rules.checkInPoints) || 10)),
         reason: `Checked in · ticket ${ticket.id}`,
         eventId: ticket.eventId,
         actor,
@@ -584,4 +645,32 @@ export function checkInWithPoints(store, { ticketId, actor, today = DEMO_TODAY }
     patch = { ...patch, ...awarded.patch, tickets };
   }
   return { patch, ticket: { ...ticket, checkedIn: true } };
+}
+
+export function savePointRules(store, { rules, actor }) {
+  const club = ensureCommerceFields(store);
+  if (!actor?.name) throw new CommerceError(400, 'Staff actor required.');
+  const next = {
+    checkInEnabled: rules.checkInEnabled !== false,
+    checkInPoints: Math.min(500, Math.max(0, Number(rules.checkInPoints) || 0)),
+    merchEnabled: rules.merchEnabled !== false,
+    merchRupeesPerPoint: Math.min(10000, Math.max(1, Number(rules.merchRupeesPerPoint) || 100)),
+    taskEnabled: rules.taskEnabled !== false,
+    taskDonePoints: Math.min(500, Math.max(0, Number(rules.taskDonePoints) || 0)),
+  };
+  const auditEntry = {
+    id: uid('AUD'),
+    actor: actor.name,
+    action: 'points.rules',
+    entity: 'pointRules',
+    entityId: 'club',
+    date: new Date().toISOString(),
+    detail: `Check-in ${next.checkInEnabled ? next.checkInPoints + ' pts' : 'off'}; merch 1/${next.merchRupeesPerPoint}; tasks ${next.taskEnabled ? next.taskDonePoints + ' pts' : 'off'}`,
+  };
+  return {
+    patch: {
+      pointRules: next,
+      audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
+    },
+  };
 }

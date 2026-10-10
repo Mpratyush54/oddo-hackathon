@@ -23,6 +23,7 @@ export const actionLabels: Record<string, string> = {
   'orders.update': 'Updated order',
   'promos.save': 'Saved promo',
   'points.award': 'Awarded points',
+  'points.rules': 'Updated point rules',
   Approved: 'Approved',
   Rejected: 'Rejected',
 };

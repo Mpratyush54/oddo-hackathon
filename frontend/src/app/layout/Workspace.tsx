@@ -81,6 +81,14 @@ export default function Workspace() {
     };
   }, [navOpen]);
   useEffect(() => {
+    const onResize = () => {
+      if (window.matchMedia('(min-width: 769px)').matches) setNavOpen(false);
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
