@@ -94,6 +94,8 @@ Code deployments use scripts/deploy-existing.js. Infrastructure updates and new 
 
 Unit/integration tests cover custom JWT sessions, CSRF, refresh rotation/reuse, logout/password revocation, club-role isolation, last-seat/stock concurrency, waitlist reservations, duplicate scans, expense review, and provider signature/deduplication behavior. The production build passes.
 
+Business actions now use eight feature service classes with named methods instead of combined switch handlers. Feature request schemas use Zod; shared phone, promo, hash and identifier formats live in `shared/`. Additional regression tests verify field-level HTTP errors, rejection reasons, reviewer identity, independent parallel request state, and no database writes for invalid payloads. See [the architecture](docs/ARCHITECTURE.md) and [database contract](docs/DATABASE.md).
+
 Live AWS/browser verification passed signup/login, joining a club, server-priced booking and duplicate retry, ticket display, private receipt upload and expense submission, refresh, and logout. Browser runtime errors were empty; synthetic QA account/data/receipt were removed while retaining audit events.
 
 Remaining owner dependencies: Meta app secret/webhook setup and one explicit consented test from the UI; AWS account verification for CloudFront; a verified email sender/recovery workflow before real-user rollout. No payment gateway or production WhatsApp onboarding has been performed.

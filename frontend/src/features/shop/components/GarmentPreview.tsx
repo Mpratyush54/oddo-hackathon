@@ -197,7 +197,7 @@ export default function GarmentPreview({
   color: string;
   onColorChange: (color: string) => void;
 }) {
-  const id = useId().replace(/:/g, '');
+  const id = useId().replaceAll(':', '');
   const [rotation, setRotation] = useState(-18),
     [tilt, setTilt] = useState(-5),
     [dragging, setDragging] = useState(false);

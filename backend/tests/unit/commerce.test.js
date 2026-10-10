@@ -9,7 +9,7 @@ import {
   placeOrder,
   quotePromo,
   MEMBERSHIP_FEE,
-} from '../../src/modules/commerce/commerce.service.js';
+} from '../../src/modules/commerce/commerce.domain.js';
 
 const baseStore = () =>
   ensureCommerceFields({

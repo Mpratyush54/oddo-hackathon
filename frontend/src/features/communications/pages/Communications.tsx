@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { normalizePhone, removeTrailingSlash } from '../../../../../shared/schemas.js';
 import type { FormEvent } from 'react';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Badge } from '../../../shared/ui/Badge';
@@ -23,7 +24,6 @@ const apiURL =
   (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_API_URL ||
   '/api';
 const audiences = ['All members', 'Active members', 'Volunteers', 'Pending dues', 'Renewing soon'];
-const normalizePhone = (value: string) => value.replace(/\D/g, '');
 async function integrationRequest(path: string, body: unknown, timeout: number): Promise<unknown> {
   const options = {
     method: 'POST',
@@ -31,7 +31,7 @@ async function integrationRequest(path: string, body: unknown, timeout: number):
     signal: AbortSignal.timeout(timeout),
   };
   if (cloudMode) return backendRequest(path, options);
-  const response = await fetch(`${apiURL.replace(/\/$/, '')}${path}`, {
+  const response = await fetch(`${removeTrailingSlash(apiURL)}${path}`, {
     ...options,
     headers: backendHeaders(),
     credentials: 'include',
@@ -100,7 +100,7 @@ export function CommunicationsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${apiURL.replace(/\/$/, '')}/health`, { signal: controller.signal })
+    fetch(`${removeTrailingSlash(apiURL)}/health`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((result) => {
         if (
@@ -215,7 +215,10 @@ export function CommunicationsPage() {
     }
     const bullets = notes
       .split('\n')
-      .map((line) => line.replace(/^\s*[-•*]\s*/, '').trim())
+      .map((line) => {
+        const content = line.trim();
+        return ['-', '•', '*'].includes(content[0]) ? content.slice(1).trim() : content;
+      })
       .filter(Boolean);
 
     let draftTitle = bullets[0]?.slice(0, 100) || 'Campus Community Update';

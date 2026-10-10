@@ -1,3 +1,6 @@
+import { sha256Schema } from '../../../../shared/schemas.js';
+import { parseRequest } from '../../shared/request-validation.js';
+import { signupSchema, changePasswordSchema } from './auth.schemas.js';
 import { HttpError, timestamp, recordId } from '../../shared/records.js';
 import { hash, accountKey, hashPassword, verifyPassword } from './password.js';
 
@@ -16,13 +19,11 @@ export function createAuthController({
   return {
     signup: async (req, res) => {
       await repo.limit('SIGNUP#' + hash(req.ip || ''), 5, 3600);
-      const { email, password } = credentials(req.body),
-        name = String(req.body.name || '').trim();
-      if (password.length < 12 || name.length < 2 || name.length > 80)
-        throw new HttpError(
-          400,
-          'Use a name of 2–80 characters and a password of at least 12 characters.',
-        );
+      const { email, password, name } = parseRequest(
+        signupSchema,
+        req.body,
+        'Use a valid email, a name of 2–80 characters and a password of 12–128 characters.',
+      );
       const id = recordId('USR');
       const account = {
         pk: accountKey(email),
@@ -63,7 +64,7 @@ export function createAuthController({
     },
     refresh: async (req, res) => {
       const raw = cookie(req, refreshName);
-      if (!raw || !/^[a-f0-9]{64}$/.test(raw)) throw new HttpError(401, 'Sign in to continue.');
+      if (!sha256Schema.safeParse(raw).success) throw new HttpError(401, 'Sign in to continue.');
       const refresh = await repo.get('REFRESH#' + hash(raw), 'REFRESH');
       if (!refresh || refresh.expiresAt <= Date.now() / 1000)
         throw new HttpError(401, 'Sign in to continue.');
@@ -109,21 +110,18 @@ export function createAuthController({
     changePassword: async (req, res) => {
       const { user } = await requireAuth(req);
       await repo.limit('PASSWORD#' + user.id, 5, 3600);
-      if (
-        typeof req.body.password !== 'string' ||
-        req.body.password.length < 12 ||
-        req.body.password.length > 128 ||
-        typeof req.body.currentPassword !== 'string' ||
-        req.body.currentPassword.length > 128
-      )
-        throw new HttpError(400, 'Use a new password of 12–128 characters.');
+      const input = parseRequest(
+        changePasswordSchema,
+        req.body,
+        'Use a new password of 12–128 characters.',
+      );
       const account = await repo.get(accountKey(user.email), 'ACCOUNT');
-      if (!(await verifyPassword(req.body.currentPassword, account.passwordHash)))
+      if (!(await verifyPassword(input.currentPassword, account.passwordHash)))
         throw new HttpError(401, 'Current password is incorrect.');
       const updated = { ...user, sessionVersion: user.sessionVersion + 1 };
       if (
         !(await repo.atomic([
-          { item: { ...account, passwordHash: await hashPassword(req.body.password) } },
+          { item: { ...account, passwordHash: await hashPassword(input.password) } },
           {
             item: updated,
             condition: 'sessionVersion = :version',

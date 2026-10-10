@@ -1,3 +1,5 @@
+import { parseRequest } from '../../shared/request-validation.js';
+import { credentialsSchema } from './auth.schemas.js';
 import { randomBytes } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import { HttpError, recordId } from '../../shared/records.js';
@@ -107,20 +109,8 @@ export function createAuth({ repo, env }) {
     res.cookie(refreshName, refreshToken, { ...cookieOptions, maxAge: 7 * 86400 * 1000 });
     return { user: publicUser(user), csrfToken };
   };
-  const credentials = (body) => {
-    const email = String(body.email || '')
-        .trim()
-        .toLowerCase(),
-      password = body.password;
-    if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      email.length > 254 ||
-      typeof password !== 'string' ||
-      password.length > 128
-    )
-      throw new HttpError(400, 'Enter a valid email and password.');
-    return { email, password };
-  };
+  const credentials = (body) =>
+    parseRequest(credentialsSchema, body, 'Enter a valid email and password.');
   const routes = createAuthRoutes(
     createAuthController({
       repo,

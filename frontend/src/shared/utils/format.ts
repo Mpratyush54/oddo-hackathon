@@ -19,7 +19,7 @@ export function exportCSV(name: string, rows: (string | number | boolean)[][]) {
   const content =
     '\uFEFF' +
     rows
-      .map((row) => row.map((cell) => '"' + String(cell).replace(/"/g, '""') + '"').join(','))
+      .map((row) => row.map((cell) => '"' + String(cell).replaceAll('"', '""') + '"').join(','))
       .join('\r\n');
   const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a');

@@ -2,8 +2,14 @@ import { createHmac, timingSafeEqual, createHash } from 'node:crypto';
 import { createOpenRouter } from './openrouter.service.js';
 import { HttpError, clubKey, timestamp, recordId } from '../../shared/records.js';
 import { matchesAudience, requireRole } from '../clubs/club.service.js';
+import { normalizePhone as normalize } from '../../../../shared/schemas.js';
+import {
+  metaConfigurationSchema,
+  sendWhatsAppSchema,
+  webhookSignatureSchema,
+} from './communications.schemas.js';
+import { parseRequest } from '../../shared/request-validation.js';
 
-const normalize = (value) => String(value).replace(/\D/g, '');
 export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
   const draftAnnouncement = createOpenRouter({ env, fetchImpl });
   async function draft(clubId, user, body) {
@@ -22,17 +28,12 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
   }
   async function send(clubId, user, body) {
     requireRole(await domain.roleFor(user, clubId), ['admin', 'organizer']);
-    if (
-      !env.META_WHATSAPP_TOKEN ||
-      !/^\d+$/.test(env.META_PHONE_NUMBER_ID || '') ||
-      !/^v\d+\.0$/.test(env.META_GRAPH_VERSION || '')
-    )
+    if (!metaConfigurationSchema.safeParse(env).success)
       throw new HttpError(
         503,
         'Configure the Meta test token, phone-number ID, and Graph version.',
       );
-    if (body.channel !== 'WhatsApp')
-      throw new HttpError(400, 'Only WhatsApp tests are configured.');
+    body = parseRequest(sendWhatsAppSchema, body, 'Select up to five WhatsApp test recipients.');
     const { data } = await domain.load(clubId),
       announcement = data.announcements.find((a) => a.id === body.announcementId);
     if (!announcement)
@@ -167,7 +168,7 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
     if (!env.META_APP_SECRET)
       throw new HttpError(503, 'Meta webhook app secret is not configured.');
     const signature = String(req.headers['x-hub-signature-256'] || '');
-    if (!/^sha256=[a-f0-9]{64}$/.test(signature))
+    if (!webhookSignatureSchema.safeParse(signature).success)
       throw new HttpError(401, 'Invalid webhook signature.');
     const expected = createHmac('sha256', env.META_APP_SECRET).update(req.rawBody).digest();
     if (!timingSafeEqual(expected, Buffer.from(signature.slice(7), 'hex')))

@@ -1,3 +1,4 @@
+import { promoCodeSchema, optionalPhoneSchema } from '../../../../shared/schemas.js';
 import { z } from 'zod';
 import {
   id,
@@ -9,6 +10,8 @@ import {
   count,
   preferences,
   recordKeys,
+  time,
+  prefixedKey,
 } from './primitives.js';
 
 // Entity schemas include known historical/fixture fields. New storage fields must be declared here.
@@ -22,10 +25,7 @@ export const memberSchema = z.strictObject({
   joined: date,
   expires: date,
   role: text,
-  phone: z
-    .string()
-    .regex(/^(\+[1-9][0-9]{6,14})?$/)
-    .optional(),
+  phone: optionalPhoneSchema.optional(),
   whatsappOptIn: z.boolean().optional(),
   consentUpdatedAt: instant.optional(),
   participationPoints: nonnegative.optional(),
@@ -40,7 +40,7 @@ export const eventSchema = z.strictObject({
   id,
   title: text,
   date,
-  time: z.string().regex(/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/),
+  time: time,
   capacity: count.min(1).max(10000),
   sold: count,
   price: nonnegative,
@@ -53,10 +53,7 @@ export const eventSchema = z.strictObject({
   gallery: z.array(text).optional(),
   recap: text.optional(),
   endDate: date.optional(),
-  endTime: z
-    .string()
-    .regex(/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/)
-    .optional(),
+  endTime: time.optional(),
 });
 export const productSchema = z.strictObject({
   id,
@@ -128,7 +125,7 @@ export const taskSchema = z.strictObject({
 });
 export const promoSchema = z.strictObject({
   id,
-  code: z.string().regex(/^[A-Z0-9]{4,16}$/),
+  code: promoCodeSchema,
   type: z.enum(['percent', 'fixed']),
   value: nonnegative,
   active: z.boolean(),
@@ -241,7 +238,16 @@ export const clubDataSchema = z.strictObject({
   profile: z.object({ name: text, email: text, role: text }).optional(),
   preferences: preferences.optional(),
 });
-export const clubPartition = z.string().regex(/^COLLEGE#[^#]+#CLUB#[^#]+$/);
+export const clubPartition = z.string().refine((key) => {
+  const [collegeLabel, collegeId, clubLabel, clubId, extra] = key.split('#');
+  return (
+    collegeLabel === 'COLLEGE' &&
+    Boolean(collegeId) &&
+    clubLabel === 'CLUB' &&
+    Boolean(clubId) &&
+    extra === undefined
+  );
+}, 'Use COLLEGE#collegeId#CLUB#clubId.');
 export const stateSchema = z.strictObject({
   ...recordKeys,
   pk: clubPartition,
@@ -252,10 +258,10 @@ export const stateSchema = z.strictObject({
 export const auditRecordSchema = auditSchema.extend({
   ...recordKeys,
   pk: clubPartition,
-  sk: z.string().regex(/^AUDIT#.+$/),
+  sk: prefixedKey('AUDIT#'),
 });
 export const deliveryRecordSchema = deliverySchema.extend({
   ...recordKeys,
   pk: clubPartition,
-  sk: z.string().regex(/^DELIVERY#.+$/),
+  sk: prefixedKey('DELIVERY#'),
 });

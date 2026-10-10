@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { promoCodeSchema } from '../../../../../shared/schemas.js';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { CardHeader } from '../../../shared/ui/CardHeader';
@@ -264,7 +265,7 @@ export function ContributionsPage() {
             onSubmit={(e) => {
               const f = formValues(e);
               const code = f.code.trim().toUpperCase();
-              if (!/^[A-Z0-9]{4,16}$/.test(code)) {
+              if (!promoCodeSchema.safeParse(code).success) {
                 toast('Use 4–16 letters or numbers for the code.');
                 return;
               }

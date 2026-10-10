@@ -8,7 +8,7 @@ export function databaseJsonSchema() {
     registry.add(schema, { id: name + 'Record' });
   for (const [name, schema] of Object.entries(entities))
     if (name.endsWith('Schema') && !registry.has(schema))
-      registry.add(schema, { id: name.replace(/Schema$/, '') });
+      registry.add(schema, { id: name.slice(0, -'Schema'.length) });
   return {
     ...z.toJSONSchema(databaseRecordSchema, { metadata: registry, reused: 'ref', io: 'input' }),
     title: 'Skyline DynamoDB record schema',

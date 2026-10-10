@@ -1,48 +1,50 @@
 import { dateToday, HttpError } from '../../shared/records.js';
-import { ensureCommerceFields } from '../commerce/commerce.service.js';
-import { handleMembership } from '../membership/membership.actions.js';
-import { handleAccount } from '../account/account.actions.js';
-import { handleTickets } from '../tickets/tickets.actions.js';
-import { handleCommerce } from '../commerce/commerce.actions.js';
-import { handleFinance } from '../finance/finance.actions.js';
-import { handleCommunications } from '../communications/communications.actions.js';
-import { handleEvents } from '../events/events.actions.js';
-import { handleTasks } from '../tasks/tasks.actions.js';
+import { ensureCommerceFields } from '../commerce/commerce.domain.js';
+import { MembershipService } from '../membership/membership.service.js';
+import { AccountService } from '../account/account.service.js';
+import { TicketService } from '../tickets/tickets.service.js';
+import { CommerceService } from '../commerce/commerce.service.js';
+import { FinanceService } from '../finance/finance.service.js';
+import { AnnouncementService } from '../communications/announcements.service.js';
+import { EventService } from '../events/events.service.js';
+import { TaskService } from '../tasks/tasks.service.js';
 
 const handlers = new Map([
-  ['members.add', handleMembership],
-  ['membership.join', handleMembership],
-  ['membership.demo-dues', handleMembership],
-  ['profile.preferences', handleAccount],
-  ['notifications.read', handleAccount],
-  ['tickets.book', handleTickets],
-  ['tickets.cancel', handleTickets],
-  ['check-in', handleTickets],
-  ['waitlist.join', handleTickets],
-  ['orders', handleCommerce],
-  ['inventory', handleCommerce],
-  ['points.award', handleCommerce],
-  ['promos.save', handleCommerce],
-  ['expenses.create', handleFinance],
-  ['expenses.review', handleFinance],
-  ['income.create', handleFinance],
-  ['announcements.publish', handleCommunications],
-  ['reminders.prepare', handleCommunications],
-  ['events.save', handleEvents],
-  ['reviews.create', handleEvents],
-  ['tasks.save', handleTasks],
+  ['members.add', { Service: MembershipService, method: 'addMember' }],
+  ['membership.join', { Service: MembershipService, method: 'join' }],
+  ['membership.demo-dues', { Service: MembershipService, method: 'payDemoDues' }],
+  ['profile.preferences', { Service: AccountService, method: 'updatePreferences' }],
+  ['notifications.read', { Service: AccountService, method: 'readNotifications' }],
+  ['tickets.book', { Service: TicketService, method: 'book' }],
+  ['tickets.cancel', { Service: TicketService, method: 'cancel' }],
+  ['check-in', { Service: TicketService, method: 'checkIn' }],
+  ['waitlist.join', { Service: TicketService, method: 'joinWaitlist' }],
+  ['orders', { Service: CommerceService, method: 'placeOrder' }],
+  ['inventory', { Service: CommerceService, method: 'adjustInventory' }],
+  ['points.award', { Service: CommerceService, method: 'awardPoints' }],
+  ['promos.save', { Service: CommerceService, method: 'savePromo' }],
+  ['expenses.create', { Service: FinanceService, method: 'createExpense' }],
+  ['expenses.review', { Service: FinanceService, method: 'reviewExpense' }],
+  ['income.create', { Service: FinanceService, method: 'createIncome' }],
+  ['announcements.publish', { Service: AnnouncementService, method: 'publish' }],
+  ['reminders.prepare', { Service: AnnouncementService, method: 'prepareReminders' }],
+  ['events.save', { Service: EventService, method: 'save' }],
+  ['reviews.create', { Service: EventService, method: 'createReview' }],
+  ['tasks.save', { Service: TaskService, method: 'save' }],
 ]);
+
 export function applyAction(input, action, user, role, now = dateToday(), context = {}) {
   const handler = handlers.get(action.type);
   if (!handler) throw new HttpError(400, 'Unknown action.');
-  return handler({
+  const args = action.args || {};
+  const service = new handler.Service({
     data: ensureCommerceFields(structuredClone(input)),
-    action,
     user,
     role,
     now,
-    context,
-    actor: { id: user.id, name: user.name, email: user.email },
-    args: action.args || {},
+    clubId: action.clubId,
+    targetUser: context.targetUser,
   });
+  const result = service[handler.method](args);
+  return { data: service.data, result };
 }

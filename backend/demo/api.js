@@ -12,11 +12,11 @@ import {
   joinWaitlist,
   placeOrder,
   quotePromo,
-} from '../src/modules/commerce/commerce.service.js';
+} from '../src/modules/commerce/commerce.domain.js';
 
 export { loadLocalEnvironment } from '../src/config/environment.js';
 import { loadLocalEnvironment } from '../src/config/environment.js';
-const normalizePhone = (value) => String(value).replace(/\D/g, '');
+import { normalizePhone, digitsSchema, graphVersionSchema } from '../../shared/schemas.js';
 class ApiError extends Error {
   constructor(status, message) {
     super(message);
@@ -66,7 +66,7 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
     if (
       !recipients.length ||
       recipients.length > 5 ||
-      recipients.some((p) => !/^\d{8,15}$/.test(p))
+      recipients.some((phone) => !digitsSchema.min(8).max(15).safeParse(phone).success)
     )
       throw new ApiError(400, 'Choose up to five registered test recipients.');
     const allowed = new Set(
@@ -81,7 +81,10 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
     if (body.template && body.template !== template)
       throw new ApiError(400, 'This template is not configured for the demo.');
     const version = env.META_GRAPH_VERSION || 'v25.0';
-    if (!/^v\d+\.0$/.test(version) || !/^\d+$/.test(env.META_PHONE_NUMBER_ID))
+    if (
+      !graphVersionSchema.safeParse(version).success ||
+      !digitsSchema.safeParse(env.META_PHONE_NUMBER_ID).success
+    )
       throw new ApiError(503, 'Check the Meta phone-number ID and Graph API version.');
     const id = String(body.announcementId || '');
     const club = String(body.clubId || '');

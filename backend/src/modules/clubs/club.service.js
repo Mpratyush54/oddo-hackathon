@@ -1,6 +1,8 @@
+import { actionRequestSchema } from './clubs.schemas.js';
+import { parseRequest } from '../../shared/request-validation.js';
 import { createHash } from 'node:crypto';
 import { HttpError, clubKey, dateToday, timestamp, recordId } from '../../shared/records.js';
-import { quotePromo } from '../commerce/commerce.service.js';
+import { quotePromo } from '../commerce/commerce.domain.js';
 import { accountKey } from '../auth/index.js';
 import { requireRole } from '../../shared/authorization.js';
 import { visibleState } from './club.views.js';
@@ -17,10 +19,9 @@ export function createDomain({ repo, clubs }) {
     return (await repo.get(`USER#${user.id}`, `ACCESS#${clubId}`))?.role || 'member';
   }
   async function execute(clubId, action, user) {
+    action = parseRequest(actionRequestSchema, action);
     const pk = clubKey(clubId),
       role = await roleFor(user, clubId);
-    if (typeof action.idempotencyKey !== 'string' || !/^[\w-]{8,100}$/.test(action.idempotencyKey))
-      throw new HttpError(400, 'A unique idempotencyKey is required.');
     const sk = `REQUEST#${user.id}#${action.idempotencyKey}`;
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ type: action.type, args: action.args || {} }))

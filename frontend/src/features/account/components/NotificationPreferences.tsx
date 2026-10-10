@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { phoneSchema } from '../../../../../shared/schemas.js';
 import { Button } from '../../../shared/ui/Button';
 import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Field } from '../../../shared/ui/Field';
@@ -24,7 +25,7 @@ export function NotificationPreferences() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (optIn && !/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
+            if (optIn && !phoneSchema.safeParse(phone.trim()).success) {
               setError('Enter a phone number with country code, for example +919876543210.');
               return;
             }

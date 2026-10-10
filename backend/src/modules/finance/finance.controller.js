@@ -3,14 +3,18 @@ import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { requireRole } from '../clubs/club.service.js';
 import { HttpError, recordId } from '../../shared/records.js';
+import { receiptUploadSchema } from './finance.schemas.js';
+import { parseRequest } from '../../shared/request-validation.js';
 
 export function createFinanceController({ env, domain, s3 }) {
   return {
     createReceiptUpload: async (req, res) => {
       await domain.load(req.params.clubId);
-      const type = req.body.contentType;
-      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(type))
-        throw new HttpError(400, 'Upload a PDF, JPEG, or PNG receipt.');
+      const { contentType: type } = parseRequest(
+        receiptUploadSchema,
+        req.body,
+        'Upload a PDF, JPEG, or PNG receipt.',
+      );
       const key = `skyline-campus/${req.params.clubId}/${req.auth.user.id}/${recordId('RECEIPT')}`;
       const upload = await createPresignedPost(s3, {
         Bucket: env.RECEIPTS_BUCKET,

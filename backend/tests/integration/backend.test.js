@@ -209,6 +209,15 @@ test('JWT cookies, forged tokens, CSRF, refresh rotation, logout and password re
     return { status: response.status, body: await response.json() };
   }
   assert.equal((await request('/auth/me')).status, 401);
+  const invalidSignup = await request('/auth/signup', {
+    name: 'Student',
+    email: 'invalid',
+    password: 'short',
+  });
+  assert.equal(invalidSignup.status, 400);
+  assert.ok(invalidSignup.body.details.some((item) => item.field === 'email'));
+  assert.ok(invalidSignup.body.details.some((item) => item.field === 'password'));
+  assert.ok(!JSON.stringify(invalidSignup.body).includes('short'));
   const signup = await request('/auth/signup', {
     name: 'Student',
     email: 'student@example.test',
@@ -230,6 +239,15 @@ test('JWT cookies, forged tokens, CSRF, refresh rotation, logout and password re
     403,
   );
   assert.equal((await request('/clubs/skyline/actions', action('membership.join'))).status, 200);
+  const invalidPreferences = await request(
+    '/clubs/skyline/actions',
+    action('profile.preferences', {
+      phone: 'not-a-phone',
+      whatsappOptIn: true,
+    }),
+  );
+  assert.equal(invalidPreferences.status, 400);
+  assert.equal(invalidPreferences.body.details[0].field, 'phone');
   const oldRefresh = jar.get('skyline-access-refresh');
   const refreshed = await request('/auth/refresh', {});
   assert.equal(refreshed.status, 200);
@@ -274,6 +292,108 @@ test('JWT cookies, forged tokens, CSRF, refresh rotation, logout and password re
     401,
   );
   assert.equal((await request('/auth/me')).status, 401);
+});
+
+test('invalid action payloads leave state, audit and idempotency records unchanged', async () => {
+  const { repo, domain } = await fixture();
+  await repo.put({ pk: `USER#${user.id}`, sk: 'ACCESS#skyline', clubId: 'skyline', role: 'admin' });
+  const before = await domain.load('skyline');
+  const invalidActions = [
+    action('expenses.create', {
+      title: 'Supplies',
+      amount: -2,
+      receipt: 'a.pdf',
+      receiptKey: `skyline-campus/skyline/${user.id}/R`,
+    }),
+    action('expenses.review', { transactionId: 'TX-missing', status: 'Pending' }),
+    action('expenses.review', { transactionId: 'TX-missing', status: 'Rejected', reason: '   ' }),
+    action('inventory', { productId: 'P1', size: 'M', delta: 501, reason: 'Restock' }),
+    action('promos.save', { promo: { code: 'SAVE10', type: 'percent', value: 101 } }),
+    action('tasks.save', { task: { title: 'Task', due: '2026-02-30', status: 'Done' } }),
+    { ...action('membership.join'), idempotencyKey: 'bad!request' },
+    { ...action('membership.join'), args: [] },
+  ];
+  for (const request of invalidActions) {
+    await assert.rejects(domain.execute('skyline', request, user), (error) => {
+      assert.equal(error.status, 400);
+      assert.ok(error.details.length > 0);
+      return true;
+    });
+  }
+  assert.deepEqual(await domain.load('skyline'), before);
+  assert.equal((await repo.list(clubKey('skyline'), 'AUDIT#')).length, 0);
+  assert.equal((await repo.list(clubKey('skyline'), 'REQUEST#')).length, 0);
+});
+
+test('expense rejection requires a reason, a different treasurer, and a pending negative transaction', async () => {
+  const { repo, domain } = await fixture();
+  for (const person of [user, other])
+    await repo.put({
+      pk: `USER#${person.id}`,
+      sk: 'ACCESS#skyline',
+      clubId: 'skyline',
+      role: 'treasurer',
+    });
+  await domain.execute(
+    'skyline',
+    action('expenses.create', {
+      title: 'Supplies',
+      amount: 99,
+      receipt: 'a.pdf',
+      receiptKey: `skyline-campus/skyline/${other.id}/R`,
+    }),
+    other,
+  );
+  const expense = (await domain.load('skyline')).data.transactions[0];
+  const review = (args) =>
+    action('expenses.review', { transactionId: expense.id, status: 'Rejected', ...args });
+  await assert.rejects(
+    domain.execute('skyline', review({}), user),
+    (error) => error.status === 400,
+  );
+  await assert.rejects(
+    domain.execute('skyline', review({ reason: 'Missing invoice' }), other),
+    (error) => error.status === 403,
+  );
+  assert.equal((await domain.load('skyline')).data.transactions[0].status, 'Pending');
+  await domain.execute(
+    'skyline',
+    review({ reason: '  Missing invoice  ', reviewedBy: other.id }),
+    user,
+  );
+  const reviewed = (await domain.load('skyline')).data.transactions[0];
+  assert.equal(reviewed.status, 'Rejected');
+  assert.equal(reviewed.rejectionReason, 'Missing invoice');
+  assert.equal(reviewed.reviewedBy, user.id);
+  await assert.rejects(
+    domain.execute('skyline', review({ reason: 'Again' }), user),
+    (error) => error.status === 409,
+  );
+});
+
+test('parallel feature actions keep users and club state independent', async () => {
+  const { domain } = await fixture();
+  await Promise.all([
+    domain.execute(
+      'skyline',
+      action('membership.join', { course: 'Science', userId: other.id, role: 'admin' }),
+      user,
+    ),
+    domain.execute(
+      'canvas',
+      action('membership.join', { course: 'Design', userId: user.id, role: 'admin' }),
+      other,
+    ),
+  ]);
+  const skyline = (await domain.load('skyline')).data;
+  const canvas = (await domain.load('canvas')).data;
+  assert.equal(skyline.members.length, 1);
+  assert.equal(canvas.members.length, 1);
+  assert.equal(skyline.members[0].userId, user.id);
+  assert.equal(canvas.members[0].userId, other.id);
+  assert.equal(skyline.members[0].course, 'Science');
+  assert.equal(canvas.members[0].course, 'Design');
+  assert.equal(skyline.members[0].role, 'Member');
 });
 test('WhatsApp reads consent from DynamoDB, persists timeout deduplication, and verifies webhook signatures', async () => {
   const { repo, domain } = await fixture();

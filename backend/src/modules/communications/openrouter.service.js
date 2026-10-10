@@ -1,4 +1,6 @@
 import { HttpError } from '../../shared/records.js';
+import { draftRequestSchema, draftResponseSchema } from './communications.schemas.js';
+import { parseRequest } from '../../shared/request-validation.js';
 
 export const createOpenRouter =
   ({ env, fetchImpl = fetch }) =>
@@ -8,10 +10,11 @@ export const createOpenRouter =
     const model = env.OPENROUTER_MODEL || 'openrouter/free';
     if (model !== 'openrouter/free' && !model.endsWith(':free'))
       throw new HttpError(503, 'Only free OpenRouter models are enabled for this demo.');
-    const notes = String(body.notes || '').trim(),
-      audience = String(body.audience || 'All members');
-    if (!notes || notes.length > 2000 || audience.length > 80)
-      throw new HttpError(400, 'Provide 1–2,000 characters of announcement notes.');
+    const { notes, audience, tone } = parseRequest(
+      draftRequestSchema,
+      body,
+      'Provide valid announcement notes and audience.',
+    );
     const response = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -34,9 +37,7 @@ export const createOpenRouter =
             content: JSON.stringify({
               audience,
               notes,
-              tone: ['hype', 'professional', 'reminder'].includes(body.tone)
-                ? body.tone
-                : 'professional',
+              tone,
             }),
           },
         ],
@@ -54,21 +55,23 @@ export const createOpenRouter =
       throw new HttpError(503, 'The model did not return a usable draft.');
     let draft;
     try {
-      draft = JSON.parse(text.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, ''));
+      draft = JSON.parse(removeMarkdownFence(text));
     } catch {
       throw new HttpError(503, 'The draft needs another try. Your original notes are unchanged.');
     }
-    if (
-      typeof draft.title !== 'string' ||
-      typeof draft.body !== 'string' ||
-      !draft.title.trim() ||
-      !draft.body.trim()
-    )
-      throw new HttpError(503, 'The draft format was not usable.');
+    const parsedDraft = draftResponseSchema.safeParse(draft);
+    if (!parsedDraft.success) throw new HttpError(503, 'The draft format was not usable.');
     return {
-      title: draft.title.trim().slice(0, 100),
-      body: draft.body.trim().slice(0, 3000),
+      ...parsedDraft.data,
       source: 'OpenRouter free model',
       model,
     };
   };
+
+function removeMarkdownFence(value) {
+  let content = value.trim();
+  if (content.startsWith('```json')) content = content.slice('```json'.length);
+  else if (content.startsWith('```')) content = content.slice('```'.length);
+  if (content.endsWith('```')) content = content.slice(0, -'```'.length);
+  return content.trim();
+}

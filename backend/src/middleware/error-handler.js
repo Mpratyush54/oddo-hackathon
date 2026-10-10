@@ -14,6 +14,7 @@ export const handleError = (error, req, res, next) => {
       }),
     );
   res.status(status).json({
+    ...(status === 400 && error.details ? { details: error.details } : {}),
     error: error.type
       ? status === 413
         ? 'Request too large.'

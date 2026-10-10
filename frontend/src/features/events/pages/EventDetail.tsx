@@ -22,14 +22,15 @@ import { cancelEventTicket } from '../../tickets/utils/cancel-ticket';
 
 export function eventCalendar(event: ClubEvent) {
   const esc = (value: string) =>
-    value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+    value
+      .replaceAll('\\', '\\\\')
+      .replaceAll('\n', '\\n')
+      .replaceAll(',', '\\,')
+      .replaceAll(';', '\\;');
   const start = eventStart(event);
   const end = eventEnd(event);
   const stamp = (d: Date) =>
-    d
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}/, '');
+    d.toISOString().slice(0, 19).replaceAll('-', '').replaceAll(':', '') + 'Z';
   const content = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',

@@ -1,6 +1,8 @@
+import { removeTrailingSlash } from '../../../../shared/schemas.js';
+
 const env = (import.meta as unknown as { env?: Record<string, string> }).env || {};
 export const cloudMode = env.VITE_BACKEND_MODE === 'aws';
-const base = (env.VITE_API_URL || '/api').replace(/\/$/, '');
+const base = removeTrailingSlash(env.VITE_API_URL || '/api');
 let csrfToken = '';
 let refreshing: Promise<void> | null = null;
 export function setCsrf(value: string) {
