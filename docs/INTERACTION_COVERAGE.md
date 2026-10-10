@@ -34,6 +34,7 @@ The report is written to `.artifacts/interaction-coverage.json`. Treat any repor
 ## What the audit covers
 
 - Every discovered visible button, button-role element, tab, menu item, summary control, and standard action control on the route/role matrix. It clicks enabled controls in isolated browser contexts, records disabled controls separately, and recursively follows newly revealed buttons in menus and dialogs.
+- Additional non-semantic React elements with a React `onClick` handler, where they are not already represented by a standard button/link. These are inventoried and exercised separately.
 - Visible same-origin links, including navigation destinations and links inside tables. External, email, telephone, download, and new-tab links are inventoried but skipped for safety.
 - Inputs, select fields, textareas, checkboxes, radio buttons, sliders and comboboxes. Inputs receive harmless test data; forms are not submitted by the field audit.
 - Tables and grids: table/row inventory, discoverable headers, row cell-count warnings, all row action names, and button/link click tests for rendered row actions.
@@ -89,4 +90,6 @@ The generic audit deliberately skips actions whose labels indicate external mess
 - `safety-skipped`: metadata was reviewed but a potentially external side effect was not executed.
 - `failed`: the action could not be exercised, an accessible name was missing, the page errored, or the interaction produced a blank view.
 - `warnings`: includes table layout mismatches and actions with no observable visible effect; validate whether the behavior should have been visible.
+
+TestSprite prompt: [docs/TESTSPRITE_INTERACTION_PROMPT.md](TESTSPRITE_INTERACTION_PROMPT.md) tells TestSprite to create a distinct case per control/row action and to report every control as passed, failed, blocked, skipped, or not yet executed.
 - Coverage denominators are the controls discovered in the specific route/role state. A control hidden behind a menu is only counted once the menu-opening action reveals it.
