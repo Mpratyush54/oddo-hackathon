@@ -3,19 +3,19 @@ import { z } from 'zod';
 import { hash } from './password.js';
 import { HttpError } from '../../shared/records.js';
 import { parseRequest } from '../../shared/request-validation.js';
+import { EmailSenderService } from './email-sender.service.js';
 
 const confirmSchema = z.strictObject({ token: z.hex().length(64) });
 
 export class EmailVerificationService {
-  constructor({ repo, env, fetchImpl = fetch }) {
+  constructor({ repo, env, fetchImpl = fetch, smtpFactory }) {
     this.repo = repo;
     this.env = env;
-    this.fetchImpl = fetchImpl;
+    this.sender = new EmailSenderService({ env, fetchImpl, smtpFactory });
   }
   async send(user) {
     if (user.emailVerified) return { verified: true };
-    if (!this.env.SENDGRID_API_KEY || !z.email().safeParse(this.env.EMAIL_FROM).success)
-      throw new HttpError(503, 'Email verification is not configured. Contact your administrator.');
+    this.sender.validateConfiguration();
     await this.repo.limit('VERIFY-EMAIL#' + user.id, 3, 3600);
     const origin = this.env.EMAIL_VERIFICATION_ORIGIN || this.env.APP_ORIGIN?.split(',')[0];
     let url;
@@ -41,41 +41,14 @@ export class EmailVerificationService {
     };
     if (!(await this.repo.put(record, true)))
       throw new HttpError(503, 'Please request another verification email.');
-    let response;
     try {
-      response = await this.fetchImpl('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          Authorization: 'Bearer ' + this.env.SENDGRID_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: user.email }] }],
-          from: { email: this.env.EMAIL_FROM, name: 'Skyline' },
-          subject: 'Verify your Skyline email',
-          content: [
-            {
-              type: 'text/plain',
-              value: `Verify your Skyline email by opening this link:\n\n${url.href}\n\nThis link expires in one hour. If you did not request it, ignore this email.`,
-            },
-          ],
-          tracking_settings: {
-            click_tracking: { enable: false, enable_text: false },
-            open_tracking: { enable: false },
-          },
-        }),
-      });
-    } catch {
-      await this.repo.put({ ...record, revoked: true });
-      throw new HttpError(502, 'Verification email could not be sent. Please try again later.');
-    }
-    if (response.status !== 202) {
-      await this.repo.put({ ...record, revoked: true });
-      throw new HttpError(
-        502,
-        `SendGrid rejected the verification email (${response.status}). Check the API key and verified sender.`,
+      await this.sender.send(
+        user.email,
+        `Verify your Skyline email by opening this link:\n\n${url.href}\n\nThis link expires in one hour. If you did not request it, ignore this email.`,
       );
+    } catch (error) {
+      await this.repo.put({ ...record, revoked: true });
+      throw error;
     }
     return {
       accepted: true,

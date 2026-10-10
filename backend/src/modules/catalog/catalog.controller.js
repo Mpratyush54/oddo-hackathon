@@ -8,6 +8,13 @@ export function createCatalogController({ env, clubs, domain }) {
         auth: 'JWT',
         database: env.DATA_TABLE ? 'DynamoDB' : 'Memory',
         ai: { configured: !!env.OPENROUTER_API_KEY, provider: 'OpenRouter' },
+        email: {
+          configured: !!(
+            env.EMAIL_FROM &&
+            (env.SMTP_HOST ? env.SMTP_USER && env.SMTP_PASSWORD : env.SENDGRID_API_KEY)
+          ),
+          provider: env.SMTP_HOST ? 'SMTP' : 'SendGrid',
+        },
         whatsapp: {
           configured: !!(
             env.META_WHATSAPP_TOKEN &&

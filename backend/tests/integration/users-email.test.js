@@ -9,6 +9,7 @@ import { createDomain } from '../../src/modules/clubs/club.service.js';
 import { createApp } from '../../src/app.js';
 import { clubKey } from '../../src/shared/records.js';
 import { hash } from '../../src/modules/auth/password.js';
+import { EmailSenderService } from '../../src/modules/auth/email-sender.service.js';
 
 const seed = JSON.parse(readFileSync(new URL('../../data/seed.json', import.meta.url), 'utf8'));
 const profile = (id, verified = false) => ({
@@ -224,4 +225,60 @@ test('Express signup sends verification, confirmation works signed out, and user
     server.closeAllConnections();
     await new Promise((r) => server.close(r));
   }
+});
+
+test('Brevo SMTP uses authenticated TLS, accepts only the requested recipient, and keeps credentials out of errors', async () => {
+  const smtpEnv = {
+    SMTP_HOST: 'smtp-relay.brevo.com',
+    SMTP_PORT: '587',
+    SMTP_USER: 'smtp-login',
+    SMTP_PASSWORD: 'fake-private-key',
+    EMAIL_FROM: 'sender@example.test',
+  };
+  let options,
+    message,
+    closed = false;
+  const sender = new EmailSenderService({
+    env: smtpEnv,
+    smtpFactory: (config) => {
+      options = config;
+      return {
+        sendMail: async (mail) => {
+          message = mail;
+          return { accepted: ['student@example.test'] };
+        },
+        close: () => {
+          closed = true;
+        },
+      };
+    },
+  });
+  await sender.send('student@example.test', 'verification body');
+  assert.equal(options.host, smtpEnv.SMTP_HOST);
+  assert.equal(options.port, 587);
+  assert.equal(options.requireTLS, true);
+  assert.equal(options.secure, false);
+  assert.equal(options.auth.user, smtpEnv.SMTP_USER);
+  assert.equal(options.auth.pass, smtpEnv.SMTP_PASSWORD);
+  assert.equal(options.debug, false);
+  assert.equal(closed, true);
+  assert.equal(message.to, 'student@example.test');
+  const missing = new EmailSenderService({
+    env: { ...smtpEnv, SMTP_USER: '' },
+    smtpFactory: () => assert.fail('unexpected SMTP connection'),
+  });
+  await assert.rejects(missing.send('student@example.test', 'body'), (e) => e.status === 503);
+  const failed = new EmailSenderService({
+    env: smtpEnv,
+    smtpFactory: () => ({
+      sendMail: async () => {
+        throw Object.assign(new Error('fake-private-key'), { code: 'EAUTH' });
+      },
+      close: () => {},
+    }),
+  });
+  await assert.rejects(
+    failed.send('student@example.test', 'body'),
+    (e) => e.status === 502 && !e.message.includes('fake-private-key'),
+  );
 });

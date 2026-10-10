@@ -74,6 +74,10 @@ const secrets = {
   META_WEBHOOK_VERIFY_TOKEN: prior.META_WEBHOOK_VERIFY_TOKEN || randomBytes(32).toString('hex'),
 };
 for (const name of [
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASSWORD',
   'SENDGRID_API_KEY',
   'EMAIL_FROM',
   'EMAIL_VERIFICATION_ORIGIN',

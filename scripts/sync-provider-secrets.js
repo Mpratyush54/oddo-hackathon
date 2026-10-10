@@ -11,6 +11,10 @@ const exec = promisify(execFile);
 const region = process.env.AWS_REGION || 'ap-south-1';
 const secretName = (process.env.AWS_STACK_NAME || 'skyline-campus-api') + '/backend';
 const fields = [
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASSWORD',
   'SENDGRID_API_KEY',
   'EMAIL_FROM',
   'EMAIL_VERIFICATION_ORIGIN',

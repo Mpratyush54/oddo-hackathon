@@ -9,6 +9,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Modal } from '../../../shared/ui/Modal';
 import { Field } from '../../../shared/ui/Field';
 import { PageHeader } from '../../../shared/ui/PageHeader';
+import { SearchField } from '../../../shared/ui/SearchField';
 
 type ClubUser = {
   userId: string;
@@ -74,12 +75,7 @@ export function UsersPage() {
       />
       <div className="card users-card">
         <div className="users-toolbar">
-          <input
-            aria-label="Search club users"
-            placeholder="Search name or email"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          <SearchField placeholder="Search name or email" value={query} onChange={setQuery} />
           <Button
             icon="UserPlus"
             onClick={() => {
