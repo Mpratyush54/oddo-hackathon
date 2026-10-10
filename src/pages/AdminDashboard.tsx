@@ -35,72 +35,15 @@ export function AdminDashboard() {
   const total = completed.reduce((s, t) => s + t.amount, 0);
   const paid = data.members.filter((m) => m.status !== 'Pending').length;
   const pending = data.transactions.filter((t) => t.status === 'Pending');
+  const pendingMembers = data.members.filter((m) => m.status === 'Pending').length;
   const upcoming = [...data.events].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
   const done = data.tasks.filter((t) => t.status === 'Done').length;
-  const modules = [
-    {
-      icon: 'UsersRound',
-      label: 'Your community',
-      value: data.members.length.toString().padStart(2, '0'),
-      meta: `${paid} active memberships`,
-      progress: (paid / data.members.length) * 100,
-      caption: 'Dues collected',
-      to: '/app/members',
-      action: 'Manage members',
-      tone: 'teal',
-      badge: 'Members',
-    },
-    {
-      icon: 'CalendarDays',
-      label: 'Good times ahead',
-      value: data.events.length.toString().padStart(2, '0'),
-      meta: 'Events this semester',
-      progress:
-        (data.events.reduce((s, e) => s + e.sold, 0) /
-          data.events.reduce((s, e) => s + e.capacity, 0)) *
-        100,
-      caption: 'Tickets reserved',
-      to: '/app/events',
-      action: 'Explore events',
-      tone: 'purple',
-      badge: 'Events',
-    },
-    {
-      icon: 'ShoppingBag',
-      label: 'Wear your Skyline',
-      value: `${data.orders.length.toString().padStart(2, '0')}`,
-      meta: 'Orders in your store',
-      progress:
-        (100 *
-          data.products.reduce(
-            (s, p) => s + Object.values(p.stock).reduce((a, b) => a + b, 0),
-            0,
-          )) /
-        (data.products.reduce((s, p) => s + Object.values(p.stock).reduce((a, b) => a + b, 0), 0) +
-          data.orders.length),
-      caption: 'Inventory available',
-      to: '/app/merchandise',
-      action: 'Visit the store',
-      tone: 'gold',
-      badge: 'Merchandise',
-    },
-    {
-      icon: 'ListTodo',
-      label: 'Make things happen',
-      value: data.tasks.length.toString().padStart(2, '0'),
-      meta: `${done} tasks completed`,
-      progress: (done / Math.max(data.tasks.length, 1)) * 100,
-      caption: 'Project progress',
-      to: '/app/tasks',
-      action: 'View project board',
-      tone: 'green',
-      badge: 'Projects',
-    },
-  ];
+
   const chartValues =
     range === 'month'
       ? monthlyTotals(completed).filter((v) => v.label === 'Oct')
       : monthlyTotals(completed).slice(0, 3);
+
   return (
     <>
       <PageHeader
@@ -137,128 +80,152 @@ export function AdminDashboard() {
           </>
         }
       />
+
+      {/* Morning Brief Composition */}
       <Revealed>
-        <div className="dashboard-top">
-          <section className="welcome-card">
-            <div className="welcome-content">
-              <div className="hero-eyebrow">
-                <span className="tiny-sun">✷</span> SATURDAY, OCTOBER 10
-              </div>
-              <h2>
-                Welcome back, {user.name.split(' ')[0]} <span className="wave">✦</span>
-              </h2>
-              <p>Small steps. Big impact. Let’s make this semester count.</p>
-              <div className="hero-stats">
-                <div>
-                  <span className="hero-icon">
-                    <Icon name="Wallet" size={23} />
-                  </span>
-                  <span>
-                    <small>Club balance</small>
-                    <strong>{money(total)}</strong>
-                  </span>
-                </div>
-                <span className="hero-stat-divider" />
-                <div>
-                  <span className="hero-icon">
-                    <Icon name="UsersRound" size={23} />
-                  </span>
-                  <span>
-                    <small>A growing community</small>
-                    <strong>
-                      {data.members.length}
-                      <em> members</em>
-                    </strong>
-                  </span>
-                </div>
-              </div>
-              <div className="hero-bottom">
-                <span className="hero-live-dot" />
-                Your community is in a good place.
-              </div>
+        <section className="morning-brief-hero">
+          <div className="morning-brief-content">
+            <div className="morning-brief-kicker">
+              <span className="tiny-sun">✷</span> SATURDAY, OCTOBER 10 • CLUB MORNING BRIEF
+              <span className="morning-brief-status">
+                <span className="hero-live-dot" /> Operational
+              </span>
             </div>
-            <CommunityArt />
-          </section>
-          <section className="card membership-card">
-            <CardHeader
-              title="A connected community"
-              action={
-                <Link to="/app/members" className="plain-icon" aria-label="View membership details">
-                  <Icon name="ArrowUpRight" size={19} />
-                </Link>
-              }
-            />
-            <div className="ring-content">
-              <div
-                className="donut"
-                style={
-                  {
-                    '--percentage': `${(paid / Math.max(data.members.length, 1)) * 100}%`,
-                  } as React.CSSProperties
-                }
-              >
-                <span>
-                  <strong>
-                    {Math.round((paid / Math.max(data.members.length, 1)) * 100)}
-                    <small>%</small>
-                  </strong>
-                  <small>Dues collected</small>
+            <h2>
+              Good morning, {user.name.split(' ')[0]} <span className="wave">✦</span>
+            </h2>
+            <p className="morning-brief-lead">
+              Small steps. Big impact. Here is where Skyline stands today — 3 priority items need your attention.
+            </p>
+
+            {/* Vital Telemetry */}
+            <div className="morning-brief-stats">
+              <Link to="/app/finance" className="brief-stat-pill">
+                <span className="brief-stat-icon teal">
+                  <Icon name="Wallet" size={20} />
                 </span>
-              </div>
-              <div className="ring-legend">
                 <div>
-                  <span className="legend-dot teal" />
-                  <span>Paid members</span>
-                  <strong>{paid}</strong>
+                  <small>Treasury Balance</small>
+                  <strong>{money(total)}</strong>
                 </div>
-                <div>
-                  <span className="legend-dot gold" />
-                  <span>Awaiting dues</span>
-                  <strong>{data.members.length - paid}</strong>
-                </div>
-                <Link to="/app/members?status=Pending" className="text-link">
-                  Give them a nudge <Icon name="ArrowRight" size={14} />
-                </Link>
-              </div>
-            </div>
-            <div className="membership-footer">
-              <Icon name="Sparkles" size={15} />
-              <span>More than a club. A community.</span>
-            </div>
-          </section>
-        </div>
-      </Revealed>
-      <Revealed delay={90}>
-        <div className="module-grid">
-          {modules.map((m) => (
-            <section key={m.to} className={`module-card ${m.tone}`}>
-              <div className="module-top">
-                <span className={`icon-tile ${m.tone}`}>
-                  <Icon name={m.icon} size={22} />
-                </span>
-                <Badge tone={m.tone}>{m.badge}</Badge>
-              </div>
-              <div className="module-label">{m.label}</div>
-              <div className="module-number">
-                {m.value}
-                <span>{m.meta}</span>
-              </div>
-              <div className="progress-caption">
-                <span>{m.caption}</span>
-                <strong>{Math.round(m.progress)}%</strong>
-              </div>
-              <Progress value={m.progress} tone={m.tone} />
-              <Link to={m.to} className={`module-link ${m.tone}`}>
-                {m.action}
-                <Icon name="ArrowRight" size={16} />
               </Link>
-            </section>
-          ))}
+
+              <Link to="/app/members" className="brief-stat-pill">
+                <span className="brief-stat-icon purple">
+                  <Icon name="UsersRound" size={20} />
+                </span>
+                <div>
+                  <small>Community Strength</small>
+                  <strong>
+                    {data.members.length} members <span className="brief-stat-sub">({paid} active dues)</span>
+                  </strong>
+                </div>
+              </Link>
+
+              <Link to="/app/events" className="brief-stat-pill">
+                <span className="brief-stat-icon gold">
+                  <Icon name="CalendarDays" size={20} />
+                </span>
+                <div>
+                  <small>Event Reservations</small>
+                  <strong>
+                    {data.events.reduce((s, e) => s + e.sold, 0)} reserved{' '}
+                    <span className="brief-stat-sub">({data.events.length} events)</span>
+                  </strong>
+                </div>
+              </Link>
+            </div>
+
+            {/* Quick module navigation strip */}
+            <nav className="morning-brief-nav" aria-label="Quick club tools">
+              <span className="brief-nav-label">Direct tools:</span>
+              <Link to="/app/members" className="brief-nav-item">
+                <Icon name="UsersRound" size={15} /> Members
+              </Link>
+              <Link to="/app/events" className="brief-nav-item">
+                <Icon name="CalendarDays" size={15} /> Events
+              </Link>
+              <Link to="/app/merchandise" className="brief-nav-item">
+                <Icon name="ShoppingBag" size={15} /> Store
+              </Link>
+              <Link to="/app/tasks" className="brief-nav-item">
+                <Icon name="ListTodo" size={15} /> Projects ({done}/{data.tasks.length})
+              </Link>
+              <Link to="/app/finance" className="brief-nav-item">
+                <Icon name="Landmark" size={15} /> Ledger
+              </Link>
+            </nav>
+          </div>
+          <CommunityArt />
+        </section>
+      </Revealed>
+
+      {/* 2-3 Next Actions Triage Strip */}
+      <Revealed delay={80}>
+        <div className="brief-actions-container">
+          <div className="brief-actions-header">
+            <h3>Prioritized Next Actions</h3>
+            <span className="brief-actions-badge">Today’s triage</span>
+          </div>
+
+          <div className="brief-actions-grid">
+            {/* Action 1: Expenses */}
+            <article className="brief-action-card action-amber">
+              <div className="brief-action-top">
+                <span className="action-tag amber">Finance Review</span>
+                <span className="action-count">{pending.length} pending</span>
+              </div>
+              <h4>{pending.length} expense requests awaiting approval</h4>
+              <p>Reimbursements and vendor receipts submitted for recent workshop inventory.</p>
+              <div className="brief-action-cta">
+                <Link to="/app/finance" className="action-button-link">
+                  Review in Ledger <Icon name="ArrowRight" size={15} />
+                </Link>
+              </div>
+            </article>
+
+            {/* Action 2: Members */}
+            <article className="brief-action-card action-purple">
+              <div className="brief-action-top">
+                <span className="action-tag purple">Membership Roster</span>
+                <span className="action-count">{pendingMembers} pending</span>
+              </div>
+              <h4>{pendingMembers} new memberships ready to welcome</h4>
+              <p>Pending registrations awaiting confirmation and dues verification.</p>
+              <div className="brief-action-cta">
+                <Link to="/app/members?status=Pending" className="action-button-link">
+                  Review Roster <Icon name="ArrowRight" size={15} />
+                </Link>
+              </div>
+            </article>
+
+            {/* Action 3: Marquee Event */}
+            <article className="brief-action-card action-emerald">
+              <div className="brief-action-top">
+                <span className="action-tag emerald">Marquee Gathering</span>
+                <span className="action-count">
+                  {upcoming[0]?.sold || 0}/{upcoming[0]?.capacity || 0} booked
+                </span>
+              </div>
+              <h4>{upcoming[0]?.title || 'Next Campus Gathering'}</h4>
+              <p>
+                {upcoming[0]?.time || 'Upcoming'} at {upcoming[0]?.venue?.split(',')[0] || 'Campus Hall'}
+              </p>
+              <div className="brief-action-cta">
+                <Link to={upcoming[0] ? `/app/events/${upcoming[0].id}` : '/app/events'} className="action-button-link">
+                  Manage Event <Icon name="ArrowRight" size={15} />
+                </Link>
+              </div>
+            </article>
+          </div>
         </div>
       </Revealed>
-      <Revealed delay={180}>
-        <div className="dashboard-lower">
-          <section className="card finance-overview dark-card">
+
+      {/* Balanced 2-Column: Finance Clarity & Campus Activity */}
+      <Revealed delay={160}>
+        <div className="brief-stream-grid">
+          {/* Finance Overview */}
+          <section className="card finance-overview dark-card brief-finance-card">
             <CardHeader
               title="Every rupee, accounted for"
               subtitle="A little clarity for your club’s finances."
@@ -302,107 +269,69 @@ export function AdminDashboard() {
               See the full picture <Icon name="ArrowUpRight" size={16} />
             </Link>
           </section>
-          <section className="card attention-card">
-            <CardHeader title="A little attention" subtitle="Small things to keep us on track." />
-            <Link className="attention-item" to="/app/finance">
-              <span className="icon-tile gold">
-                <Icon name="Receipt" size={20} />
-              </span>
-              <span>
-                <strong>{pending.length} expense requests</strong>
-                <small>Ready for your review</small>
-              </span>
-              <Icon name="ChevronRight" size={17} />
-            </Link>
-            <Link className="attention-item" to="/app/members?status=Pending">
-              <span className="icon-tile purple">
-                <Icon name="UserRoundPlus" size={20} />
-              </span>
-              <span>
-                <strong>
-                  {data.members.filter((m) => m.status === 'Pending').length} pending memberships
-                </strong>
-                <small>A warm welcome awaits</small>
-              </span>
-              <Icon name="ChevronRight" size={17} />
-            </Link>
-            <Link className="attention-item" to="/app/tasks">
-              <span className="icon-tile green">
-                <Icon name="Flag" size={20} />
-              </span>
-              <span>
-                <strong>Bake sale is coming up</strong>
-                <small>{data.tasks.length - done} tasks still to go</small>
-              </span>
-              <Icon name="ChevronRight" size={17} />
-            </Link>
-            <div className="attention-note">
-              <Icon name="Coffee" size={18} />
-              <p>
-                You’ve got this.
-                <br />
-                <strong>One thing at a time.</strong>
-              </p>
-            </div>
-          </section>
-          <section className="card upcoming-card">
-            <CardHeader
-              title="See you there"
-              subtitle="Good company. Great plans."
-              action={
-                <Link to="/app/events" className="plain-icon" aria-label="View all events">
-                  <Icon name="ArrowUpRight" size={19} />
-                </Link>
-              }
-            />
-            {upcoming.map((e) => (
-              <Link to={`/app/events/${e.id}`} key={e.id} className="upcoming-item">
-                <div
-                  className={`date-tile ${e.category === 'Fundraiser' ? 'green' : e.category === 'Social' ? 'purple' : 'gold'}`}
-                >
-                  <small>{date(e.date, { month: 'short' }).toUpperCase()}</small>
-                  <strong>{new Date(e.date + 'T12:00:00').getDate()}</strong>
+
+          {/* Right Column: Upcoming & Announcement Stream */}
+          <div className="brief-sidebar-stack">
+            {/* Latest Announcement */}
+            <section className="card activity-card brief-activity-card">
+              <CardHeader
+                title="The latest around Skyline"
+                action={
+                  <Link to="/app/announcements" className="text-link">
+                    All updates <Icon name="ArrowRight" size={14} />
+                  </Link>
+                }
+              />
+              <div className="activity-row">
+                <Avatar name={data.announcements[0]?.author || 'Skyline Team'} index={2} />
+                <div>
+                  <strong>{data.announcements[0]?.title || 'Welcome to your workspace'}</strong>
+                  <p>{data.announcements[0]?.body.slice(0, 110)}…</p>
                 </div>
-                <span>
-                  <strong>{e.title}</strong>
-                  <small>
-                    {e.time} · {e.venue.split(',')[0]}
-                  </small>
+                <span className="activity-date">
+                  {date(data.announcements[0]?.date || '2026-10-10', { day: 'numeric', month: 'short' })}
                 </span>
-                <Icon name="ArrowUpRight" size={17} />
+                <Link to="/app/announcements" className="plain-icon" aria-label="Read announcement">
+                  <Icon name="ArrowUpRight" size={20} />
+                </Link>
+              </div>
+            </section>
+
+            {/* Upcoming Events Agenda */}
+            <section className="card upcoming-card brief-upcoming-card">
+              <CardHeader
+                title="See you there"
+                subtitle="Upcoming dates on the schedule."
+                action={
+                  <Link to="/app/calendar" className="plain-icon" aria-label="View calendar">
+                    <Icon name="ArrowUpRight" size={19} />
+                  </Link>
+                }
+              />
+              {upcoming.map((e) => (
+                <Link to={`/app/events/${e.id}`} key={e.id} className="upcoming-item">
+                  <div
+                    className={`date-tile ${e.category === 'Fundraiser' ? 'green' : e.category === 'Social' ? 'purple' : 'gold'}`}
+                  >
+                    <small>{date(e.date, { month: 'short' }).toUpperCase()}</small>
+                    <strong>{new Date(e.date + 'T12:00:00').getDate()}</strong>
+                  </div>
+                  <span>
+                    <strong>{e.title}</strong>
+                    <small>
+                      {e.time} · {e.venue.split(',')[0]}
+                    </small>
+                  </span>
+                  <Icon name="ArrowUpRight" size={17} />
+                </Link>
+              ))}
+              <Link to="/app/calendar" className="text-link upcoming-footer">
+                Open campus calendar
+                <Icon name="ArrowRight" size={15} />
               </Link>
-            ))}
-            <Link to="/app/calendar" className="text-link upcoming-footer">
-              Open calendar
-              <Icon name="ArrowRight" size={15} />
-            </Link>
-          </section>
-        </div>
-      </Revealed>
-      <Revealed delay={250}>
-        <section className="card activity-card">
-          <CardHeader
-            title="The latest around Skyline"
-            action={
-              <Link to="/app/announcements" className="text-link">
-                All announcements <Icon name="ArrowRight" size={15} />
-              </Link>
-            }
-          />
-          <div className="activity-row">
-            <Avatar name={data.announcements[0]?.author || 'Skyline Team'} index={2} />
-            <div>
-              <strong>{data.announcements[0]?.title || 'Welcome to your workspace'}</strong>
-              <p>{data.announcements[0]?.body.slice(0, 110)}…</p>
-            </div>
-            <span className="activity-date">
-              {date(data.announcements[0]?.date || '2026-10-10', { day: 'numeric', month: 'short' })}
-            </span>
-            <Link to="/app/announcements" className="plain-icon" aria-label="Read announcement">
-              <Icon name="ArrowUpRight" size={20} />
-            </Link>
+            </section>
           </div>
-        </section>
+        </div>
       </Revealed>
     </>
   );
