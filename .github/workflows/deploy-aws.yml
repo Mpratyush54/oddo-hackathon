@@ -60,8 +60,22 @@ jobs:
           node --check scripts/ux-smoke.cjs
           node --check scripts/ui-coverage.cjs
 
-      - name: Test UI interactions, forms, links, tables, and components
-        run: npm run test:browser
+      - name: Test merchandise, account, roles, and responsive smoke journeys
+        run: node scripts/smoke.cjs
+        env:
+          PLAYWRIGHT_MODULE: playwright
+          TEST_URL: http://127.0.0.1:5174
+
+      - name: Test event interactions and public navigation
+        if: always()
+        run: node scripts/ux-smoke.cjs
+        env:
+          PLAYWRIGHT_MODULE: playwright
+          TEST_URL: http://127.0.0.1:5174
+
+      - name: Audit every visible route control, field, form, and table
+        if: always()
+        run: npm run test:ui
         env:
           PLAYWRIGHT_MODULE: playwright
           TEST_URL: http://127.0.0.1:5174
