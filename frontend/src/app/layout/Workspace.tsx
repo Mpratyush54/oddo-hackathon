@@ -13,6 +13,8 @@ import { useTheme } from '../../shared/theme/theme';
 import { backendPost, cloudMode } from '../../shared/api/client';
 import type { Role } from '../../features/auth/session';
 import { AdminDashboard } from '../../features/admin/pages/Dashboard';
+import { UsersPage } from '../../features/admin/pages/UsersPage';
+import { EmailVerificationNotice } from '../../features/auth/EmailVerificationNotice';
 import { MembersPage } from '../../features/membership/pages/MembersPage';
 import { TasksPage } from '../../features/tasks/pages/TasksPage';
 import { AccountSettings } from '../../features/account/pages/AccountSettings';
@@ -593,7 +595,16 @@ export default function Workspace() {
               </Button>
             </div>
           )}
+          <EmailVerificationNotice />
           <Routes>
+            <Route
+              path="users"
+              element={
+                <Permission permission="manage_members">
+                  <UsersPage key={clubId} />
+                </Permission>
+              }
+            />
             <Route
               index
               element={

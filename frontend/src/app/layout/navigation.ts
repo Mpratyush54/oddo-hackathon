@@ -4,6 +4,7 @@ export type NavItem = { to: string; label: string; icon: string; permission?: st
 
 export const operational: NavItem[] = [
   { to: '/app', label: 'Overview', icon: 'LayoutDashboard' },
+  { to: '/app/users', label: 'Users & access', icon: 'UsersRound', permission: 'manage_members' },
   { to: '/app/members', label: 'Members', icon: 'UsersRound', permission: 'manage_members' },
   { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
   { to: '/app/announcements', label: 'Communications', icon: 'Megaphone' },

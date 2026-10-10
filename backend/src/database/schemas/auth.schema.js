@@ -77,3 +77,13 @@ export const refreshSchema = z.strictObject({
   revoked: z.boolean(),
   expiresAt: ttl,
 });
+
+export const emailVerificationSchema = z.strictObject({
+  ...recordKeys,
+  pk: prefixedKey('VERIFY#'),
+  sk: z.literal('EMAIL_VERIFICATION'),
+  userId: id,
+  email,
+  revoked: z.boolean(),
+  expiresAt: ttl,
+});

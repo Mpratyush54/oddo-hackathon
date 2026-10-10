@@ -1267,3 +1267,36 @@
     grid-template-columns: 1fr;
   }
 }
+
+.scoreboard-card {
+  padding: 24px;
+}
+.scoreboard-grid {
+  grid-template-columns: 1fr;
+}
+.scoreboard-player-card {
+  min-width: 0;
+}
+.player-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.player-points-breakdown {
+  gap: 16px;
+  font-size: 14px;
+}
+.player-points-breakdown span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.scoreboard-card > p {
+  margin-bottom: 0;
+  color: var(--muted, #557264);
+  font-size: 13px;
+}
+@media (max-width: 540px) {
+  .scoreboard-card {
+    padding: 18px;
+  }
+}

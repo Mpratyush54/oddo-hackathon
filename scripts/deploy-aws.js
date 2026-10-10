@@ -74,6 +74,9 @@ const secrets = {
   META_WEBHOOK_VERIFY_TOKEN: prior.META_WEBHOOK_VERIFY_TOKEN || randomBytes(32).toString('hex'),
 };
 for (const name of [
+  'SENDGRID_API_KEY',
+  'EMAIL_FROM',
+  'EMAIL_VERIFICATION_ORIGIN',
   'OPENROUTER_API_KEY',
   'OPENROUTER_MODEL',
   'AI_DAILY_LIMIT',

@@ -14,9 +14,18 @@ export function createAuthController({
   publicUser,
   accessName,
   cookieOptions,
+  emailVerification,
 }) {
   let dummyPassword;
   return {
+    requestVerification: async (req, res) => {
+      const { user } = await requireAuth(req);
+      res.json(await emailVerification.send(user));
+    },
+    verifyEmail: async (req, res) => {
+      await repo.limit('VERIFY-IP#' + hash(req.ip || ''), 30, 900);
+      res.json(await emailVerification.confirm(req.body));
+    },
     signup: async (req, res) => {
       await repo.limit('SIGNUP#' + hash(req.ip || ''), 5, 3600);
       const { email, password, name } = parseRequest(
@@ -48,7 +57,18 @@ export function createAuthController({
         ]))
       )
         throw new HttpError(409, 'An account already exists. Sign in instead.');
-      res.status(201).json(await newSession(res, user));
+      let verification;
+      try {
+        verification = await emailVerification.send(user);
+      } catch (error) {
+        verification = {
+          accepted: false,
+          message: error.status
+            ? error.message
+            : 'Email could not be sent. Request a new verification email from account settings.',
+        };
+      }
+      res.status(201).json({ ...(await newSession(res, user)), verification });
     },
     login: async (req, res) => {
       const { email, password } = credentials(req.body);

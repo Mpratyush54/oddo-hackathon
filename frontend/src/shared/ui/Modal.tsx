@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 
@@ -16,6 +17,9 @@ export function Modal({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const focusable = () =>
@@ -28,7 +32,7 @@ export function Modal({
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const listener = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') closeRef.current();
       if (event.key === 'Tab') {
         const els = focusable();
         const first = els[0],
@@ -48,8 +52,8 @@ export function Modal({
       document.removeEventListener('keydown', listener);
       previous?.focus();
     };
-  }, [onClose]);
-  return (
+  }, []);
+  return createPortal(
     <div
       className="modal-backdrop"
       onMouseDown={(e) => {
@@ -61,19 +65,20 @@ export function Modal({
         className={`modal ${wide ? 'wide' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
       >
         <div className="modal-heading">
           <div>
-            <h2 id="modal-title">{title}</h2>
+            <h2 id={titleId}>{title}</h2>
             {description && <p>{description}</p>}
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Close dialog">
             <Icon name="X" />
           </button>
         </div>
-        {children}
+        <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

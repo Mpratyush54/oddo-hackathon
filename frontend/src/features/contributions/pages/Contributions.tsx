@@ -211,10 +211,10 @@ export function ContributionsPage() {
       </div>
 
       {can('manage_members') && (
-        <section className="card table-card scoreboard-card">
+        <section className="card scoreboard-card">
           <CardHeader
             title="Club Scoreboard & Leaderboard"
-            subtitle="Top contributors ranked across all student activities."
+            subtitle="Top contributors across student activities. Equal scores share a rank; ranks begin when points are earned."
           />
           <div className="scoreboard-grid">
             {[...data.members]
@@ -225,32 +225,35 @@ export function ContributionsPage() {
                   (m.volunteerPoints || 0) +
                   (m.contributionPoints || 0),
               }))
-              .sort((a, b) => b.total - a.total)
+              .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
               .slice(0, 8)
-              .map((m, rank) => (
-                <div className={`scoreboard-player-card rank-${rank + 1}`} key={m.id}>
-                  <div className="player-rank-chip">#{rank + 1}</div>
-                  <div className="player-info">
-                    <strong>{m.name}</strong>
-                    <small>{m.role}</small>
+              .map((m, _index, leaders) => {
+                const rank = m.total > 0 ? leaders.findIndex((p) => p.total === m.total) + 1 : 0;
+                return (
+                  <div className={`scoreboard-player-card rank-${rank}`} key={m.id}>
+                    <div className="player-rank-chip">{rank ? '#' + rank : '—'}</div>
+                    <div className="player-info">
+                      <strong>{m.name}</strong>
+                      <small>{m.role}</small>
+                    </div>
+                    <div className="player-points-breakdown">
+                      <span title="Participation Points" className="pt-part">
+                        <Icon name="Ticket" size={16} /> {m.participationPoints || 0}
+                      </span>
+                      <span title="Volunteer Points" className="pt-vol">
+                        <Icon name="HeartHandshake" size={16} /> {m.volunteerPoints || 0}
+                      </span>
+                      <span title="Merch Contribution Points" className="pt-con">
+                        <Icon name="ShoppingBag" size={16} /> {m.contributionPoints || 0}
+                      </span>
+                    </div>
+                    <div className="player-total-badge">
+                      <strong>{m.total}</strong>
+                      <small>pts</small>
+                    </div>
                   </div>
-                  <div className="player-points-breakdown">
-                    <span title="Participation Points" className="pt-part">
-                      🎟️ {m.participationPoints || 0}
-                    </span>
-                    <span title="Volunteer Points" className="pt-vol">
-                      🤝 {m.volunteerPoints || 0}
-                    </span>
-                    <span title="Merch Contribution Points" className="pt-con">
-                      🛍️ {m.contributionPoints || 0}
-                    </span>
-                  </div>
-                  <div className="player-total-badge">
-                    <strong>{m.total}</strong>
-                    <small>pts</small>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </section>
       )}

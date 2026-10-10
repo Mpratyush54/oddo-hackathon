@@ -6,8 +6,10 @@ import { HttpError, recordId } from '../../shared/records.js';
 import { hash } from './password.js';
 import { createAuthController } from './auth.controller.js';
 import { createAuthRoutes } from './auth.routes.js';
+import { EmailVerificationService } from './email-verification.service.js';
 
-export function createAuth({ repo, env }) {
+export function createAuth({ repo, env, fetchImpl }) {
+  const emailVerification = new EmailVerificationService({ repo, env, fetchImpl });
   if (!env.JWT_SECRET || env.JWT_SECRET.length < 64)
     throw new Error('JWT_SECRET needs at least 64 characters.');
   const jwtKey = new TextEncoder().encode(env.JWT_SECRET);
@@ -122,6 +124,7 @@ export function createAuth({ repo, env }) {
       publicUser,
       accessName,
       cookieOptions,
+      emailVerification,
     }),
   );
   async function requireAuth(req) {

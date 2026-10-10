@@ -22,7 +22,7 @@ type Session = {
   reloadAuth: () => Promise<void>;
   role: Role;
   signedIn: boolean;
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; emailVerified?: boolean };
   clubId: string;
   clubs: ReturnType<typeof useStore>['organizations'];
   selectClub: (id: string) => void;

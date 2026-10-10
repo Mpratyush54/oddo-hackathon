@@ -2,6 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
     {
+      "$ref": "#/$defs/emailVerificationRecord"
+    },
+    {
       "$ref": "#/$defs/accountRecord"
     },
     {
@@ -39,6 +42,67 @@
     }
   ],
   "$defs": {
+    "emailVerificationRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 250,
+          "format": "starts_with",
+          "pattern": "^VERIFY#.*",
+          "$ref": "#/$defs/__schema0"
+        },
+        "sk": {
+          "type": "string",
+          "const": "EMAIL_VERIFICATION"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "email": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/__schema3"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "userId",
+        "email",
+        "revoked",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema0": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 250
+    },
+    "__schema1": {
+      "type": "number",
+      "const": 1
+    },
+    "__schema2": {
+      "type": "string",
+      "maxLength": 254,
+      "format": "email",
+      "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+    },
+    "__schema3": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
     "accountRecord": {
       "type": "object",
       "properties": {
@@ -71,15 +135,6 @@
         "passwordHash"
       ],
       "additionalProperties": false
-    },
-    "__schema0": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 250
-    },
-    "__schema1": {
-      "type": "number",
-      "const": 1
     },
     "profileRecord": {
       "type": "object",
@@ -115,10 +170,10 @@
         },
         "sessionVersion": {
           "minimum": 1,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "createdAt": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "disabled": {
           "type": "boolean"
@@ -136,18 +191,12 @@
       ],
       "additionalProperties": false
     },
-    "__schema2": {
-      "type": "string",
-      "maxLength": 254,
-      "format": "email",
-      "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
-    },
-    "__schema3": {
+    "__schema4": {
       "type": "integer",
       "minimum": 0,
       "maximum": 9007199254740991
     },
-    "__schema4": {
+    "__schema5": {
       "type": "string",
       "format": "date-time",
       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
@@ -222,16 +271,16 @@
         },
         "sessionVersion": {
           "minimum": 1,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "csrfToken": {
-          "$ref": "#/$defs/__schema5"
+          "$ref": "#/$defs/__schema6"
         },
         "revoked": {
           "type": "boolean"
         },
         "expiresAt": {
-          "$ref": "#/$defs/__schema6"
+          "$ref": "#/$defs/__schema3"
         }
       },
       "required": [
@@ -245,15 +294,10 @@
       ],
       "additionalProperties": false
     },
-    "__schema5": {
+    "__schema6": {
       "type": "string",
       "format": "sha256_hex",
       "pattern": "^[0-9a-fA-F]{64}$"
-    },
-    "__schema6": {
-      "type": "integer",
-      "exclusiveMinimum": 0,
-      "maximum": 9007199254740991
     },
     "refreshRecord": {
       "type": "object",
@@ -283,7 +327,7 @@
           "type": "boolean"
         },
         "expiresAt": {
-          "$ref": "#/$defs/__schema6"
+          "$ref": "#/$defs/__schema3"
         }
       },
       "required": [
@@ -311,7 +355,7 @@
         },
         "version": {
           "minimum": 1,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "data": {
           "$ref": "#/$defs/clubData"
@@ -516,7 +560,7 @@
           "type": "boolean"
         },
         "consentUpdatedAt": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "participationPoints": {
           "$ref": "#/$defs/__schema10"
@@ -607,10 +651,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 10000,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "sold": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "price": {
           "$ref": "#/$defs/__schema10"
@@ -691,7 +735,7 @@
             "maxLength": 20
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema3"
+            "$ref": "#/$defs/__schema4"
           }
         },
         "color": {
@@ -801,7 +845,7 @@
         },
         "quantity": {
           "minimum": 1,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "subtotal": {
           "$ref": "#/$defs/__schema10"
@@ -865,7 +909,7 @@
           "$ref": "#/$defs/__schema0"
         },
         "reviewedAt": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "rejectionReason": {
           "$ref": "#/$defs/__schema8"
@@ -971,7 +1015,7 @@
           "$ref": "#/$defs/__schema0"
         },
         "read": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "email": {
           "type": "boolean"
@@ -980,7 +1024,7 @@
           "type": "boolean"
         },
         "recipients": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         }
       },
       "required": [
@@ -1112,7 +1156,7 @@
       ]
     },
     "__schema17": {
-      "$ref": "#/$defs/__schema3"
+      "$ref": "#/$defs/__schema4"
     },
     "__schema18": {
       "$ref": "#/$defs/__schema0"
@@ -1287,11 +1331,11 @@
           "type": "boolean"
         },
         "redemptions": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "maxRedemptions": {
           "minimum": 1,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "memberOnly": {
           "type": "boolean"
@@ -1335,7 +1379,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 5,
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "comment": {
           "$ref": "#/$defs/__schema8"
@@ -1487,7 +1531,7 @@
           "$ref": "#/$defs/__schema1"
         },
         "fingerprint": {
-          "$ref": "#/$defs/__schema5"
+          "$ref": "#/$defs/__schema6"
         },
         "result": {
           "type": "object",
@@ -1499,7 +1543,7 @@
           }
         },
         "expiresAt": {
-          "$ref": "#/$defs/__schema6"
+          "$ref": "#/$defs/__schema3"
         }
       },
       "required": [
@@ -1561,10 +1605,10 @@
           "$ref": "#/$defs/__schema1"
         },
         "count": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "expiresAt": {
-          "$ref": "#/$defs/__schema6"
+          "$ref": "#/$defs/__schema3"
         }
       },
       "required": [
@@ -1641,7 +1685,7 @@
           ]
         },
         "providerTimestamp": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         }
       },
       "required": [

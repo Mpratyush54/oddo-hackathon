@@ -28,6 +28,7 @@ export class MemoryRepository {
       if (condition === '#version = :version' && existing?.version !== values[':version'])
         return false;
       if (condition === 'revoked = :false' && existing?.revoked !== false) return false;
+      if (condition === '#role = :role' && existing?.role !== values[':role']) return false;
       if (
         condition === 'sessionVersion = :version' &&
         existing?.sessionVersion !== values[':version']

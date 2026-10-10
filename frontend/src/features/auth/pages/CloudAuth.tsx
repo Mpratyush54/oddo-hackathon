@@ -5,9 +5,11 @@ import { Button } from '../../../shared/ui/Button';
 import { Field } from '../../../shared/ui/Field';
 import { Logo } from '../../../shared/ui/Logo';
 import { backendPost } from '../../../shared/api/client';
+import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../session';
 
 export function CloudAuth({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
+  const { toast } = useStore();
   const navigate = useNavigate(),
     [params] = useSearchParams(),
     { reloadAuth } = useSession();
@@ -46,13 +48,17 @@ export function CloudAuth({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
             setBusy(true);
             setError('');
             try {
-              await backendPost(`/auth/${mode}`, {
-                name: form.get('name'),
-                email: form.get('email'),
-                password: form.get('password'),
-              });
+              const result = await backendPost<{ verification?: { message?: string } }>(
+                `/auth/${mode}`,
+                {
+                  name: form.get('name'),
+                  email: form.get('email'),
+                  password: form.get('password'),
+                },
+              );
               await reloadAuth();
               navigate(returnTo);
+              if (result.verification?.message) toast(result.verification.message);
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Sign-in failed.');
             } finally {

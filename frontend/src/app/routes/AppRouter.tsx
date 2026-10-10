@@ -5,6 +5,7 @@ import { EventDiscovery } from '../../features/events/pages/EventDiscovery';
 import EventExperience from '../../features/events/pages/EventExperience';
 import { PageMotion } from '../../shared/components/PageMotion';
 import { ShopPage } from '../../features/shop/pages/Shop';
+import { VerifyEmail } from '../../features/auth/pages/VerifyEmail';
 import { AuthPage } from '../../features/auth/pages/AuthPage';
 import { ClubsPage } from '../../features/clubs/pages/ClubsPage';
 import { LandingPage } from '../../features/landing/pages/LandingPage';
@@ -21,6 +22,7 @@ export default function AppRouter() {
         <Route path="/shop" element={<ShopPage publicView />} />
         <Route path="/clubs/:id" element={<PublicClub />} />
         <Route path="/e/:clubId/:id" element={<EventExperience publicView />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/signup" element={<AuthPage mode="signup" />} />
         <Route path="/app/*" element={<Workspace />} />

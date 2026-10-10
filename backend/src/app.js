@@ -1,5 +1,6 @@
 import { registerCatalogRoutes } from './modules/catalog/catalog.routes.js';
 import { registerClubsRoutes } from './modules/clubs/clubs.routes.js';
+import { registerUsersRoutes } from './modules/users/users.routes.js';
 import { registerCollegeRoutes } from './modules/college/college.routes.js';
 import { registerCommerceRoutes } from './modules/commerce/commerce.routes.js';
 import { registerCommunicationsRoutes } from './modules/communications/communications.routes.js';
@@ -32,7 +33,7 @@ export function createApp({
   s3 = new S3Client({}),
 }) {
   const app = express(),
-    auth = createAuth({ repo, env }),
+    auth = createAuth({ repo, env, fetchImpl }),
     domain = createDomain({ repo, clubs }),
     providers = createProviders({ env, repo, domain, fetchImpl });
   const { checkReceipt } = createReceiptService({ env, s3 });
@@ -60,6 +61,7 @@ export function createApp({
   auth.routes(app);
   app.use('/api', createAuthenticate({ auth, repo }));
   registerClubsRoutes(app, clubsController);
+  registerUsersRoutes(app, { repo, domain });
   registerCollegeRoutes(app, collegeController);
 
   registerCommerceRoutes(app, commerceController);

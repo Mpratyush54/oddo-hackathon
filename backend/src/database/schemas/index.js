@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  emailVerificationSchema,
   accountSchema,
   profileSchema,
   accessSchema,
@@ -15,6 +16,7 @@ import {
 } from './operational.schema.js';
 
 export const recordSchemas = {
+  emailVerification: emailVerificationSchema,
   account: accountSchema,
   profile: profileSchema,
   access: accessSchema,
@@ -43,31 +45,33 @@ export class DatabaseValidationError extends Error {
 export function parseDatabaseRecord(item) {
   item = omitUndefined(item);
   const schema =
-    item?.sk === 'STATE'
-      ? stateSchema
-      : item?.sk === 'ACCOUNT'
-        ? accountSchema
-        : item?.sk === 'PROFILE'
-          ? profileSchema
-          : item?.sk === 'SESSION'
-            ? sessionSchema
-            : item?.sk === 'REFRESH'
-              ? refreshSchema
-              : item?.sk === 'COUNT'
-                ? counterSchema
-                : item?.pk?.startsWith('MESSAGE#')
-                  ? item.sk === 'STATUS'
-                    ? messageStatusSchema
-                    : messageMappingSchema
-                  : item?.sk?.startsWith('ACCESS#')
-                    ? accessSchema
-                    : item?.sk?.startsWith('AUDIT#')
-                      ? auditRecordSchema
-                      : item?.sk?.startsWith('REQUEST#')
-                        ? requestSchema
-                        : item?.sk?.startsWith('DELIVERY#')
-                          ? deliveryRecordSchema
-                          : null;
+    item?.sk === 'EMAIL_VERIFICATION'
+      ? emailVerificationSchema
+      : item?.sk === 'STATE'
+        ? stateSchema
+        : item?.sk === 'ACCOUNT'
+          ? accountSchema
+          : item?.sk === 'PROFILE'
+            ? profileSchema
+            : item?.sk === 'SESSION'
+              ? sessionSchema
+              : item?.sk === 'REFRESH'
+                ? refreshSchema
+                : item?.sk === 'COUNT'
+                  ? counterSchema
+                  : item?.pk?.startsWith('MESSAGE#')
+                    ? item.sk === 'STATUS'
+                      ? messageStatusSchema
+                      : messageMappingSchema
+                    : item?.sk?.startsWith('ACCESS#')
+                      ? accessSchema
+                      : item?.sk?.startsWith('AUDIT#')
+                        ? auditRecordSchema
+                        : item?.sk?.startsWith('REQUEST#')
+                          ? requestSchema
+                          : item?.sk?.startsWith('DELIVERY#')
+                            ? deliveryRecordSchema
+                            : null;
   if (!schema)
     throw new DatabaseValidationError([{ path: ['sk'], message: 'Unknown record kind.' }]);
   const parsed = schema.safeParse(item);
