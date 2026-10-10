@@ -472,6 +472,274 @@ async function auditRowActions(browser, route, role, report) {
   }
 }
 
+
+async function reactClickSurfacesOn(page) {
+  return page.evaluate(() => {
+    const standard = 'button, a[href], input[type="button"], input[type="submit"], input[type="reset"], summary, [role="button"], [role="tab"], [role="menuitem"]';
+    const visible = (el) => {
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const nameFor = (el) => {
+      const aria = el.getAttribute('aria-label')?.trim();
+      if (aria) return aria;
+      const labelledBy = el.getAttribute('aria-labelledby');
+      if (labelledBy) {
+        const value = labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ');
+        if (value) return value;
+      }
+      const title = el.getAttribute('title')?.trim();
+      if (title) return title;
+      return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+    };
+    const candidates = [...document.querySelectorAll('*')].filter((el) => {
+      if (!visible(el) || el.matches(standard) || el.closest(standard)) return false;
+      const propsKeys = Object.keys(el).filter((key) => key.startsWith('__reactProps
+  const result = { route, role, name: link.name, href: link.href, status: 'pending' };
+  let url;
+  try { url = new URL(link.href, BASE_URL); } catch {}
+  if (!url || !link.href || url.protocol === 'javascript:') {
+    result.status = 'failed';
+    result.detail = 'Missing or invalid destination.';
+    report.failures.push({ type: 'link-target', route, role, name: link.name, detail: result.detail });
+    return result;
+  }
+  if (!sameOrigin(link.href) || ['mailto:', 'tel:'].includes(url.protocol) || link.target === '_blank' || link.download !== null) {
+    result.status = 'safety-skipped';
+    result.detail = 'External, new-tab, email/telephone or download link; destination metadata was validated.';
+    return result;
+  }
+  if (!CHECK_LINK_CLICKS) { result.status = 'destination-validated'; return result; }
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(scenarioUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    const locator = page.locator(LINKS);
+    if (link.index >= await locator.count()) throw new Error('Expected link index ' + link.index + ' but it was not found.');
+    const item = locator.nth(link.index);
+    if (await item.evaluate((el) => el.href || '') !== link.href || await nameOf(item) !== link.name) {
+      throw new Error('Link identity changed between inventory and execution.');
+    }
+    await item.click({ timeout: TIMEOUT });
+    await page.waitForTimeout(100);
+    if (errors.length) throw new Error('Uncaught browser error: ' + errors.join(' | '));
+    if (!(await page.locator('body').innerText()).trim()) throw new Error('Link click left the page blank.');
+    result.status = 'clicked';
+    result.resultUrl = page.url();
+  } catch (error) {
+    result.status = 'failed';
+    result.detail = error instanceof Error ? error.message : String(error);
+    report.failures.push({ type: 'link-click', route, role, name: link.name, detail: result.detail });
+  } finally { await context.close().catch(() => {}); }
+  return result;
+}
+async function main() {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const report = {
+    repository: 'Mpratyush54/oddo-hackathon',
+    baseUrl: BASE_URL,
+    environment: 'LOCAL DEMO ONLY — never run this mutating audit against production',
+    startedAt: new Date().toISOString(),
+    routes: [], buttons: [], links: [], fields: [], tableActions: [], clickSurfaces: [], failures: [], warnings: [], summary: {},
+  };
+  const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
+  try {
+    const routeCases = PUBLIC_ROUTES.map((route) => ({ path: route, roles: ['member'] }))
+      .concat(ROLE_ROUTES);
+    for (const routeCase of routeCases) {
+      for (const role of routeCase.roles) {
+        const inventory = await inspectRoute(browser, routeCase.path, role, report);
+        await auditFields(browser, routeCase.path, role, report);
+        await auditRowActions(browser, routeCase.path, role, report);
+        const surfaceErrors = [], surfaceDialogs = [];
+        const surfacePageContext = await newPage(browser, role, surfaceErrors, surfaceDialogs);
+        let surfaces = [];
+        try {
+          await surfacePageContext.page.goto(scenarioUrl(routeCase.path, role), { waitUntil: 'domcontentloaded' });
+          await ready(surfacePageContext.page);
+          surfaces = await reactClickSurfacesOn(surfacePageContext.page);
+        } finally {
+          await surfacePageContext.context.close().catch(() => {});
+        }
+        for (const surface of surfaces) {
+          const surfaceResult = await exerciseReactClickSurface(browser, routeCase.path, role, surface, report);
+          report.clickSurfaces.push(surfaceResult);
+        }
+        const queue = inventory.controls.map((button) => ({
+          steps: [{ index: button.index, name: button.name, tag: button.tag }],
+          names: [button.name],
+        }));
+        const completed = new Set();
+        for (let q = 0; q < queue.length; q++) {
+          const item = queue[q];
+          const key = role + '|' + routeCase.path + '|' + item.names.join(' -> ');
+          if (completed.has(key)) continue;
+          completed.add(key);
+          const outcome = await clickButton(browser, routeCase.path, role, item.steps, report);
+          if (outcome.revealedControls?.length) {
+            for (const child of outcome.revealedControls) {
+              const names = item.names.concat(child.name);
+              const childKey = role + '|' + routeCase.path + '|' + names.join(' -> ');
+              if (completed.has(childKey) || queue.some((qItem) => qItem.names.join(' -> ') === names.join(' -> '))) continue;
+              queue.push({
+                steps: item.steps.concat({ index: child.index, name: child.name, tag: child.tag }),
+                names,
+              });
+            }
+          }
+        }
+        for (const link of inventory.links) {
+          const outcome = await clickLink(browser, routeCase.path, role, link, report);
+          report.links.push(outcome);
+        }
+      }
+    }
+    for (const probe of ACCESS_PROBES) {
+      const errors = [], dialogs = [];
+      const { context, page } = await newPage(browser, probe.role, errors, dialogs);
+      try {
+        await page.goto(scenarioUrl(probe.path, probe.role), { waitUntil: 'domcontentloaded' });
+        await ready(page);
+        const url = new URL(page.url());
+        const blocked = url.pathname.includes('/login') ||
+          await page.getByRole('heading', { name: /responsibility|not authorized|access denied|administrator/i }).count() > 0;
+        if (!blocked) report.failures.push({
+          type: 'authorization-route', route: probe.path, role: probe.role,
+          detail: 'Role "' + probe.role + '" was not clearly blocked; final URL was ' + url.pathname + '.',
+        });
+      } catch (error) {
+        report.failures.push({
+          type: 'authorization-route', route: probe.path, role: probe.role,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      } finally { await context.close().catch(() => {}); }
+    }
+  } finally { await browser.close(); }
+  const count = (items, status) => items.filter((item) => item.status === status).length;
+  report.finishedAt = new Date().toISOString();
+  report.summary = {
+    routeRoleVisits: report.routes.length,
+    initialVisibleButtons: report.routes.reduce((sum, item) => sum + item.visibleButtonCount, 0),
+    buttonScenarios: report.buttons.length,
+    initialButtonsCovered: report.routes.reduce((sum, route) => {
+      const matched = report.buttons.filter((item) =>
+        item.role === route.role &&
+        item.route === route.requestedRoute &&
+        Number.isInteger(item.index) &&
+        item.path.length === 1
+      );
+      return sum + new Set(matched.map((item) => item.index)).size;
+    }, 0),
+    buttonsClicked: count(report.buttons, 'clicked'),
+    disabledStateCovered: count(report.buttons, 'disabled-state-covered'),
+    providerButtonsSafetySkipped: count(report.buttons, 'safety-skipped'),
+    buttonFailures: count(report.buttons, 'failed'),
+    reactClickSurfacesInventoried: report.clickSurfaces.length,
+    reactClickSurfacesClicked: report.clickSurfaces.filter((item) => item.status === 'clicked').length,
+    reactClickSurfaceFailures: report.clickSurfaces.filter((item) => item.status === 'failed').length,
+    fieldsInventoried: report.fields.length,
+    fieldsChanged: report.fields.filter((item) => item.status === 'changed').length,
+    fieldStateCovered: report.fields.filter((item) => item.status === 'state-covered').length,
+    fieldFailures: report.fields.filter((item) => item.status === 'failed').length,
+    tableInstancesInspected: report.tableActions.reduce((sum, item) => sum + item.tables, 0),
+    rowsInspected: report.tableActions.reduce((sum, item) => sum + item.rows.length, 0),
+    linksInventoried: report.links.length,
+    linksClicked: count(report.links, 'clicked'),
+    linksSafetySkipped: count(report.links, 'safety-skipped'),
+    linkFailures: count(report.links, 'failed'),
+    tablesAudited: report.routes.reduce((sum, item) => sum + item.tableCount, 0),
+    fieldsAudited: report.routes.reduce((sum, item) => sum + item.fieldCount, 0),
+    imagesAudited: report.routes.reduce((sum, item) => sum + item.imageCount, 0),
+    failures: report.failures.length,
+    warnings: report.warnings.length,
+  };
+  fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
+  console.log(JSON.stringify({ report: REPORT_PATH, summary: report.summary }, null, 2));
+  if (report.failures.length) {
+    console.error('Audit found ' + report.failures.length + ' failure(s). Inspect ' + REPORT_PATH + '.');
+    process.exitCode = 1;
+  }
+}
+main().catch((error) => { console.error(error); process.exitCode = 1; });
+));
+      return propsKeys.some((key) => {
+        const props = el[key];
+        return props && typeof props.onClick === 'function';
+      });
+    });
+    candidates.forEach((el, index) => el.setAttribute('data-qa-react-click-surface', String(index)));
+    return candidates.map((el, index) => ({
+      index,
+      name: nameFor(el),
+      tag: el.tagName.toLowerCase(),
+      role: el.getAttribute('role') || '',
+      className: typeof el.className === 'string' ? el.className.slice(0, 120) : '',
+      disabled: el.getAttribute('aria-disabled') === 'true',
+    }));
+  });
+}
+async function exerciseReactClickSurface(browser, route, role, surface, report) {
+  const result = { route, role, index: surface.index, name: surface.name, tag: surface.tag, status: 'pending' };
+  if (!surface.name) {
+    result.status = 'failed';
+    result.detail = 'React onClick surface has no accessible name or discoverable text.';
+    report.failures.push({ type: 'click-surface-name', route, role, detail: result.detail, control: JSON.stringify(surface) });
+    return result;
+  }
+  const safety = skipReason(surface.name);
+  if (safety) {
+    result.status = 'safety-skipped';
+    result.detail = safety;
+    return result;
+  }
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(scenarioUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    const current = await reactClickSurfacesOn(page);
+    const item = current.find((candidate) => candidate.index === surface.index);
+    if (!item) throw new Error('React click surface no longer exists at its discovered position.');
+    if (item.name !== surface.name || item.tag !== surface.tag) {
+      throw new Error('React click surface identity changed before click.');
+    }
+    const target = page.locator('[data-qa-react-click-surface="' + surface.index + '"]');
+    const beforeUrl = page.url();
+    const beforeText = await page.locator('body').innerText();
+    await target.click({ timeout: TIMEOUT });
+    await page.waitForTimeout(100);
+    if (errors.length) throw new Error('Uncaught browser error: ' + errors.join(' | '));
+    const afterText = await page.locator('body').innerText().catch(() => '');
+    if (!afterText.trim()) throw new Error('Click left the page blank.');
+    result.status = 'clicked';
+    result.resultUrl = page.url();
+    result.effect = new URL(beforeUrl).pathname !== new URL(page.url()).pathname
+      ? 'route-change'
+      : (await page.locator('[role="dialog"], dialog, [aria-modal="true"]').count()) > 0
+        ? 'dialog-visible'
+        : beforeText !== afterText ? 'visible-content-changed' : 'no-visible-content-change';
+    if (result.effect === 'no-visible-content-change') {
+      result.reviewRequired = true;
+      result.detail = 'Click executed, but no visible effect was detected; add a focused assertion or document an intentional no-op.';
+      report.warnings.push({ type: 'click-surface-effect-unverified', route, role, control: surface.name, detail: result.detail });
+    }
+  } catch (error) {
+    result.status = 'failed';
+    result.detail = error instanceof Error ? error.message : String(error);
+    report.failures.push({ type: 'react-click-surface', route, role, control: surface.name, detail: result.detail });
+    if (SCREENSHOTS) {
+      fs.mkdirSync(OUT_DIR, { recursive: true });
+      const safe = (role + '-surface-' + surface.index + '-' + surface.name).replace(/[^a-z0-9-]+/gi, '-').slice(0, 90);
+      await page.screenshot({ path: path.join(OUT_DIR, safe + '-failure.png'), fullPage: true }).catch(() => {});
+    }
+  } finally {
+    await context.close().catch(() => {});
+  }
+  return result;
+}
+
 async function clickLink(browser, route, role, link, report) {
   const result = { route, role, name: link.name, href: link.href, status: 'pending' };
   let url;
