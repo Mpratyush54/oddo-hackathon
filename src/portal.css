@@ -1332,3 +1332,194 @@
     gap: 12px;
   }
 }
+
+/* Distinct Role Dashboard Stages */
+.dark-hero-card {
+  background: linear-gradient(135deg, #134137 0%, #0c2b24 100%);
+  border: 1px solid #235448;
+  border-radius: 24px;
+  padding: 36px 40px;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(12, 43, 36, 0.2);
+}
+.role-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #e2c775;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dark-hero-card h1 {
+  font-size: 34px;
+  letter-spacing: -0.8px;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+.dark-hero-card p {
+  color: #c0d8cb;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 560px;
+}
+.treasurer-hero-actions,
+.organizer-hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+/* Treasurer Hero Badge */
+.treasurer-hero-badge-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  padding: 24px 28px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.treasurer-badge-label {
+  font-size: 13px;
+  color: #a7cfba;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.treasurer-badge-amount {
+  font-size: 36px;
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -1px;
+}
+.treasurer-balance-split {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.treasurer-balance-split small {
+  display: block;
+  font-size: 12px;
+  color: #9cb9a8;
+}
+.treasurer-balance-split span {
+  font-weight: 600;
+  font-size: 14px;
+}
+.approval-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.approval-stage-info {
+  flex: 1;
+}
+.approval-stage-action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.approval-stage-action .small-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  min-height: 32px;
+}
+
+/* Organizer Door Meter */
+.organizer-door-meter {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  padding: 22px 30px;
+}
+.door-meter-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.door-meter-circle strong {
+  font-size: 26px;
+  color: #ffffff;
+  margin-top: 6px;
+}
+.door-meter-circle small {
+  color: #9eccb3;
+  font-size: 13px;
+}
+.door-meter-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  padding-left: 20px;
+}
+.door-meter-stats strong {
+  font-size: 22px;
+  display: block;
+  color: #ffffff;
+}
+.door-meter-stats span {
+  font-size: 12px;
+  color: #9cb9a8;
+}
+
+/* Member Pass Hero */
+.member-pass-hero {
+  align-items: stretch;
+}
+.member-pass-pills {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.member-pass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2f2e9;
+  font-size: 13px;
+  font-weight: 550;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.member-pass-card-widget {
+  min-width: 310px;
+}
+.member-pass-card-widget .portal-membership {
+  height: 100%;
+}
+@media (max-width: 900px) {
+  .dark-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px 24px;
+  }
+  .treasurer-hero-badge-card,
+  .organizer-door-meter,
+  .member-pass-card-widget {
+    width: 100%;
+    min-width: 0;
+  }
+}
