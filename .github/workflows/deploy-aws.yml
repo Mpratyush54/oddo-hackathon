@@ -54,6 +54,12 @@ jobs:
           cat /tmp/skyline-demo.log
           exit 1
 
+      - name: Check browser test scripts parse
+        run: |
+          node --check scripts/smoke.cjs
+          node --check scripts/ux-smoke.cjs
+          node --check scripts/ui-coverage.cjs
+
       - name: Test UI interactions, forms, links, tables, and components
         run: npm run test:browser
         env:
