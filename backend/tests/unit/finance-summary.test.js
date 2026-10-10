@@ -11,6 +11,29 @@ const row = (amount, category, status = 'Completed', date = '2026-10-01') => ({
   status,
   date,
 });
+test('free AI explanations accept valid fenced JSON and reject truncated output', async () => {
+  const facts = summarizeLedger([row(100, 'Membership')]);
+  const ai = new FinanceAiService({
+    env: { OPENROUTER_API_KEY: 'fixture' },
+    fetchImpl: async (url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.reasoning.effort, 'none');
+      return Response.json({
+        choices: [
+          {
+            message: {
+              content:
+                '```json\n{"summary":"The ledger records ₹100 of dues.","nextSteps":[]}\n```',
+            },
+          },
+        ],
+      });
+    },
+  });
+  assert.equal((await ai.explain(facts)).aiAvailable, true);
+  ai.fetchImpl = async () => Response.json({ choices: [{ message: { content: '{"summary":' } }] });
+  assert.equal((await ai.explain(facts)).aiAvailable, false);
+});
 test('financial totals are calculated in paise, exclude pending/rejected and preserve opening balance', () => {
   const facts = summarizeLedger(
     [

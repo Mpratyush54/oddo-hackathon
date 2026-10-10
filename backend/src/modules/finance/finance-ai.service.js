@@ -43,7 +43,8 @@ export class FinanceAiService {
         body: JSON.stringify({
           model,
           temperature: 0.1,
-          max_tokens: 850,
+          max_tokens: 1600,
+          reasoning: { effort: 'none' },
           messages: [
             {
               role: 'system',
