@@ -1,0 +1,93 @@
+.event-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.budget-status {
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 20px 0;
+}
+.budget-status span {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+.budget-status strong {
+  font-size: 20px;
+  color: var(--text);
+}
+.event-ledger-list {
+  margin: 24px 0;
+}
+.event-ledger-list > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.event-ledger-list > div > span:first-child {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+}
+.event-ledger-list small {
+  color: var(--muted);
+}
+.review-actions {
+  display: flex;
+  gap: 8px;
+}
+.rejection-note {
+  color: #a34e36 !important;
+  max-width: 300px;
+}
+.audit-section {
+  margin-top: 24px;
+}
+.audit-list > div {
+  display: flex;
+  gap: 14px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+.audit-list > div > span:last-child {
+  display: grid;
+  gap: 6px;
+}
+.audit-list small {
+  color: var(--muted);
+}
+.scanner-mode {
+  margin-bottom: 20px;
+}
+.ticket-options > .button {
+  margin-top: 20px;
+}
+.event-ledger-list .badge {
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .event-finance-grid {
+    grid-template-columns: 1fr;
+  }
+  .budget-status {
+    flex-direction: column;
+  }
+  .event-ledger-list > div {
+    flex-wrap: wrap;
+  }
+  .review-actions {
+    flex-direction: column;
+  }
+  .scanner-mode {
+    display: flex;
+    overflow-x: auto;
+  }
+  .scanner-mode button {
+    white-space: nowrap;
+  }
+}
