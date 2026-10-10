@@ -810,8 +810,8 @@ async function auditRoute(browser, testCase, report) {
     report.summary.forms += entry.counts.forms;
     report.summary.tabs += entry.counts.tabs;
     report.summary.buttonsClicked += entry.buttons.filter((button) => button.exercised).length;
-    report.summary.buttonsRequiringDedicatedWorkflow += entry.buttons.filter(
-      (button) => button.classification === 'dedicated-workflow-required',
+    report.summary.buttonsIsolatedActionProbes += entry.buttons.filter(
+      (button) => button.classification === 'isolated-action-probe',
     ).length;
     report.summary.buttonsWithoutDedicatedAssertion += entry.buttons.filter(
       (button) => button.classification === 'visible-action-contract',
@@ -867,7 +867,7 @@ async function main() {
       failedRoutes: 0,
       buttonInstances: 0,
       buttonsClicked: 0,
-      buttonsRequiringDedicatedWorkflow: 0,
+      buttonsIsolatedActionProbes: 0,
       buttonsWithoutDedicatedAssertion: 0,
       links: 0,
       linksClicked: 0,
