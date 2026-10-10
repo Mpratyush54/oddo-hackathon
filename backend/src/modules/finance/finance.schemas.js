@@ -6,6 +6,7 @@ export const createExpenseSchema = z.object({
   amount: moneyAmount,
   receipt: requiredText(120),
   receiptKey: requiredText(250),
+  receiptCheckId: entityId.optional(),
   eventId: entityId.optional(),
 });
 export const reviewExpenseSchema = z.discriminatedUnion('status', [

@@ -36,6 +36,7 @@ export type ClubEvent = {
 };
 
 export type Transaction = {
+  receiptCheckId?: string;
   paymentId?: string;
   id: string;
   title: string;

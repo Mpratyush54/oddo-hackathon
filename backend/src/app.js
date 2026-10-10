@@ -31,6 +31,7 @@ export function createApp({
   repo,
   clubs,
   fetchImpl = fetch,
+  ocr,
   s3 = new S3Client({}),
 }) {
   const app = express(),
@@ -39,6 +40,7 @@ export function createApp({
       repo,
       clubs,
       paymentsRequired: env.NODE_ENV === 'production' || !!env.RAZORPAY_KEY_ID,
+      receiptChecksRequired: env.NODE_ENV === 'production' || !!env.RECEIPTS_BUCKET,
     }),
     providers = createProviders({ env, repo, domain, fetchImpl });
   const { checkReceipt } = createReceiptService({ env, s3 });
@@ -47,7 +49,7 @@ export function createApp({
   const collegeController = createCollegeController({ repo, clubs, domain });
   const commerceController = createCommerceController({ domain });
   const communicationsController = createCommunicationsController({ providers });
-  const financeController = createFinanceController({ env, domain, s3 });
+  const financeController = createFinanceController({ env, repo, domain, s3, fetchImpl, ocr });
   const webhooksController = createWebhooksController({ env, providers });
   app.disable('x-powered-by');
   app.use(createRequestSecurity({ env }));

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { receiptCheckSchema, receiptUseSchema, ocrQuotaSchema } from './receipt.schema.js';
 import { paymentRecordSchema, paymentMappingSchema } from './payment.schema.js';
 import {
   emailVerificationSchema,
@@ -17,6 +18,9 @@ import {
 } from './operational.schema.js';
 
 export const recordSchemas = {
+  ocrQuota: ocrQuotaSchema,
+  receiptCheck: receiptCheckSchema,
+  receiptUse: receiptUseSchema,
   payment: paymentRecordSchema,
   paymentMapping: paymentMappingSchema,
   emailVerification: emailVerificationSchema,
@@ -47,37 +51,44 @@ export class DatabaseValidationError extends Error {
 }
 export function parseDatabaseRecord(item) {
   item = omitUndefined(item);
-  const schema = item?.sk?.startsWith('PAYMENT#')
-    ? paymentRecordSchema
-    : item?.sk === 'PAYMENT_REF'
-      ? paymentMappingSchema
-      : item?.sk === 'EMAIL_VERIFICATION'
-        ? emailVerificationSchema
-        : item?.sk === 'STATE'
-          ? stateSchema
-          : item?.sk === 'ACCOUNT'
-            ? accountSchema
-            : item?.sk === 'PROFILE'
-              ? profileSchema
-              : item?.sk === 'SESSION'
-                ? sessionSchema
-                : item?.sk === 'REFRESH'
-                  ? refreshSchema
-                  : item?.sk === 'COUNT'
-                    ? counterSchema
-                    : item?.pk?.startsWith('MESSAGE#')
-                      ? item.sk === 'STATUS'
-                        ? messageStatusSchema
-                        : messageMappingSchema
-                      : item?.sk?.startsWith('ACCESS#')
-                        ? accessSchema
-                        : item?.sk?.startsWith('AUDIT#')
-                          ? auditRecordSchema
-                          : item?.sk?.startsWith('REQUEST#')
-                            ? requestSchema
-                            : item?.sk?.startsWith('DELIVERY#')
-                              ? deliveryRecordSchema
-                              : null;
+  const schema =
+    item?.pk === 'OCR_QUOTA#AZURE_F0'
+      ? ocrQuotaSchema
+      : item?.sk?.startsWith('RECEIPT#')
+        ? receiptCheckSchema
+        : item?.sk?.startsWith('RECEIPT_USE#')
+          ? receiptUseSchema
+          : item?.sk?.startsWith('PAYMENT#')
+            ? paymentRecordSchema
+            : item?.sk === 'PAYMENT_REF'
+              ? paymentMappingSchema
+              : item?.sk === 'EMAIL_VERIFICATION'
+                ? emailVerificationSchema
+                : item?.sk === 'STATE'
+                  ? stateSchema
+                  : item?.sk === 'ACCOUNT'
+                    ? accountSchema
+                    : item?.sk === 'PROFILE'
+                      ? profileSchema
+                      : item?.sk === 'SESSION'
+                        ? sessionSchema
+                        : item?.sk === 'REFRESH'
+                          ? refreshSchema
+                          : item?.sk === 'COUNT'
+                            ? counterSchema
+                            : item?.pk?.startsWith('MESSAGE#')
+                              ? item.sk === 'STATUS'
+                                ? messageStatusSchema
+                                : messageMappingSchema
+                              : item?.sk?.startsWith('ACCESS#')
+                                ? accessSchema
+                                : item?.sk?.startsWith('AUDIT#')
+                                  ? auditRecordSchema
+                                  : item?.sk?.startsWith('REQUEST#')
+                                    ? requestSchema
+                                    : item?.sk?.startsWith('DELIVERY#')
+                                      ? deliveryRecordSchema
+                                      : null;
   if (!schema)
     throw new DatabaseValidationError([{ path: ['sk'], message: 'Unknown record kind.' }]);
   const parsed = schema.safeParse(item);

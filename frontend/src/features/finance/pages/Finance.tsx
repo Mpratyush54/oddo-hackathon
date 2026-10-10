@@ -14,6 +14,9 @@ import { useSession } from '../../auth/session';
 import { backendPost, backendRequest, cloudMode } from '../../../shared/api/client';
 import { Revealed } from '../../../shared/components/PageMotion';
 import { FinanceAnalytics } from '../components/FinanceAnalytics';
+import { ReceiptCheckPanel, type ReceiptCheck } from '../components/ReceiptCheckPanel';
+import { ReceiptReviewQueue } from '../components/ReceiptReviewQueue';
+import { FinanceExplanation } from '../components/FinanceExplanation';
 import '../styles/finance.css';
 import type { Transaction } from '../../../shared/types/domain';
 
@@ -25,6 +28,12 @@ export function FinancePage() {
   const [previewReceipt, setPreviewReceipt] = useState<Transaction | null>(null);
   const [detail, setDetail] = useState<Transaction | null>(null);
   const canApprove = can('approve_expense');
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [claimedAmount, setClaimedAmount] = useState('');
+  const [receiptCheck, setReceiptCheck] = useState<ReceiptCheck | null>(null);
+  const currentMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' })
+    .format(new Date())
+    .slice(0, 7);
   const [adding, setAdding] = useState(false),
     [search, setSearch] = useState(''),
     [category, setCategory] = useState('All categories'),
@@ -38,12 +47,14 @@ export function FinancePage() {
   const close = useCallback(() => {
     setAdding(false);
     setReceipt(null);
+    setReceiptCheck(null);
+    setClaimedAmount('');
     setError('');
   }, []);
   const periodRows = data.transactions.filter(
     (t) =>
       (viewAll || t.createdBy === user.id) &&
-      (period === 'semester' || t.date.startsWith('2026-10')),
+      (period === 'semester' || t.date.startsWith(currentMonth)),
   );
   const approved = periodRows.filter((t) => t.status === 'Completed');
   const income = approved.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
@@ -73,6 +84,47 @@ export function FinancePage() {
         t.receipt || '',
       ]),
     ]);
+  const reviewExpense = async (
+    transaction: Transaction,
+    status: 'Completed' | 'Rejected',
+    reason?: string,
+  ) => {
+    if (!canApprove || transaction.createdBy === user.id || reviewingId) return false;
+    setReviewingId(transaction.id);
+    try {
+      if (cloudMode) {
+        const result = await backendPost<{ state: Partial<typeof data> }>(
+          `/clubs/${clubId}/actions`,
+          {
+            type: 'expenses.review',
+            args: { transactionId: transaction.id, status, reason },
+            idempotencyKey: crypto.randomUUID(),
+          },
+        );
+        applyServerPatch(clubId, result.state);
+      } else {
+        update((current) => ({
+          ...current,
+          transactions: current.transactions.map((entry) =>
+            entry.id === transaction.id
+              ? { ...entry, status, reviewedBy: user.id, rejectionReason: reason }
+              : entry,
+          ),
+        }));
+      }
+      toast(
+        status === 'Completed'
+          ? 'Expense approved and recorded in the ledger.'
+          : 'Request rejected with a reason.',
+      );
+      return true;
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Expense review failed.');
+      return false;
+    } finally {
+      setReviewingId(null);
+    }
+  };
   const receiptLink = (t: Transaction) => {
     setPreviewReceipt(t);
   };
@@ -100,6 +152,13 @@ export function FinancePage() {
             <Button variant="secondary" icon="Download" onClick={exportLedger}>
               Export CSV
             </Button>
+            {cloudMode && viewAll && (
+              <FinanceExplanation
+                key={`${clubId}:${period}`}
+                clubId={clubId}
+                month={period === 'month' ? currentMonth : undefined}
+              />
+            )}
             <Button icon="Plus" onClick={() => setAdding(true)}>
               {viewAll ? 'Add transaction' : 'Request reimbursement'}
             </Button>
@@ -115,11 +174,11 @@ export function FinancePage() {
                 <strong>{money(balance)}</strong>
               </div>
               <div>
-                <small>In · {period === 'month' ? 'October' : 'semester'}</small>
+                <small>In · {period === 'month' ? 'this month' : 'all time'}</small>
                 <strong className="amount-in">{money(income)}</strong>
               </div>
               <div>
-                <small>Out · {period === 'month' ? 'October' : 'semester'}</small>
+                <small>Out · {period === 'month' ? 'this month' : 'all time'}</small>
                 <strong className="amount-out">{money(expense)}</strong>
               </div>
               <div>
@@ -133,8 +192,8 @@ export function FinancePage() {
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
                 >
-                  <option value="semester">This semester</option>
-                  <option value="month">October 2026</option>
+                  <option value="semester">All time</option>
+                  <option value="month">This month</option>
                 </select>
               </label>
             </div>
@@ -142,6 +201,14 @@ export function FinancePage() {
           <Revealed delay={40}>
             <FinanceAnalytics data={data} periodRows={periodRows} period={period} />
           </Revealed>
+          {cloudMode && (
+            <ReceiptReviewQueue
+              key={clubId}
+              clubId={clubId}
+              userId={user.id}
+              canClear={canApprove}
+            />
+          )}
         </>
       )}
       <Revealed delay={80}>
@@ -202,133 +269,121 @@ export function FinancePage() {
               </thead>
               <tbody>
                 {filtered.map((t) => (
-                    <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
-                      <td>
-                        <div className="transaction-cell">
-                          <span
-                            className={`transaction-icon ${t.amount < 0 ? 'expense' : 'income'}`}
-                          >
-                            <Icon
-                              name={t.amount < 0 ? 'ArrowUpRight' : 'ArrowDownLeft'}
-                              size={18}
-                            />
-                          </span>
-                          <span>
-                            <strong>{t.title}</strong>
-                            <small>
-                              {t.id}
-                              {t.eventId
-                                ? ` · ${data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}`
-                                : ''}
-                            </small>
-                            {t.rejectionReason && (
-                              <small className="rejection-note">Reason: {t.rejectionReason}</small>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <Badge
-                          tone={
-                            t.category === 'Tickets'
-                              ? 'purple'
-                              : t.category === 'Merchandise'
-                                ? 'gold'
-                                : t.category === 'Fundraiser'
-                                  ? 'green'
-                                  : t.category === 'Expenses'
-                                    ? 'neutral'
-                                    : 'teal'
-                          }
+                  <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
+                    <td>
+                      <div className="transaction-cell">
+                        <span className={`transaction-icon ${t.amount < 0 ? 'expense' : 'income'}`}>
+                          <Icon name={t.amount < 0 ? 'ArrowUpRight' : 'ArrowDownLeft'} size={18} />
+                        </span>
+                        <span>
+                          <strong>{t.title}</strong>
+                          <small>
+                            {t.id}
+                            {t.eventId
+                              ? ` · ${data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}`
+                              : ''}
+                          </small>
+                          {t.rejectionReason && (
+                            <small className="rejection-note">Reason: {t.rejectionReason}</small>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          t.category === 'Tickets'
+                            ? 'purple'
+                            : t.category === 'Merchandise'
+                              ? 'gold'
+                              : t.category === 'Fundraiser'
+                                ? 'green'
+                                : t.category === 'Expenses'
+                                  ? 'neutral'
+                                  : 'teal'
+                        }
+                      >
+                        {t.category}
+                      </Badge>
+                    </td>
+                    <td>{date(t.date, { day: 'numeric', month: 'short' })}</td>
+                    <td className={`numeric ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}>
+                      {t.amount > 0 ? '+' : '−'}
+                      {money(Math.abs(t.amount))}
+                    </td>
+                    <td>
+                      {t.receipt ? (
+                        <button
+                          className="plain-icon receipt-button"
+                          onClick={() => receiptLink(t)}
+                          title={t.receipt}
+                          aria-label={`Download receipt for ${t.title}`}
                         >
-                          {t.category}
-                        </Badge>
-                      </td>
-                      <td>{date(t.date, { day: 'numeric', month: 'short' })}</td>
-                      <td className={`numeric ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}>
-                        {t.amount > 0 ? '+' : '−'}
-                        {money(Math.abs(t.amount))}
-                      </td>
-                      <td>
-                        {t.receipt ? (
-                          <button
-                            className="plain-icon receipt-button"
-                            onClick={() => receiptLink(t)}
-                            title={t.receipt}
-                            aria-label={`Download receipt for ${t.title}`}
-                          >
-                            <Icon name="Paperclip" size={18} />
-                          </button>
-                        ) : (
-                          <span className="muted">—</span>
+                          <Icon name="Paperclip" size={18} />
+                        </button>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          t.status === 'Completed'
+                            ? 'green'
+                            : t.status === 'Rejected'
+                              ? 'neutral'
+                              : 'gold'
+                        }
+                      >
+                        {t.status}
+                      </Badge>
+                    </td>
+                    <td>
+                      <div className="ledger-row-actions">
+                        <Button variant="secondary" onClick={() => setDetail(t)}>
+                          View
+                        </Button>
+                        {t.status === 'Pending' && canApprove && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              icon="Check"
+                              disabled={
+                                !!reviewingId ||
+                                t.createdBy === user.id ||
+                                (cloudMode && !t.receiptCheckId)
+                              }
+                              onClick={() => void reviewExpense(t, 'Completed')}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              disabled={!!reviewingId || t.createdBy === user.id}
+                              onClick={() => setRejecting(t)}
+                            >
+                              Reject
+                            </Button>
+                          </>
                         )}
-                      </td>
-                      <td>
-                        <Badge
-                          tone={
-                            t.status === 'Completed'
-                              ? 'green'
-                              : t.status === 'Rejected'
-                                ? 'neutral'
-                                : 'gold'
-                          }
-                        >
-                          {t.status}
-                        </Badge>
-                      </td>
-                      <td>
-                        <div className="ledger-row-actions">
-                          <Button variant="secondary" onClick={() => setDetail(t)}>
-                            View
-                          </Button>
-                          {t.status === 'Pending' && canApprove && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                icon="Check"
-                                disabled={t.createdBy === user.id}
-                                onClick={() => {
-                                  if (t.createdBy === user.id) {
-                                    toast('Another club administrator must review your own request.');
-                                    return;
-                                  }
-                                  update((d) => ({
-                                    ...d,
-                                    transactions: d.transactions.map((tx) =>
-                                      tx.id === t.id &&
-                                      tx.status === 'Pending' &&
-                                      tx.createdBy !== user.id
-                                        ? { ...tx, status: 'Completed', reviewedBy: user.id }
-                                        : tx,
-                                    ),
-                                  }));
-                                  toast('Expense approved and recorded in the balance.');
-                                }}
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                disabled={t.createdBy === user.id}
-                                onClick={() => setRejecting(t)}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          {t.status === 'Pending' && !canApprove && viewAll && (
-                            <small className="cell-subtext">Awaiting club admin</small>
-                          )}
-                          {t.status === 'Pending' && t.createdBy === user.id && canApprove && (
-                            <small className="cell-subtext">Awaiting another admin</small>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        {t.status === 'Pending' && !canApprove && viewAll && (
+                          <small className="cell-subtext">Awaiting club admin</small>
+                        )}
+                        {cloudMode && t.status === 'Pending' && !t.receiptCheckId && (
+                          <small className="cell-subtext">
+                            Requires resubmission after receipt checks
+                          </small>
+                        )}
+                        {t.status === 'Pending' && t.createdBy === user.id && canApprove && (
+                          <small className="cell-subtext">Awaiting another admin</small>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {!filtered.length && (
             <Empty title="No matching transactions" description="Try another filter or search." />
           )}
@@ -355,7 +410,7 @@ export function FinancePage() {
           title={kind === 'expense' ? 'Request reimbursement' : 'Record income'}
           description={
             kind === 'expense'
-              ? 'Attach a receipt. A club administrator must approve before it hits the balance.'
+              ? 'Check your receipt first, then submit for a separate expense approval.'
               : 'Completed income is added to the club balance immediately.'
           }
           onClose={close}
@@ -372,24 +427,22 @@ export function FinancePage() {
                 setError('Attach a receipt for this reimbursement request.');
                 return;
               }
+              if (
+                cloudMode &&
+                kind === 'expense' &&
+                (receiptCheck?.status !== 'Ready' ||
+                  !receiptCheck.receiptKey ||
+                  receiptCheck.claimedAmount !== Math.round(Number(f.amount) * 100))
+              ) {
+                setError(
+                  'Complete receipt checks and any administrator clearance before submitting for review.',
+                );
+                return;
+              }
               setSaving(true);
               try {
                 if (cloudMode) {
-                  let receiptKey: string | undefined;
-                  if (receipt) {
-                    const upload = await backendPost<{
-                      url: string;
-                      fields: Record<string, string>;
-                      key: string;
-                    }>(`/clubs/${clubId}/receipts/upload`, { contentType: receipt.type });
-                    const form = new FormData();
-                    for (const [key, value] of Object.entries(upload.fields))
-                      form.append(key, value);
-                    form.append('file', receipt);
-                    const response = await fetch(upload.url, { method: 'POST', body: form });
-                    if (!response.ok) throw new Error('Receipt upload failed.');
-                    receiptKey = upload.key;
-                  }
+                  const receiptKey = kind === 'expense' ? receiptCheck?.receiptKey : undefined;
                   const result = await backendPost<{
                     state: Parameters<typeof applyServerPatch>[1];
                   }>(`/clubs/${clubId}/actions`, {
@@ -399,8 +452,9 @@ export function FinancePage() {
                       amount: Number(f.amount),
                       category: f.category,
                       eventId: f.eventId || undefined,
-                      receipt: receipt?.name,
+                      receipt: kind === 'expense' ? receipt?.name : undefined,
                       receiptKey,
+                      receiptCheckId: kind === 'expense' ? receiptCheck?.id : undefined,
                     },
                     idempotencyKey: crypto.randomUUID(),
                   });
@@ -470,7 +524,16 @@ export function FinancePage() {
             </Field>
             <div className="form-two">
               <Field label="Amount (₹)">
-                <input name="amount" type="number" min="1" step="1" required placeholder="0" />
+                <input
+                  name="amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  placeholder="0"
+                  value={claimedAmount}
+                  onChange={(e) => setClaimedAmount(e.target.value)}
+                />
               </Field>
               <Field label="Date">
                 <input name="date" type="date" required defaultValue={today} max={today} />
@@ -499,45 +562,55 @@ export function FinancePage() {
                 ))}
               </select>
             </Field>
-            <Field
-              label={`Receipt ${kind === 'expense' ? '(required)' : '(optional)'}`}
-              hint="PDF, PNG, or JPEG · up to 2 MB"
-            >
-              <div className="upload-zone">
-                <Icon name={receipt ? 'FileCheck2' : 'CloudUpload'} size={29} />
-                <strong>{receipt ? receipt.name : 'Choose a receipt to attach'}</strong>
-                <span>
-                  {receipt
-                    ? `${Math.round(receipt.size / 1024)} KB · ready to attach`
-                    : 'Click to browse your files'}
-                </span>
-                <input
-                  aria-label="Upload receipt"
-                  type="file"
-                  accept="application/pdf,image/png,image/jpeg"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (file.size > 2 * 1024 * 1024) {
-                      setError('Please choose a receipt smaller than 2 MB.');
-                      setReceipt(null);
-                      return;
-                    }
-                    if (!['application/pdf', 'image/png', 'image/jpeg'].includes(file.type)) {
-                      setError('Please upload a PDF, PNG, or JPEG receipt.');
-                      setReceipt(null);
-                      return;
-                    }
-                    setReceipt(file);
-                    setError('');
-                  }}
-                />
-              </div>
-            </Field>
+            {kind === 'expense' && (
+              <Field
+                label={`Receipt ${kind === 'expense' ? '(required)' : '(optional)'}`}
+                hint="PDF, PNG, or JPEG · up to 2 MB"
+              >
+                <div className="upload-zone">
+                  <Icon name={receipt ? 'FileCheck2' : 'CloudUpload'} size={29} />
+                  <strong>{receipt ? receipt.name : 'Choose a receipt to attach'}</strong>
+                  <span>
+                    {receipt
+                      ? `${Math.round(receipt.size / 1024)} KB · ready to attach`
+                      : 'Click to browse your files'}
+                  </span>
+                  <input
+                    aria-label="Upload receipt"
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        setError('Please choose a receipt smaller than 2 MB.');
+                        setReceipt(null);
+                        return;
+                      }
+                      if (!['application/pdf', 'image/png', 'image/jpeg'].includes(file.type)) {
+                        setError('Please upload a PDF, PNG, or JPEG receipt.');
+                        setReceipt(null);
+                        return;
+                      }
+                      setReceipt(file);
+                      setError('');
+                    }}
+                  />
+                </div>
+              </Field>
+            )}
             {error && (
               <p className="inline-error" role="alert">
                 {error}
               </p>
+            )}
+            {cloudMode && kind === 'expense' && (
+              <ReceiptCheckPanel
+                clubId={clubId}
+                file={receipt}
+                amount={claimedAmount}
+                onChecked={setReceiptCheck}
+              />
             )}
             <p className="form-note">
               {kind === 'expense'
@@ -548,11 +621,17 @@ export function FinancePage() {
               <Button variant="secondary" onClick={close}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} icon="Check">
+              <Button
+                type="submit"
+                disabled={
+                  saving || (cloudMode && kind === 'expense' && receiptCheck?.status !== 'Ready')
+                }
+                icon="Check"
+              >
                 {saving
                   ? 'Saving…'
                   : kind === 'expense'
-                    ? 'Create expense request'
+                    ? 'Submit for expense review'
                     : 'Record income'}
               </Button>
             </div>
@@ -566,24 +645,10 @@ export function FinancePage() {
           onClose={() => setRejecting(null)}
         >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               const f = formValues(e);
-              if (!canApprove || rejecting.createdBy === user.id || !f.reason.trim()) return;
-              update((d) => ({
-                ...d,
-                transactions: d.transactions.map((t) =>
-                  t.id === rejecting.id && t.status === 'Pending'
-                    ? {
-                        ...t,
-                        status: 'Rejected',
-                        reviewedBy: user.id,
-                        rejectionReason: f.reason.trim(),
-                      }
-                    : t,
-                ),
-              }));
-              setRejecting(null);
-              toast('Request rejected with a reason. The balance is unchanged.');
+              if (!f.reason.trim()) return;
+              if (await reviewExpense(rejecting, 'Rejected', f.reason.trim())) setRejecting(null);
             }}
           >
             <p>
@@ -603,7 +668,9 @@ export function FinancePage() {
               <Button variant="secondary" onClick={() => setRejecting(null)}>
                 Cancel
               </Button>
-              <Button type="submit">Reject request</Button>
+              <Button type="submit" disabled={!!reviewingId}>
+                Reject request
+              </Button>
             </div>
           </form>
         </Modal>
@@ -657,8 +724,9 @@ export function FinancePage() {
                 <dt>Created by</dt>
                 <dd>
                   {detail.createdBy
-                    ? data.members.find((m) => m.userId === detail.createdBy || m.id === detail.createdBy)
-                        ?.name || detail.createdBy
+                    ? data.members.find(
+                        (m) => m.userId === detail.createdBy || m.id === detail.createdBy,
+                      )?.name || detail.createdBy
                     : '—'}
                 </dd>
               </div>
@@ -666,8 +734,9 @@ export function FinancePage() {
                 <dt>Reviewed by</dt>
                 <dd>
                   {detail.reviewedBy
-                    ? data.members.find((m) => m.userId === detail.reviewedBy || m.id === detail.reviewedBy)
-                        ?.name || detail.reviewedBy
+                    ? data.members.find(
+                        (m) => m.userId === detail.reviewedBy || m.id === detail.reviewedBy,
+                      )?.name || detail.reviewedBy
                     : '—'}
                 </dd>
               </div>
@@ -707,17 +776,9 @@ export function FinancePage() {
                 <>
                   <Button
                     icon="Check"
-                    onClick={() => {
-                      update((d) => ({
-                        ...d,
-                        transactions: d.transactions.map((tx) =>
-                          tx.id === detail.id && tx.status === 'Pending'
-                            ? { ...tx, status: 'Completed', reviewedBy: user.id }
-                            : tx,
-                        ),
-                      }));
-                      setDetail(null);
-                      toast('Expense approved and recorded in the balance.');
+                    disabled={!!reviewingId || (cloudMode && !detail.receiptCheckId)}
+                    onClick={async () => {
+                      if (await reviewExpense(detail, 'Completed')) setDetail(null);
                     }}
                   >
                     Approve
