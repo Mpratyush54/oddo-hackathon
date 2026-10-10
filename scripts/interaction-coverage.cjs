@@ -556,10 +556,74 @@ async function findReactClickSurfaces(page) {
       }
       return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     };
+    const reactPropsPrefix = '__reactProps' + String.fromCharCode(36);
     const found = [];
     for (const el of document.querySelectorAll('body *')) {
       if (!visible(el) || el.matches(semantic) || el.closest(semantic)) continue;
-      const propKey = Object.keys(el).find((key) => key.startsWith('__reactProps
+      const propKey = Object.keys(el).find((key) => key.startsWith(reactPropsPrefix) && typeof el[key]?.onClick === 'function');
+      if (!propKey) continue;
+      const name = nameOf(el);
+      if (!name) continue;
+      const index = found.length;
+      el.setAttribute('data-qa-react-surface', String(index));
+      found.push({ index, name, tag: el.tagName.toLowerCase(), role: el.getAttribute('role') || '' });
+    }
+    return found;
+  });
+}
+async function clickReactSurface(browser, route, role, surface, report) {
+  const record = { route, role, name: surface.name, index: surface.index, tag: surface.tag, status: 'pending' };
+  const safety = skipReason(surface.name);
+  if (safety) {
+    record.status = 'safety-skipped';
+    record.detail = safety;
+    return record;
+  }
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(testUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await waitReady(page);
+    const surfaces = await findReactClickSurfaces(page);
+    const current = surfaces.find((item) => item.index === surface.index);
+    if (!current || current.name !== surface.name || current.tag !== surface.tag) {
+      throw new Error('Custom React click target changed between inventory and execution.');
+    }
+    const target = page.locator('[data-qa-react-surface="' + surface.index + '"]');
+    const initialUrl = page.url();
+    const initialText = await page.locator('body').innerText();
+    await target.click({ timeout: TIMEOUT });
+    await page.waitForTimeout(100);
+    const finalText = await page.locator('body').innerText().catch(() => '');
+    if (errors.length) throw new Error('Browser error: ' + errors.join(' | '));
+    if (!finalText.trim()) throw new Error('Click left the page blank.');
+    record.status = 'clicked';
+    record.resultUrl = page.url();
+    record.effect = new URL(record.resultUrl).pathname !== new URL(initialUrl).pathname
+      ? 'route-change'
+      : (await page.locator('[role="dialog"], dialog, [aria-modal="true"]').count()) > 0
+        ? 'dialog-present'
+        : finalText !== initialText ? 'visible-content-change' : 'no-visible-change';
+    if (record.effect === 'no-visible-change') {
+      record.reviewRequired = true;
+      record.detail = 'Custom click executed with no detectable visible effect; verify intended behavior with a focused assertion.';
+      report.warnings.push({ type: 'custom-click-effect-unverified', route, role, control: surface.name, detail: record.detail });
+    }
+  } catch (error) {
+    record.status = 'failed';
+    record.detail = error instanceof Error ? error.message : String(error);
+    report.failures.push({ type: 'custom-react-click', route, role, control: surface.name, detail: record.detail });
+    if (TAKE_SCREENSHOTS) {
+      fs.mkdirSync(OUT_DIR, { recursive: true });
+      const filename = (role + '-surface-' + surface.index + '-' + surface.name).replace(/[^a-z0-9-]+/gi, '-').slice(0, 90);
+      await page.screenshot({ path: path.join(OUT_DIR, filename + '-failure.png'), fullPage: true }).catch(() => {});
+    }
+  } finally {
+    await context.close().catch(() => {});
+  }
+  return record;
+}
+async function clickLink(browser, route, role, link, report) {
   const result = { route, role, name: link.name, href: link.href, status: 'pending' };
   let url;
   try { url = new URL(link.href, BASE_URL); } catch {}
