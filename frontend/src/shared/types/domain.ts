@@ -1,4 +1,6 @@
 export type Member = {
+  refundPending?: boolean;
+  membershipPaymentId?: string;
   id: string;
   userId?: string;
   name: string;
@@ -129,6 +131,7 @@ export type Announcement = {
 };
 
 export type Ticket = {
+  refundPending?: boolean;
   paymentId?: string;
   id: string;
   eventId: string;
@@ -143,6 +146,7 @@ export type Ticket = {
 export type OrderStatus = 'Placed' | 'Ready for pickup' | 'Picked up' | 'Cancelled';
 
 export type Order = {
+  refundPending?: boolean;
   paymentId?: string;
   id: string;
   productId: string;

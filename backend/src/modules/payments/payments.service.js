@@ -4,6 +4,8 @@ import { parseRequest } from '../../shared/request-validation.js';
 import { applyAction, paymentAmount, visibleState } from '../clubs/club.service.js';
 import { createPaymentSchema, verifyPaymentSchema } from './payments.schemas.js';
 import { RazorpayService, validSignature } from './razorpay.service.js';
+import { RefundsService } from './refunds.service.js';
+import { assertRefundUnlocked } from './refund-locks.js';
 
 const compareVersion = (item, version) => ({
   item,
@@ -16,6 +18,7 @@ export class PaymentsService {
   constructor({ repo, domain, env, fetchImpl }) {
     Object.assign(this, { repo, domain, env });
     this.gateway = new RazorpayService({ env, fetchImpl });
+    this.refunds = new RefundsService({ repo, domain, gateway: this.gateway });
   }
   async own(key, user) {
     const payment = await this.repo.get('USER#' + user.id, 'PAYMENT#' + key);
@@ -56,6 +59,7 @@ export class PaymentsService {
     }
     const role = await this.domain.roleFor(user, clubId);
     const current = await this.domain.load(clubId);
+    assertRefundUnlocked(current.data, action, user);
     const freeRequest = await this.repo.get(
       clubKey(clubId),
       `REQUEST#${user.id}#${idempotencyKey}`,
@@ -156,20 +160,7 @@ export class PaymentsService {
           latest.status === 'Created' &&
           (await this.repo.atomic([compareVersion(pending, latest.version)]))
         ) {
-          // One attempt only: on an ambiguous network error retain RefundPending for dashboard reconciliation.
-          const refund = await this.gateway.refund(
-            paymentId,
-            payment.amount,
-            payment.id.slice(0, 40),
-          );
-          if (typeof refund.id !== 'string' || refund.amount !== payment.amount)
-            throw new HttpError(502, 'Refund requires administrator review.');
-          await this.repo.atomic([
-            compareVersion(
-              { ...pending, status: 'Refunded', refundId: refund.id, version: pending.version + 1 },
-              pending.version,
-            ),
-          ]);
+          await this.refunds.automatic(pending, user);
         }
         return this.reply(await this.repo.get(payment.pk, payment.sk), user);
       }
@@ -190,6 +181,10 @@ export class PaymentsService {
       !validSignature(rawBody, signature, this.env.RAZORPAY_WEBHOOK_SECRET)
     )
       throw new HttpError(401, 'Invalid webhook signature.');
+    if (['refund.created', 'refund.processed', 'refund.failed'].includes(payload.event)) {
+      await this.refunds.webhook(payload.payload?.refund?.entity);
+      return;
+    }
     if (!['payment.captured', 'order.paid'].includes(payload.event)) return;
     const entity = payload.payload?.payment?.entity;
     if (!entity || typeof entity.id !== 'string' || typeof entity.order_id !== 'string')

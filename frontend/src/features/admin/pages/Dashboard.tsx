@@ -328,7 +328,7 @@ export function AdminDashboard() {
                   <span>
                     <strong>{e.title}</strong>
                     <small>
-                      {e.time} · {e.venue.split(',')[0]}
+                      {e.time} · {e.venue?.split(',')[0] || 'Campus venue'}
                     </small>
                   </span>
                   <Icon name="ArrowUpRight" size={17} />

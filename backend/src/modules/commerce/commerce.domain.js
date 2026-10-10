@@ -1,4 +1,5 @@
 /** Pure commerce calculations shared by the authenticated services and demo API. */
+import { hasActiveMembership } from '../../../../shared/membership.js';
 import { parseRequest } from '../../shared/request-validation.js';
 import {
   quoteRequestSchema,
@@ -88,11 +89,7 @@ export function isActiveMember(store, email, today = DEMO_TODAY) {
     .trim()
     .toLowerCase();
   return store.members.find(
-    (m) =>
-      m.email.toLowerCase() === normalized &&
-      m.status !== 'Pending' &&
-      m.status !== 'Expired' &&
-      m.expires >= today,
+    (m) => m.email.toLowerCase() === normalized && hasActiveMembership(m, today),
   );
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { hasActiveMembership } from '../../../../../shared/membership.js';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Icon } from '../../../shared/ui/Icon';
@@ -28,10 +29,7 @@ export function MemberCard() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewBusy, setPreviewBusy] = useState(false);
   const clubName = clubs.find((c) => c.id === clubId)?.name || 'Skyline';
-  const valid =
-    !!member &&
-    (member.status === 'Active' || member.status === 'Expiring') &&
-    member.expires >= today;
+  const valid = hasActiveMembership(member, today);
   const needsDues = !!member && (!valid || member.status === 'Expiring');
   const featuredProduct = data.products.find((p) => Object.values(p.stock).some((n) => n > 0));
   const qrPayload = member ? `SKYLINE:MEMBER:${clubId}:${member.id}` : '';
@@ -209,6 +207,14 @@ export function MemberCard() {
               phone and laptop.
             </p>
             <div className="member-card-actions">
+              {cloudMode && (
+                <LinkButton
+                  to={`/app/refunds${member?.membershipPaymentId && !member.refundPending ? '?payment=' + encodeURIComponent(member.membershipPaymentId) : ''}`}
+                  variant="secondary"
+                >
+                  {member?.refundPending ? 'View membership refund' : 'Payments & refunds'}
+                </LinkButton>
+              )}
               <Button icon="Download" disabled={!member || saving} onClick={() => void saveCard()}>
                 {saving ? 'Saving…' : 'Save card PNG'}
               </Button>
@@ -234,7 +240,11 @@ export function MemberCard() {
             </p>
             <div className="member-card-actions">
               {needsDues && (
-                <Button icon="BadgeCheck" disabled={paying} onClick={activateMembership}>
+                <Button
+                  icon="BadgeCheck"
+                  disabled={paying || member?.refundPending}
+                  onClick={activateMembership}
+                >
                   Buy membership · ₹500
                 </Button>
               )}

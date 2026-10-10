@@ -60,7 +60,7 @@ export async function razorpayCheckout<T extends { state: Store }>(
         reply.status === 'Refunded'
           ? 'Availability or price changed. Your test payment was refunded.'
           : reply.status === 'RefundPending'
-            ? 'Your test payment needs refund review. Contact the club administrator.'
+            ? 'Your test refund is pending. Track and check its status on the Refunds page.'
             : 'Payment confirmation is pending. Retry this checkout to check its status.',
       );
     }

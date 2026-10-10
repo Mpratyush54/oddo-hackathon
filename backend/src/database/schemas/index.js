@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { refundRecordSchema } from './refund.schema.js';
 import { receiptCheckSchema, receiptUseSchema, ocrQuotaSchema } from './receipt.schema.js';
 import { paymentRecordSchema, paymentMappingSchema } from './payment.schema.js';
 import {
@@ -18,6 +19,7 @@ import {
 } from './operational.schema.js';
 
 export const recordSchemas = {
+  refund: refundRecordSchema,
   ocrQuota: ocrQuotaSchema,
   receiptCheck: receiptCheckSchema,
   receiptUse: receiptUseSchema,
@@ -51,8 +53,9 @@ export class DatabaseValidationError extends Error {
 }
 export function parseDatabaseRecord(item) {
   item = omitUndefined(item);
-  const schema =
-    item?.pk === 'OCR_QUOTA#AZURE_F0'
+  const schema = item?.sk?.startsWith('REFUND#')
+    ? refundRecordSchema
+    : item?.pk === 'OCR_QUOTA#AZURE_F0'
       ? ocrQuotaSchema
       : item?.sk?.startsWith('RECEIPT#')
         ? receiptCheckSchema

@@ -9,6 +9,87 @@ import { clubKey } from '../../src/shared/records.js';
 import { readFileSync } from 'node:fs';
 import { createApp } from '../../src/app.js';
 import { once } from 'node:events';
+import { hasActiveMembership } from '../../../shared/membership.js';
+
+test('member pricing requires active unexpired membership and survives every later purchase', async () => {
+  for (const activation of ['paid', 'approved']) {
+    const f = await fixture();
+    await f.domain.execute(
+      'skyline',
+      {
+        type: 'membership.join',
+        args: {},
+        idempotencyKey: crypto.randomUUID(),
+      },
+      user,
+    );
+    if (activation === 'paid') {
+      const dues = await f.start('membership.demo-dues', {});
+      await f.service.verify(dues.verify, user);
+    } else {
+      const state = await f.domain.load('skyline');
+      Object.assign(state.data.members[0], {
+        status: 'Active',
+        expires: '2027-07-31',
+        duesWaived: true,
+      });
+      await f.repo.put(state);
+    }
+    const first = await f.start();
+    assert.equal(first.order.amount, 5000, activation);
+    await f.service.verify(first.verify, user);
+    const state = await f.domain.load('skyline');
+    state.data.events.push({ ...state.data.events[0], id: 'second-event', sold: 0 });
+    await f.repo.put(state);
+    const second = await f.start('tickets.book', { eventId: 'second-event' });
+    assert.equal(second.order.amount, 5000, activation);
+    await f.service.verify(second.verify, user);
+    const merch = await f.start('orders', {
+      productId: 'product',
+      size: 'M',
+      quantity: 1,
+      joinMembership: true,
+    });
+    assert.equal(
+      merch.order.amount,
+      40000,
+      'existing members are never charged joining dues again',
+    );
+    const result = await f.service.verify(merch.verify, user);
+    assert.equal(result.membershipFee, 0);
+    assert.equal(result.memberPriceApplied, true);
+  }
+  assert.equal(
+    hasActiveMembership({ status: 'Expiring', expires: '2026-10-11' }, '2026-10-11'),
+    true,
+  );
+  for (const member of [
+    { status: 'Pending', expires: '2027-07-31' },
+    { status: 'Expired', expires: '2027-07-31' },
+    { status: 'Active', expires: '2026-10-10' },
+    { status: 'Active', expires: '2027-07-31', refundPending: true },
+  ])
+    assert.equal(hasActiveMembership(member, '2026-10-11'), false);
+});
+
+test('Razorpay refund retries send identical payload and provider idempotency header', async () => {
+  const calls = [];
+  const gateway = new RazorpayService({
+    env,
+    fetchImpl: async (url, request) => {
+      calls.push({ url, request });
+      return { ok: true, json: async () => ({ id: 'refund-fixture' }) };
+    },
+  });
+  for (let attempt = 0; attempt < 2; attempt++)
+    await gateway.refund('payment-fixture', 10000, 'RF-1234567890');
+  assert.equal(calls[0].request.headers['X-Refund-Idempotency'], 'RF-1234567890');
+  assert.equal(calls[1].request.body, calls[0].request.body);
+  assert.equal(
+    calls[1].request.headers['X-Refund-Idempotency'],
+    calls[0].request.headers['X-Refund-Idempotency'],
+  );
+});
 
 const user = { id: 'test-user', name: 'Test User', email: 'test@example.test' };
 const env = {
@@ -62,6 +143,7 @@ async function fixture() {
   let orders = 0,
     refunds = 0;
   const payments = new Map();
+  const refundRecords = new Map();
   service.gateway.createOrder = async (amount) => ({
     id: 'order_' + ++orders,
     amount,
@@ -71,7 +153,23 @@ async function fixture() {
   service.gateway.orderPayments = async (id) => ({
     items: [...payments.values()].filter((p) => p.order_id === id),
   });
-  service.gateway.refund = async (id, amount) => ({ id: 'refund_' + ++refunds, amount });
+  service.gateway.refund = async (id, amount, receipt) => {
+    if (refundRecords.has(receipt)) return refundRecords.get(receipt);
+    const refund = {
+      id: 'refund_' + ++refunds,
+      amount,
+      payment_id: id,
+      currency: 'INR',
+      receipt,
+      status: 'processed',
+    };
+    refundRecords.set(receipt, refund);
+    payments.get(id).amount_refunded = amount;
+    return refund;
+  };
+  service.gateway.fetchRefund = async (id) => [...refundRecords.values()].find((r) => r.id === id);
+  service.gateway.paymentRefunds = async (id) =>
+    [...refundRecords.values()].filter((r) => r.payment_id === id);
   const start = async (type = 'tickets.book', args = { eventId: 'event' }) => {
     const input = {
       clubId: 'skyline',
@@ -97,7 +195,16 @@ async function fixture() {
     };
     return { input, order, verify, payment: payments.get(paymentId) };
   };
-  return { repo, domain, service, start, orders: () => orders, refunds: () => refunds };
+  return {
+    repo,
+    domain,
+    service,
+    start,
+    refundRecords,
+    payments,
+    orders: () => orders,
+    refunds: () => refunds,
+  };
 }
 test('test credentials only, constant time signature rejects malformed and forged input', () => {
   assert.throws(
@@ -257,7 +364,7 @@ test('ambiguous refund response remains pending and is never blindly retried', a
     calls++;
     throw new Error('timeout');
   };
-  await assert.rejects(f.service.verify(second.verify, user), /timeout/);
+  assert.equal((await f.service.verify(second.verify, user)).status, 'RefundPending');
   assert.equal((await f.service.verify(second.verify, user)).status, 'RefundPending');
   assert.equal(calls, 1);
 });
@@ -321,4 +428,341 @@ test('HTTP webhook accepts only correctly signed raw JSON without browser header
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+const staff = { id: 'refund-admin', name: 'Refund Admin', email: 'refund-admin@example.test' };
+async function allowReviewer(f, clubId = 'skyline', role = 'admin') {
+  await f.repo.put({ pk: 'USER#' + staff.id, sk: 'ACCESS#' + clubId, clubId, role });
+}
+async function purchased(f, type, args) {
+  const checkout = await f.start(type, args);
+  await f.service.verify(checkout.verify, user);
+  return checkout;
+}
+test('members request only their own paid purchases; refund review is club-scoped and role-protected', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  const input = { paymentId: checkout.payment.id, reason: 'I cannot attend this event.' };
+  await assert.rejects(
+    f.service.refunds.request('skyline', input, { ...user, id: 'other' }),
+    (error) => error.status === 404,
+  );
+  await assert.rejects(
+    f.service.refunds.request('skyline', { ...input, amount: 1 }, user),
+    (error) => error.status === 400,
+  );
+  const requested = await f.service.refunds.request('skyline', input, user);
+  assert.equal(requested.refund.status, 'Requested');
+  assert.equal(
+    (await f.service.refunds.request('skyline', input, user)).refund.id,
+    requested.refund.id,
+  );
+  await assert.rejects(
+    f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, user),
+    (error) => error.status === 403,
+  );
+  await allowReviewer(f, 'other-club');
+  await assert.rejects(
+    f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff),
+    (error) => error.status === 403,
+  );
+  const otherList = await f.service.refunds.list('skyline', { ...user, id: 'other' });
+  assert.equal(otherList.requests.length, 0);
+  assert.equal(otherList.payments.length, 0);
+  assert.equal((await f.domain.load('skyline')).data.tickets[0].status, 'Confirmed');
+  assert.equal(f.refunds(), 0);
+});
+test('pending refunds lock entry; processed confirmation cancels once, credits ledger and promotes waitlist', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  await allowReviewer(f);
+  await f.domain.execute(
+    'skyline',
+    { type: 'waitlist.join', args: { eventId: 'event' }, idempotencyKey: crypto.randomUUID() },
+    { id: 'waiting', name: 'Waiting Guest', email: 'waiting@example.test' },
+  );
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'I cannot attend this event.' },
+    user,
+  );
+  let remote;
+  f.service.gateway.refund = async (id, amount, receipt) =>
+    (remote ||= {
+      id: 'pending-refund',
+      payment_id: id,
+      amount,
+      receipt,
+      currency: 'INR',
+      status: 'pending',
+    });
+  f.service.gateway.fetchRefund = async () => remote;
+  const approved = await f.service.refunds.review(
+    'skyline',
+    checkout.payment.id,
+    { decision: 'approve' },
+    staff,
+  );
+  assert.equal(approved.refund.status, 'Processing');
+  let data = (await f.domain.load('skyline')).data;
+  assert.equal(data.tickets[0].refundPending, true);
+  assert.equal(data.events[0].sold, 1);
+  assert.equal(data.transactions.length, 1);
+  await assert.rejects(
+    f.domain.execute(
+      'skyline',
+      {
+        type: 'check-in',
+        args: { ticketId: data.tickets[0].id },
+        idempotencyKey: crypto.randomUUID(),
+      },
+      staff,
+    ),
+    /locked/,
+  );
+  remote.status = 'processed';
+  await Promise.all([
+    f.service.refunds.refresh('skyline', checkout.payment.id, user),
+    f.service.refunds.refresh('skyline', checkout.payment.id, staff),
+  ]);
+  data = (await f.domain.load('skyline')).data;
+  assert.equal(data.tickets[0].status, 'Cancelled');
+  assert.equal(data.waitlist[0].status, 'Promoted');
+  assert.equal(data.events[0].sold, 1);
+  assert.equal(data.transactions.filter((t) => t.amount < 0).length, 1);
+  assert.equal(
+    data.transactions.reduce((sum, t) => sum + t.amount, 0),
+    0,
+  );
+  await f.service.refunds.refresh('skyline', checkout.payment.id, user);
+  assert.equal((await f.domain.load('skyline')).data.transactions.length, 2);
+});
+test('refund rejection requires explanation and leaves purchase unchanged; resubmission is audited', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  await allowReviewer(f);
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please refund my ticket.' },
+    user,
+  );
+  await assert.rejects(
+    f.service.refunds.review('skyline', checkout.payment.id, { decision: 'reject' }, staff),
+    (error) => error.status === 400,
+  );
+  const rejected = await f.service.refunds.review(
+    'skyline',
+    checkout.payment.id,
+    { decision: 'reject', reason: 'Please provide a clearer reason.' },
+    staff,
+  );
+  assert.equal(rejected.refund.status, 'Rejected');
+  assert.equal(f.refunds(), 0);
+  const next = await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'I have a conflicting exam.' },
+    user,
+  );
+  assert.notEqual(next.refund.id, rejected.refund.id);
+  assert.equal((await f.domain.load('skyline')).data.tickets[0].refundPending, undefined);
+});
+test('bundle refund restores stock, membership and contribution points without partial cancellation', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f, 'orders', {
+      productId: 'product',
+      size: 'M',
+      quantity: 1,
+      joinMembership: true,
+    });
+  await allowReviewer(f);
+  let data = (await f.domain.load('skyline')).data;
+  assert.equal(data.members[0].membershipPaymentId, checkout.payment.id);
+  assert.ok(data.members[0].contributionPoints > 0);
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please cancel my entire bundle.' },
+    user,
+  );
+  const result = await f.service.refunds.review(
+    'skyline',
+    checkout.payment.id,
+    { decision: 'approve' },
+    staff,
+  );
+  assert.equal(result.refund.status, 'Processed');
+  data = (await f.domain.load('skyline')).data;
+  assert.equal(data.products[0].stock.M, 1);
+  assert.equal(data.orders[0].status, 'Cancelled');
+  assert.equal(data.members[0].status, 'Pending');
+  assert.equal(data.members[0].contributionPoints, 0);
+  assert.ok(data.pointLedger.some((entry) => entry.reversed));
+  assert.equal(
+    data.pointLedger.reduce((sum, entry) => sum + entry.points, 0),
+    0,
+  );
+  assert.equal(
+    data.transactions.reduce((sum, t) => sum + t.amount, 0),
+    0,
+  );
+});
+test('membership refund failure restores entitlement; staff retry uses a new key only after confirmed failure', async () => {
+  const f = await fixture();
+  await allowReviewer(f);
+  await f.domain.execute(
+    'skyline',
+    { type: 'membership.join', args: {}, idempotencyKey: crypto.randomUUID() },
+    user,
+  );
+  const checkout = await purchased(f, 'membership.demo-dues', {});
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please cancel my unused membership.' },
+    user,
+  );
+  const keys = [];
+  f.service.gateway.refund = async (id, amount, receipt) => {
+    keys.push(receipt);
+    return {
+      id: 'refund-' + keys.length,
+      payment_id: id,
+      amount,
+      receipt,
+      currency: 'INR',
+      status: keys.length === 1 ? 'failed' : 'processed',
+    };
+  };
+  assert.equal(
+    (await f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff))
+      .refund.status,
+    'Failed',
+  );
+  let member = (await f.domain.load('skyline')).data.members[0];
+  assert.equal(member.status, 'Active');
+  assert.equal(member.refundPending, undefined);
+  assert.equal(
+    (await f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff))
+      .refund.status,
+    'Processed',
+  );
+  assert.notEqual(keys[0], keys[1]);
+  member = (await f.domain.load('skyline')).data.members[0];
+  assert.equal(member.status, 'Pending');
+});
+test('ambiguous provider response reconciles with the same refund key and never credits before confirmation', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  await allowReviewer(f);
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please cancel my ticket.' },
+    user,
+  );
+  const keys = [];
+  let calls = 0;
+  f.service.gateway.refund = async (id, amount, receipt) => {
+    keys.push(receipt);
+    calls++;
+    if (calls === 1) throw Error('timeout');
+    return {
+      id: 'recovered-refund',
+      payment_id: id,
+      amount,
+      receipt,
+      currency: 'INR',
+      status: 'processed',
+    };
+  };
+  f.service.gateway.paymentRefunds = async () => [];
+  assert.equal(
+    (await f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff))
+      .refund.status,
+    'NeedsReview',
+  );
+  assert.equal((await f.domain.load('skyline')).data.transactions.length, 1);
+  assert.equal(
+    (await f.service.refunds.refresh('skyline', checkout.payment.id, user)).refund.status,
+    'Processed',
+  );
+  assert.equal(keys[0], keys[1]);
+});
+test('checked-in tickets and picked-up orders cannot be requested or approved for refund', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  await allowReviewer(f, 'skyline', 'treasurer');
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please cancel my ticket.' },
+    user,
+  );
+  const state = await f.repo.get(clubKey('skyline'), 'STATE');
+  state.data.tickets[0].checkedIn = true;
+  await f.repo.put(state);
+  await assert.rejects(
+    f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff),
+    /Checked-in/,
+  );
+  const g = await fixture(),
+    order = await purchased(g, 'orders', { productId: 'product', size: 'M', quantity: 1 });
+  const orderState = await g.repo.get(clubKey('skyline'), 'STATE');
+  orderState.data.orders[0].status = 'Picked up';
+  await g.repo.put(orderState);
+  await assert.rejects(
+    g.service.refunds.request(
+      'skyline',
+      { paymentId: order.payment.id, reason: 'Please cancel this purchase.' },
+      user,
+    ),
+    /Picked-up/,
+  );
+  assert.equal(f.refunds(), 0);
+  assert.equal(g.refunds(), 0);
+});
+test('signed refund webhook fetches provider truth and remains idempotent', async () => {
+  const f = await fixture(),
+    checkout = await purchased(f);
+  await allowReviewer(f);
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Please cancel my ticket.' },
+    user,
+  );
+  let remote;
+  f.service.gateway.refund = async (id, amount, receipt) =>
+    (remote = {
+      id: 'webhook-refund',
+      payment_id: id,
+      amount,
+      receipt,
+      currency: 'INR',
+      status: 'pending',
+    });
+  f.service.gateway.fetchRefund = async () => remote;
+  await f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff);
+  const payload = {
+    event: 'refund.processed',
+    payload: {
+      refund: {
+        entity: { id: remote.id, payment_id: remote.payment_id, status: 'processed', amount: 1 },
+      },
+    },
+  };
+  const raw = Buffer.from(JSON.stringify(payload));
+  await f.service.webhook(raw, sign(raw, env.RAZORPAY_WEBHOOK_SECRET), payload);
+  assert.equal(
+    (await f.service.refunds.record('skyline', checkout.payment.id)).status,
+    'Processing',
+  );
+  remote.status = 'processed';
+  await Promise.all([
+    f.service.webhook(raw, sign(raw, env.RAZORPAY_WEBHOOK_SECRET), payload),
+    f.service.webhook(raw, sign(raw, env.RAZORPAY_WEBHOOK_SECRET), payload),
+  ]);
+  assert.equal(
+    (await f.service.refunds.record('skyline', checkout.payment.id)).status,
+    'Processed',
+  );
+  assert.equal(
+    (await f.domain.load('skyline')).data.transactions.filter((t) => t.amount < 0).length,
+    1,
+  );
 });

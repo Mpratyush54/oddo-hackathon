@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Empty } from '../../../shared/ui/Empty';
@@ -14,6 +14,7 @@ import { QR } from '../../../shared/components/QRCode';
 import { usePersonal } from '../../account/hooks/usePersonal';
 
 export function MyTickets() {
+  const navigate = useNavigate();
   const { data, tickets, user } = usePersonal();
   const { update, applyServerPatch, toast, selectedClub } = useStore();
   return (
@@ -34,7 +35,13 @@ export function MyTickets() {
           return (
             <section className="portal-ticket" key={t.id}>
               <div className="portal-ticket-image" style={{ backgroundImage: `url(${e?.image})` }}>
-                <Badge>{t.checkedIn ? 'Checked in' : 'Ready for entry'}</Badge>
+                <Badge>
+                  {t.refundPending
+                    ? 'Refund processing'
+                    : t.checkedIn
+                      ? 'Checked in'
+                      : 'Ready for entry'}
+                </Badge>
               </div>
               <div className="portal-ticket-body">
                 <small>{e ? `${date(e.date)} · ${e.time}` : 'Event details unavailable'}</small>
@@ -60,8 +67,8 @@ export function MyTickets() {
                     variant="secondary"
                     onClick={() => {
                       if (cloudMode && t.paymentId) {
-                        toast(
-                          'Contact the club administrator for a refund through the Razorpay test dashboard.',
+                        navigate(
+                          `/app/refunds${t.refundPending ? '' : '?payment=' + encodeURIComponent(t.paymentId)}`,
                         );
                         return;
                       }
@@ -99,7 +106,11 @@ export function MyTickets() {
                       })();
                     }}
                   >
-                    Cancel booking
+                    {cloudMode && t.paymentId
+                      ? t.refundPending
+                        ? 'View refund'
+                        : 'Request refund'
+                      : 'Cancel booking'}
                   </Button>
                 )}
               </div>

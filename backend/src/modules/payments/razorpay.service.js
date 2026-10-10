@@ -26,7 +26,7 @@ export class RazorpayService {
     )
       throw new HttpError(503, 'Razorpay test payments are not configured.');
   }
-  async request(path, body) {
+  async request(path, body, extraHeaders = {}) {
     this.assertConfigured();
     let response;
     try {
@@ -39,6 +39,7 @@ export class RazorpayService {
               'base64',
             ),
           'Content-Type': 'application/json',
+          ...extraHeaders,
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal: AbortSignal.timeout(15000),
@@ -61,11 +62,28 @@ export class RazorpayService {
   orderPayments(id) {
     return this.request('orders/' + encodeURIComponent(id) + '/payments');
   }
-  refund(paymentId, amount, receipt) {
-    return this.request('payments/' + encodeURIComponent(paymentId) + '/refund', {
-      amount,
-      receipt,
-      notes: { reason: 'Checkout availability or price changed' },
-    });
+  refund(paymentId, amount, receipt, idempotencyKey = receipt) {
+    return this.request(
+      'payments/' + encodeURIComponent(paymentId) + '/refund',
+      {
+        amount,
+        receipt,
+        notes: { reason: 'Skyline test payment refund' },
+      },
+      { 'X-Refund-Idempotency': idempotencyKey },
+    );
+  }
+  fetchRefund(id) {
+    return this.request('refunds/' + encodeURIComponent(id));
+  }
+  async paymentRefunds(id) {
+    const items = [];
+    for (let skip = 0; ; skip += 100) {
+      const page = await this.request(
+        'payments/' + encodeURIComponent(id) + '/refunds?count=100&skip=' + skip,
+      );
+      items.push(...page.items);
+      if (page.items.length < 100) return items;
+    }
   }
 }

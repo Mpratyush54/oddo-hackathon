@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { hasActiveMembership } from '../../../../../shared/membership.js';
 import { useSearchParams } from 'react-router-dom';
 import jsQR from 'jsqr';
 import { Avatar } from '../../../shared/ui/Avatar';
@@ -49,11 +50,7 @@ export function CheckInPage() {
       const pieces = value.trim().split(':');
       const correctClub = pieces[0] === 'SKYLINE' && pieces[1] === 'MEMBER' && pieces[2] === clubId;
       const member = correctClub ? data.members.find((m) => m.id === pieces[3]) : undefined;
-      const valid =
-        !!member &&
-        member.status !== 'Pending' &&
-        member.status !== 'Expired' &&
-        member.expires >= today;
+      const valid = hasActiveMembership(member, today);
       setMemberResult({
         valid,
         name: member?.name,

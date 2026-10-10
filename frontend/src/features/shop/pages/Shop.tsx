@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { hasActiveMembership } from '../../../../../shared/membership.js';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
@@ -198,10 +199,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   const member =
     signedIn &&
     data.members.some(
-      (m) =>
-        m.email.toLowerCase() === user.email.toLowerCase() &&
-        (m.status === 'Active' || m.status === 'Expiring') &&
-        m.expires >= today,
+      (m) => m.email.toLowerCase() === user.email.toLowerCase() && hasActiveMembership(m, today),
     );
   const unitPrice = product ? (member || joinMembership ? product.memberPrice : product.price) : 0;
   const checkoutTotal =
@@ -646,7 +644,9 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
           item.id === p.id ? { ...item, delisted: nextDelisted } : item,
         ),
       }));
-      toast(`${p.name} ${nextDelisted ? 'delisted from public catalog.' : 'relisted to collection.'}`);
+      toast(
+        `${p.name} ${nextDelisted ? 'delisted from public catalog.' : 'relisted to collection.'}`,
+      );
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Could not update product.');
     } finally {
@@ -659,18 +659,14 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setPending(true);
     try {
       try {
-        const reply = await clubRequest<ServerReply>(
-          selectedClub,
-          '/products/delete',
-          {
-            method: 'POST',
-            snapshot: data,
-            actor: user,
-            body: {
-              productId: deletingProduct.id,
-            },
+        const reply = await clubRequest<ServerReply>(selectedClub, '/products/delete', {
+          method: 'POST',
+          snapshot: data,
+          actor: user,
+          body: {
+            productId: deletingProduct.id,
           },
-        );
+        });
         if (reply.patch) applyServerPatch(selectedClub, reply.patch);
       } catch {
         // Fallback
@@ -1064,7 +1060,10 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         <>
           <div className="sky-shop-toolbar">
             <div className="shop-category-tabs">
-              {['All pieces', ...new Set(data.products.filter((p) => !p.delisted).map((p) => p.type))].map((c) => (
+              {[
+                'All pieces',
+                ...new Set(data.products.filter((p) => !p.delisted).map((p) => p.type)),
+              ].map((c) => (
                 <button
                   key={c}
                   aria-pressed={category === c}
@@ -1847,10 +1846,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 </div>
               </Field>
             )}
-            <Field
-              label="Photos"
-              hint="Upload up to three images, or paste an image URL."
-            >
+            <Field label="Photos" hint="Upload up to three images, or paste an image URL.">
               <div className="shop-list-photos">
                 {editImages.map((src, index) => (
                   <div className="shop-list-photo-thumb" key={`${src.slice(0, 24)}-${index}`}>
@@ -1909,7 +1905,11 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               </p>
             )}
             <div className="shop-list-actions">
-              <Button type="submit" disabled={pending || readingImages || !editName.trim()} icon="Check">
+              <Button
+                type="submit"
+                disabled={pending || readingImages || !editName.trim()}
+                icon="Check"
+              >
                 {pending ? 'Saving…' : 'Save changes'}
               </Button>
               <Button
@@ -1934,8 +1934,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ margin: 0, color: '#4b5563', fontSize: 14, lineHeight: 1.5 }}>
-              This product will be permanently removed from the club's merchandise catalog.
-              Students will no longer be able to buy it. Any existing pickup orders will remain in records.
+              This product will be permanently removed from the club's merchandise catalog. Students
+              will no longer be able to buy it. Any existing pickup orders will remain in records.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <Button

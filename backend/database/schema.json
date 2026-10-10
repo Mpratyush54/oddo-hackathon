@@ -2,6 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
     {
+      "$ref": "#/$defs/refundRecord"
+    },
+    {
       "$ref": "#/$defs/ocrQuotaRecord"
     },
     {
@@ -57,6 +60,167 @@
     }
   ],
   "$defs": {
+    "refundRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "sk": {
+          "format": "starts_with",
+          "pattern": "^REFUND#.*",
+          "$ref": "#/$defs/__schema1"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "clubId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "requesterName": {
+          "type": "string"
+        },
+        "paymentId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "paymentPk": {
+          "format": "starts_with",
+          "pattern": "^USER#.*",
+          "$ref": "#/$defs/__schema1"
+        },
+        "paymentSk": {
+          "format": "starts_with",
+          "pattern": "^PAYMENT#.*",
+          "$ref": "#/$defs/__schema1"
+        },
+        "amount": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "currency": {
+          "type": "string",
+          "const": "INR"
+        },
+        "mode": {
+          "type": "string",
+          "const": "test"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Requested",
+            "Rejected",
+            "Processing",
+            "NeedsReview",
+            "Failed",
+            "Processed"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 500
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reviewedBy": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "reviewedAt": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "providerRefundId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "automatic": {
+          "type": "boolean"
+        },
+        "membershipLocked": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "Active",
+                "Pending",
+                "Expiring",
+                "Expired"
+              ]
+            },
+            "expires": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          },
+          "required": [
+            "status",
+            "expires"
+          ]
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "id",
+        "clubId",
+        "userId",
+        "requesterName",
+        "paymentId",
+        "paymentPk",
+        "paymentSk",
+        "amount",
+        "currency",
+        "mode",
+        "status",
+        "reason",
+        "createdAt",
+        "updatedAt",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "__schema0": {
+      "type": "string"
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 250
+    },
+    "__schema2": {
+      "type": "number",
+      "const": 1
+    },
+    "__schema3": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
     "ocrQuotaRecord": {
       "type": "object",
       "properties": {
@@ -219,23 +383,6 @@
         "issues"
       ],
       "additionalProperties": false
-    },
-    "__schema0": {
-      "type": "string"
-    },
-    "__schema1": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 250
-    },
-    "__schema2": {
-      "type": "number",
-      "const": 1
-    },
-    "__schema3": {
-      "type": "string",
-      "format": "date-time",
-      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
     },
     "__schema4": {
       "type": "string",
@@ -439,6 +586,42 @@
         },
         "refundId": {
           "$ref": "#/$defs/__schema1"
+        },
+        "membershipBefore": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "Active",
+                    "Pending",
+                    "Expiring",
+                    "Expired"
+                  ]
+                },
+                "expires": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "duesWaived": {
+                  "type": "boolean"
+                },
+                "membershipPaymentId": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              },
+              "required": [
+                "status",
+                "expires"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "result": {
           "type": "object",
@@ -985,6 +1168,12 @@
     "member": {
       "type": "object",
       "properties": {
+        "refundPending": {
+          "type": "boolean"
+        },
+        "membershipPaymentId": {
+          "$ref": "#/$defs/__schema1"
+        },
         "id": {
           "$ref": "#/$defs/__schema1"
         },
@@ -1249,6 +1438,9 @@
     "ticket": {
       "type": "object",
       "properties": {
+        "refundPending": {
+          "type": "boolean"
+        },
         "paymentId": {
           "$ref": "#/$defs/__schema1"
         },
@@ -1307,6 +1499,9 @@
     "order": {
       "type": "object",
       "properties": {
+        "refundPending": {
+          "type": "boolean"
+        },
         "paymentId": {
           "$ref": "#/$defs/__schema1"
         },
@@ -1794,6 +1989,9 @@
           "type": "integer",
           "minimum": -9007199254740991,
           "maximum": 9007199254740991
+        },
+        "reversed": {
+          "type": "boolean"
         },
         "reason": {
           "$ref": "#/$defs/__schema11"

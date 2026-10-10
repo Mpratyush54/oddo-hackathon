@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { hasActiveMembership } from '../../../../../shared/membership.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { Button } from '../../../shared/ui/Button';
@@ -38,11 +39,9 @@ export function CheckoutPage() {
   const size = params.get('size') || '';
   const member = data.members.find(
     (m) =>
-      email.trim().toLowerCase() === user.email.toLowerCase() &&
+      (cloudMode || email.trim().toLowerCase() === user.email.toLowerCase()) &&
       m.email.toLowerCase() === user.email.toLowerCase() &&
-      m.status !== 'Pending' &&
-      m.status !== 'Expired' &&
-      m.expires >= today,
+      hasActiveMembership(m, today),
   );
   const item = event || product;
   const regular = item?.price || 0;
@@ -418,7 +417,13 @@ export function CheckoutPage() {
             }}
           >
             <Field label="Full name">
-              <input name="name" required defaultValue={user.name} maxLength={80} />
+              <input
+                name="name"
+                required
+                defaultValue={user.name}
+                maxLength={80}
+                readOnly={cloudMode}
+              />
             </Field>
             <Field
               label="Email address"
@@ -427,13 +432,14 @@ export function CheckoutPage() {
                   ? `✓ Membership verified for ${member.name}. Your discount is applied.`
                   : product
                     ? 'Non-members pay the standard rate — or add membership below.'
-                    : 'Use an active member email for your club discount.'
+                    : 'Active club membership unlocks your member price.'
               }
             >
               <input
                 type="email"
                 name="email"
                 value={email}
+                readOnly={cloudMode}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />

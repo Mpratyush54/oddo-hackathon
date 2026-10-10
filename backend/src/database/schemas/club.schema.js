@@ -16,6 +16,8 @@ import {
 
 // Entity schemas include known historical/fixture fields. New storage fields must be declared here.
 export const memberSchema = z.strictObject({
+  refundPending: z.boolean().optional(),
+  membershipPaymentId: id.optional(),
   id,
   userId: id.optional(),
   name: text,
@@ -68,6 +70,7 @@ export const productSchema = z.strictObject({
   delisted: z.boolean().optional(),
 });
 export const ticketSchema = z.strictObject({
+  refundPending: z.boolean().optional(),
   paymentId: id.optional(),
   id,
   eventId: id,
@@ -84,6 +87,7 @@ export const ticketSchema = z.strictObject({
 });
 export const orderStatusSchema = z.enum(['Placed', 'Ready for pickup', 'Picked up', 'Cancelled']);
 export const orderSchema = z.strictObject({
+  refundPending: z.boolean().optional(),
   paymentId: id.optional(),
   id,
   productId: id,
@@ -158,6 +162,7 @@ export const pointSchema = z.strictObject({
   memberId: id,
   kind: z.enum(['participation', 'volunteer', 'contribution']),
   points: z.number().int(),
+  reversed: z.boolean().optional(),
   reason: text,
   date: text,
   eventId: id.optional(),
