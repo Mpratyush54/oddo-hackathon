@@ -106,6 +106,21 @@ export default function Workspace() {
   const [navOpen, setNavOpen] = useState(false),
     [menu, setMenu] = useState<'account' | 'clubs' | 'notifications' | null>(null),
     [search, setSearch] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('skyline-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    localStorage.setItem('skyline-theme', theme);
+  }, [theme]);
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    toast(`Switched to ${next} mode.`);
+  };
   const wrapper = useRef<HTMLDivElement>(null),
     searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -385,7 +400,7 @@ export default function Workspace() {
             <Icon name="Menu" />
           </button>
           <Link to="/app" className="workspace-home">
-            skyline.
+            skyline<span className="brand-dot">.</span>
           </Link>
           <div className="global-search">
             <Icon name="Search" size={19} />
@@ -420,6 +435,15 @@ export default function Workspace() {
             )}
           </div>
           <div className="topbar-right">
+            <button
+              type="button"
+              className="icon-button theme-toggle"
+              aria-label="Toggle color theme"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              onClick={toggleTheme}
+            >
+              <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
+            </button>
             <span className="demo-role-pill">
               <span className="live-dot" />
               {roleLabels[role]}
@@ -432,7 +456,7 @@ export default function Workspace() {
                 onClick={() => setMenu(menu === 'notifications' ? null : 'notifications')}
               >
                 <Icon name="Bell" />
-                {unread > 0 && <span className="notification-dot" />}
+                {unread > 0 && <span className="notification-dot pulse-ring" />}
               </button>
               {menu === 'notifications' && (
                 <div className="notification-popover">

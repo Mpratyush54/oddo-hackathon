@@ -6,6 +6,7 @@ import {
   Empty,
   Field,
   FinanceChart,
+  FormFooter,
   Icon,
   Modal,
   PageHeader,
@@ -15,6 +16,7 @@ import {
 import { date, exportCSV, money, today, uid, useStore } from '../store';
 import { useSession } from '../session';
 import { backendPost, backendRequest, cloudMode } from '../backend';
+import { Revealed } from '../components/PageMotion';
 import '../commerce-finance.css';
 import type { Transaction } from '../store';
 
@@ -23,6 +25,7 @@ export function FinancePage() {
   const { can, user, clubId } = useSession();
   const viewAll = can('view_finance');
   const [rejecting, setRejecting] = useState<Transaction | null>(null);
+  const [previewReceipt, setPreviewReceipt] = useState<Transaction | null>(null);
   const [adding, setAdding] = useState(false),
     [search, setSearch] = useState(''),
     [category, setCategory] = useState('All categories'),
@@ -31,6 +34,7 @@ export function FinancePage() {
     [kind, setKind] = useState('expense'),
     [receipt, setReceipt] = useState<File | null>(null),
     [compact, setCompact] = useState(false),
+    [ledgerLayout, setLedgerLayout] = useState<'statement' | 'table'>('statement'),
     [descending, setDescending] = useState(true),
     [saving, setSaving] = useState(false),
     [error, setError] = useState('');
@@ -95,16 +99,7 @@ export function FinancePage() {
       ]),
     ]);
   const receiptLink = (t: Transaction) => {
-    if (cloudMode) { void backendRequest<{ url: string }>(`/clubs/${clubId}/receipts/${t.id}`).then(result => { window.location.assign(result.url); }).catch(error => toast(error.message)); return; }
-    if (t.receiptData) {
-      const a = document.createElement('a');
-      a.href = t.receiptData;
-      a.download = t.receipt || 'receipt';
-      a.click();
-    } else
-      toast(
-        'This seeded record has a sample receipt name. New expense requests can include a downloadable receipt.',
-      );
+    setPreviewReceipt(t);
   };
   const readFile = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -136,297 +131,465 @@ export function FinancePage() {
       />
       {viewAll && (
         <>
-          <section className="finance-hero dark-card">
-            <div>
-              <div className="hero-eyebrow">YOUR CLUB’S BIGGER PICTURE</div>
-              <h2>Good plans start with a clear balance.</h2>
-              <p>A healthy little foundation for your next big idea.</p>
-            </div>
-            <div className="finance-hero-stats">
+          <Revealed>
+            <section className="finance-hero dark-card">
               <div>
-                <span className="hero-icon">
-                  <Icon name="Wallet" size={24} />
-                </span>
-                <span>
-                  <small>Available balance · all time</small>
-                  <strong>{money(balance)}</strong>
-                </span>
+                <div className="hero-eyebrow">YOUR CLUB’S BIGGER PICTURE</div>
+                <h2>Good plans start with a clear balance.</h2>
+                <p>A healthy little foundation for your next big idea.</p>
               </div>
-              <div>
-                <span className="hero-icon">
-                  <Icon name="ArrowDownLeft" size={24} />
-                </span>
-                <span>
-                  <small>Money in · {period === 'month' ? 'October' : 'semester'}</small>
-                  <strong>{money(income)}</strong>
-                </span>
-              </div>
-              <div>
-                <span className="hero-icon">
-                  <Icon name="ArrowUpRight" size={24} />
-                </span>
-                <span>
-                  <small>Money out · {period === 'month' ? 'October' : 'semester'}</small>
-                  <strong>{money(expense)}</strong>
-                </span>
-              </div>
-            </div>
-          </section>
-          <div className="finance-charts">
-            <section className="card income-chart-card">
-              <CardHeader
-                title="The flow of things"
-                subtitle="Income and expenses, side by side."
-                action={
-                  <select
-                    aria-label="Financial period"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                  >
-                    <option value="semester">This semester</option>
-                    <option value="month">October 2026</option>
-                  </select>
-                }
-              />
-              <div className="light-chart-legend">
-                <span>
-                  <i className="legend-dot teal" />
-                  Money in
-                </span>
-                <span>
-                  <i className="legend-dot gold" />
-                  Money out
-                </span>
-              </div>
-              <FinanceChart values={months} dark={false} />
-            </section>
-            <section className="card income-breakdown">
-              <CardHeader title="Where it comes from" subtitle="Every contribution counts." />
-              <div className="source-list">
-                {sources.map((s) => (
-                  <div key={s.name}>
-                    <div>
-                      <span className={`legend-dot ${s.tone}`} />
-                      <span>{s.name}</span>
-                      <strong>{money(s.amount)}</strong>
-                    </div>
-                    <div className={`source-bar ${s.tone}`}>
-                      <span style={{ width: `${(s.amount / Math.max(income, 1)) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
+              <div className="finance-hero-stats">
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="Wallet" size={24} />
+                  </span>
+                  <span>
+                    <small>Available balance · all time</small>
+                    <strong>{money(balance)}</strong>
+                  </span>
+                </div>
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="ArrowDownLeft" size={24} />
+                  </span>
+                  <span>
+                    <small>Money in · {period === 'month' ? 'October' : 'semester'}</small>
+                    <strong>{money(income)}</strong>
+                  </span>
+                </div>
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="ArrowUpRight" size={24} />
+                  </span>
+                  <span>
+                    <small>Money out · {period === 'month' ? 'October' : 'semester'}</small>
+                    <strong>{money(expense)}</strong>
+                  </span>
+                </div>
               </div>
             </section>
-          </div>
+          </Revealed>
+          <Revealed delay={90}>
+            <div className="finance-charts">
+              <section className="card income-chart-card">
+                <CardHeader
+                  title="The flow of things"
+                  subtitle="Income and expenses, side by side."
+                  action={
+                    <select
+                      aria-label="Financial period"
+                      value={period}
+                      onChange={(e) => setPeriod(e.target.value)}
+                    >
+                      <option value="semester">This semester</option>
+                      <option value="month">October 2026</option>
+                    </select>
+                  }
+                />
+                <div className="light-chart-legend">
+                  <span>
+                    <i className="legend-dot teal" />
+                    Money in
+                  </span>
+                  <span>
+                    <i className="legend-dot gold" />
+                    Money out
+                  </span>
+                </div>
+                <FinanceChart values={months} dark={false} />
+              </section>
+              <section className="card income-breakdown">
+                <CardHeader title="Where it comes from" subtitle="Every contribution counts." />
+                <div className="source-list">
+                  {sources.map((s) => (
+                    <div key={s.name}>
+                      <div>
+                        <span className={`legend-dot ${s.tone}`} />
+                        <span>{s.name}</span>
+                        <strong>{money(s.amount)}</strong>
+                      </div>
+                      <div className={`source-bar ${s.tone}`}>
+                        <span style={{ width: `${(s.amount / Math.max(income, 1)) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </Revealed>
         </>
       )}
-      <section className="card table-card ledger-card">
-        <div className="table-toolbar">
-          <div className="segmented">
-            {['All transactions', 'Completed', 'Pending review', 'Rejected'].map((s) => (
-              <button
-                key={s}
-                className={status === s ? 'selected' : ''}
-                onClick={() => setStatus(s)}
+      <Revealed delay={180}>
+        <section className="card table-card ledger-card">
+          <div className="table-toolbar">
+            <div className="segmented">
+              {['All transactions', 'Completed', 'Pending review', 'Rejected'].map((s) => (
+                <button
+                  key={s}
+                  className={status === s ? 'selected' : ''}
+                  onClick={() => setStatus(s)}
+                >
+                  {s}
+                  {s === 'Pending review' && (
+                    <span>{periodRows.filter((t) => t.status === 'Pending').length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="table-tools">
+              <SearchField value={search} onChange={setSearch} placeholder="Search the ledger..." />
+              <select
+                aria-label="Transaction category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
               >
-                {s}
-                {s === 'Pending review' && (
-                  <span>{periodRows.filter((t) => t.status === 'Pending').length}</span>
-                )}
+                {[
+                  'All categories',
+                  'Membership',
+                  'Tickets',
+                  'Merchandise',
+                  'Fundraiser',
+                  'Expenses',
+                ].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <button
+                className={`icon-button ${ledgerLayout === 'statement' ? 'selected' : ''}`}
+                title="Statement timeline artifact"
+                aria-label="Statement timeline artifact"
+                onClick={() => setLedgerLayout('statement')}
+              >
+                <Icon name="FileText" size={18} />
               </button>
-            ))}
+              <button
+                className={`icon-button ${ledgerLayout === 'table' ? 'selected' : ''}`}
+                title="Table grid view"
+                aria-label="Table grid view"
+                onClick={() => setLedgerLayout('table')}
+              >
+                <Icon name="Columns3" size={18} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Toggle table density"
+                onClick={() => setCompact(!compact)}
+              >
+                <Icon name="Rows3" size={18} />
+              </button>
+            </div>
           </div>
-          <div className="table-tools">
-            <SearchField value={search} onChange={setSearch} placeholder="Search the ledger..." />
-            <select
-              aria-label="Transaction category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {[
-                'All categories',
-                'Membership',
-                'Tickets',
-                'Merchandise',
-                'Fundraiser',
-                'Expenses',
-              ].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-            <button
-              className="icon-button"
-              aria-label="Toggle table density"
-              onClick={() => setCompact(!compact)}
-            >
-              <Icon name="Rows3" size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="table-scroll">
-          <table className={compact ? 'compact' : ''}>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Category</th>
-                <th>
-                  <button className="table-sort" onClick={() => setDescending(!descending)}>
-                    Date
-                    <Icon name="ArrowDownUp" size={12} />
-                  </button>
-                </th>
-                <th className="numeric">Amount</th>
-                <th>Receipt</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <div className="transaction-cell">
-                      <span className={`transaction-icon ${t.amount < 0 ? 'expense' : 'income'}`}>
-                        <Icon name={t.amount < 0 ? 'ArrowUpRight' : 'ArrowDownLeft'} size={18} />
-                      </span>
-                      <span>
-                        <strong>{t.title}</strong>
-                        <small>
-                          {t.id}
-                          {t.eventId
-                            ? ` · ${data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}`
-                            : ''}
-                        </small>
-                        {t.rejectionReason && (
-                          <small className="rejection-note">Reason: {t.rejectionReason}</small>
-                        )}
-                      </span>
+
+          {ledgerLayout === 'statement' ? (
+            <div className="statement-artifact">
+              <div className="statement-artifact-header">
+                <div className="statement-club-stamp">
+                  <span className="statement-stamp-badge">OFFICIAL STATEMENT</span>
+                  <h3>Campus Treasury · Activity Statement</h3>
+                  <small>
+                    Generated for{' '}
+                    {period === 'month' ? 'October 2026' : 'Academic Semester 2026–27'}
+                  </small>
+                </div>
+                <div className="statement-net-summary">
+                  <small>Net Activity</small>
+                  <strong className={income - expense >= 0 ? 'amount-in' : 'amount-out'}>
+                    {money(income - expense)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="statement-timeline">
+                {filtered.map((t, idx) => (
+                  <article
+                    className={`statement-item ${t.amount < 0 ? 'expense-row' : 'income-row'}`}
+                    key={t.id}
+                  >
+                    <div className="statement-item-date">
+                      <strong>{new Date(`${t.date}T12:00:00`).getDate()}</strong>
+                      <small>{date(t.date, { month: 'short' }).toUpperCase()}</small>
                     </div>
-                  </td>
-                  <td>
-                    <Badge
-                      tone={
-                        t.category === 'Tickets'
-                          ? 'purple'
-                          : t.category === 'Merchandise'
-                            ? 'gold'
-                            : t.category === 'Fundraiser'
-                              ? 'green'
-                              : t.category === 'Expenses'
-                                ? 'neutral'
-                                : 'teal'
-                      }
-                    >
-                      {t.category}
-                    </Badge>
-                  </td>
-                  <td>{date(t.date, { day: 'numeric', month: 'short' })}</td>
-                  <td className={`numeric ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}>
-                    {t.amount > 0 ? '+' : '−'}
-                    {money(Math.abs(t.amount))}
-                  </td>
-                  <td>
-                    {t.receipt ? (
-                      <button
-                        className="plain-icon receipt-button"
-                        onClick={() => receiptLink(t)}
-                        title={t.receipt}
-                        aria-label={`Download receipt for ${t.title}`}
-                      >
-                        <Icon name="Paperclip" size={18} />
-                      </button>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td>
-                    <Badge
-                      tone={
-                        t.status === 'Completed'
-                          ? 'green'
-                          : t.status === 'Rejected'
-                            ? 'neutral'
-                            : 'gold'
-                      }
-                    >
-                      {t.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    {t.status === 'Pending' && can('approve_expense') && (
-                      <div className="review-actions">
-                        <Button
-                          variant="secondary"
-                          icon="Check"
-                          disabled={t.createdBy === user.id}
-                          onClick={() => {
-                            if (!can('approve_expense') || t.createdBy === user.id) {
-                              toast('A different treasurer must review your own request.');
-                              return;
+                    <div className="statement-item-bullet">
+                      <span className={`statement-dot ${t.amount < 0 ? 'out' : 'in'}`} />
+                      {idx !== filtered.length - 1 && <span className="statement-line" />}
+                    </div>
+                    <div className="statement-item-body">
+                      <div className="statement-item-main">
+                        <div className="statement-item-title-row">
+                          <h4>{t.title}</h4>
+                          <Badge
+                            tone={
+                              t.category === 'Tickets'
+                                ? 'purple'
+                                : t.category === 'Merchandise'
+                                  ? 'gold'
+                                  : t.category === 'Fundraiser'
+                                    ? 'green'
+                                    : t.category === 'Expenses'
+                                      ? 'neutral'
+                                      : 'teal'
                             }
-                            update((d) => ({
-                              ...d,
-                              transactions: d.transactions.map((tx) =>
-                                tx.id === t.id &&
-                                tx.status === 'Pending' &&
-                                tx.createdBy !== user.id
-                                  ? { ...tx, status: 'Completed', reviewedBy: user.id }
-                                  : tx,
-                              ),
-                            }));
-                            toast('Expense approved and recorded in the balance.');
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          disabled={t.createdBy === user.id}
-                          onClick={() => setRejecting(t)}
-                        >
-                          Reject
-                        </Button>
+                          >
+                            {t.category}
+                          </Badge>
+                        </div>
+                        <div className="statement-item-meta">
+                          <span>Ref: {t.id}</span>
+                          {t.eventId && (
+                            <span>
+                              Event:{' '}
+                              {data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}
+                            </span>
+                          )}
+                          {t.receipt && (
+                            <button
+                              type="button"
+                              className="statement-receipt-tag"
+                              onClick={() => receiptLink(t)}
+                            >
+                              <Icon name="Paperclip" size={13} /> {t.receipt}
+                            </button>
+                          )}
+                          {t.rejectionReason && (
+                            <span className="rejection-note">Note: {t.rejectionReason}</span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {t.status === 'Pending' && t.createdBy === user.id && (
-                      <small className="cell-subtext">Awaiting another reviewer</small>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <div className="statement-item-side">
+                        <strong
+                          className={`statement-amount ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}
+                        >
+                          {t.amount > 0 ? '+' : '−'}
+                          {money(Math.abs(t.amount))}
+                        </strong>
+                        <Badge
+                          tone={
+                            t.status === 'Completed'
+                              ? 'green'
+                              : t.status === 'Rejected'
+                                ? 'neutral'
+                                : 'gold'
+                          }
+                        >
+                          {t.status}
+                        </Badge>
+                        {t.status === 'Pending' && can('approve_expense') && (
+                          <div className="review-actions" style={{ marginTop: '8px' }}>
+                            <Button
+                              variant="secondary"
+                              icon="Check"
+                              disabled={t.createdBy === user.id}
+                              onClick={() => {
+                                if (!can('approve_expense') || t.createdBy === user.id) {
+                                  toast('A different treasurer must review your own request.');
+                                  return;
+                                }
+                                update((d) => ({
+                                  ...d,
+                                  transactions: d.transactions.map((tx) =>
+                                    tx.id === t.id &&
+                                    tx.status === 'Pending' &&
+                                    tx.createdBy !== user.id
+                                      ? { ...tx, status: 'Completed', reviewedBy: user.id }
+                                      : tx,
+                                  ),
+                                }));
+                                toast('Expense approved and recorded in the balance.');
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              disabled={t.createdBy === user.id}
+                              onClick={() => setRejecting(t)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className={compact ? 'compact' : ''}>
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>
+                      <button className="table-sort" onClick={() => setDescending(!descending)}>
+                        Date
+                        <Icon name="ArrowDownUp" size={12} />
+                      </button>
+                    </th>
+                    <th className="numeric">Amount</th>
+                    <th>Receipt</th>
+                    <th>Status</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((t) => (
+                    <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
+                      <td>
+                        <div className="transaction-cell">
+                          <span
+                            className={`transaction-icon ${t.amount < 0 ? 'expense' : 'income'}`}
+                          >
+                            <Icon
+                              name={t.amount < 0 ? 'ArrowUpRight' : 'ArrowDownLeft'}
+                              size={18}
+                            />
+                          </span>
+                          <span>
+                            <strong>{t.title}</strong>
+                            <small>
+                              {t.id}
+                              {t.eventId
+                                ? ` · ${data.events.find((e) => e.id === t.eventId)?.title || 'Linked event'}`
+                                : ''}
+                            </small>
+                            {t.rejectionReason && (
+                              <small className="rejection-note">Reason: {t.rejectionReason}</small>
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge
+                          tone={
+                            t.category === 'Tickets'
+                              ? 'purple'
+                              : t.category === 'Merchandise'
+                                ? 'gold'
+                                : t.category === 'Fundraiser'
+                                  ? 'green'
+                                  : t.category === 'Expenses'
+                                    ? 'neutral'
+                                    : 'teal'
+                          }
+                        >
+                          {t.category}
+                        </Badge>
+                      </td>
+                      <td>{date(t.date, { day: 'numeric', month: 'short' })}</td>
+                      <td className={`numeric ${t.amount < 0 ? 'amount-out' : 'amount-in'}`}>
+                        {t.amount > 0 ? '+' : '−'}
+                        {money(Math.abs(t.amount))}
+                      </td>
+                      <td>
+                        {t.receipt ? (
+                          <button
+                            className="plain-icon receipt-button"
+                            onClick={() => receiptLink(t)}
+                            title={t.receipt}
+                            aria-label={`Download receipt for ${t.title}`}
+                          >
+                            <Icon name="Paperclip" size={18} />
+                          </button>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <Badge
+                          tone={
+                            t.status === 'Completed'
+                              ? 'green'
+                              : t.status === 'Rejected'
+                                ? 'neutral'
+                                : 'gold'
+                          }
+                        >
+                          {t.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        {t.status === 'Pending' && can('approve_expense') && (
+                          <div className="review-actions">
+                            <Button
+                              variant="secondary"
+                              icon="Check"
+                              disabled={t.createdBy === user.id}
+                              onClick={() => {
+                                if (!can('approve_expense') || t.createdBy === user.id) {
+                                  toast('A different treasurer must review your own request.');
+                                  return;
+                                }
+                                update((d) => ({
+                                  ...d,
+                                  transactions: d.transactions.map((tx) =>
+                                    tx.id === t.id &&
+                                    tx.status === 'Pending' &&
+                                    tx.createdBy !== user.id
+                                      ? { ...tx, status: 'Completed', reviewedBy: user.id }
+                                      : tx,
+                                  ),
+                                }));
+                                toast('Expense approved and recorded in the balance.');
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              disabled={t.createdBy === user.id}
+                              onClick={() => setRejecting(t)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {t.status === 'Pending' && t.createdBy === user.id && (
+                          <small className="cell-subtext">Awaiting another reviewer</small>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!filtered.length && (
+            <Empty
+              title="The books are quiet here"
+              description="No transactions match these filters."
+            />
+          )}
+          <div className="table-footer">
+            <span>
+              {filtered.length} transactions · Pending expenses are excluded from the balance
+            </span>
+            <span className="ledger-total">
+              Filtered net:{' '}
+              <strong>
+                {money(
+                  filtered
+                    .filter((t) => t.status === 'Completed')
+                    .reduce((s, t) => s + t.amount, 0),
+                )}
+              </strong>
+            </span>
+          </div>
+        </section>
+      </Revealed>
+      <Revealed delay={240}>
+        <div className="info-banner">
+          <Icon name="ShieldCheck" size={25} />
+          <div>
+            <strong>A little transparency goes a long way.</strong>
+            <p>
+              Every ticket, membership, and merchandise payment is recorded here. Reimbursements
+              affect your balance once approved.
+            </p>
+          </div>
         </div>
-        {!filtered.length && (
-          <Empty
-            title="The books are quiet here"
-            description="No transactions match these filters."
-          />
-        )}
-        <div className="table-footer">
-          <span>
-            {filtered.length} transactions · Pending expenses are excluded from the balance
-          </span>
-          <span className="ledger-total">
-            Filtered net:{' '}
-            <strong>
-              {money(
-                filtered.filter((t) => t.status === 'Completed').reduce((s, t) => s + t.amount, 0),
-              )}
-            </strong>
-          </span>
-        </div>
-      </section>
-      <div className="info-banner">
-        <Icon name="ShieldCheck" size={25} />
-        <div>
-          <strong>A little transparency goes a long way.</strong>
-          <p>
-            Every ticket, membership, and merchandise payment is recorded here. Reimbursements
-            affect your balance once approved.
-          </p>
-        </div>
-      </div>
+      </Revealed>
       {adding && (
         <Modal
           title="Keep the books connected"
@@ -450,14 +613,37 @@ export function FinancePage() {
                 if (cloudMode) {
                   let receiptKey: string | undefined;
                   if (receipt) {
-                    const upload = await backendPost<{ url: string; fields: Record<string, string>; key: string }>(`/clubs/${clubId}/receipts/upload`, { contentType: receipt.type });
-                    const form = new FormData(); for (const [key, value] of Object.entries(upload.fields)) form.append(key, value); form.append('file', receipt);
+                    const upload = await backendPost<{
+                      url: string;
+                      fields: Record<string, string>;
+                      key: string;
+                    }>(`/clubs/${clubId}/receipts/upload`, { contentType: receipt.type });
+                    const form = new FormData();
+                    for (const [key, value] of Object.entries(upload.fields))
+                      form.append(key, value);
+                    form.append('file', receipt);
                     const response = await fetch(upload.url, { method: 'POST', body: form });
                     if (!response.ok) throw new Error('Receipt upload failed.');
                     receiptKey = upload.key;
                   }
-                  const result = await backendPost<{ state: Parameters<typeof applyServerPatch>[1] }>(`/clubs/${clubId}/actions`, { type: kind === 'expense' ? 'expenses.create' : 'income.create', args: { title: f.title.trim(), amount: Number(f.amount), category: f.category, eventId: f.eventId || undefined, receipt: receipt?.name, receiptKey }, idempotencyKey: crypto.randomUUID() });
-                  applyServerPatch(clubId, result.state); close(); toast('Saved to the shared club ledger.'); return;
+                  const result = await backendPost<{
+                    state: Parameters<typeof applyServerPatch>[1];
+                  }>(`/clubs/${clubId}/actions`, {
+                    type: kind === 'expense' ? 'expenses.create' : 'income.create',
+                    args: {
+                      title: f.title.trim(),
+                      amount: Number(f.amount),
+                      category: f.category,
+                      eventId: f.eventId || undefined,
+                      receipt: receipt?.name,
+                      receiptKey,
+                    },
+                    idempotencyKey: crypto.randomUUID(),
+                  });
+                  applyServerPatch(clubId, result.state);
+                  close();
+                  toast('Saved to the shared club ledger.');
+                  return;
                 }
                 const receiptData = receipt ? await readFile(receipt) : undefined;
                 const tx: Transaction = {
@@ -688,6 +874,96 @@ export function FinancePage() {
             />
           )}
         </section>
+      )}
+      {previewReceipt && (
+        <Modal
+          title={`Receipt voucher: ${previewReceipt.receipt || previewReceipt.id}`}
+          description={`Transaction ${previewReceipt.id} · ${date(previewReceipt.date)}`}
+          onClose={() => setPreviewReceipt(null)}
+        >
+          <div className="receipt-voucher-preview">
+            <div className="voucher-header">
+              <span className="voucher-stamp">OFFICIALLY RECORDED</span>
+              <h3>{previewReceipt.title}</h3>
+              <p className="voucher-meta">
+                Category: {previewReceipt.category} · Campus Community Ledger
+              </p>
+            </div>
+            <div className="voucher-amount-row">
+              <span>Recorded value:</span>
+              <strong className={previewReceipt.amount < 0 ? 'amount-out' : 'amount-in'}>
+                {previewReceipt.amount > 0 ? '+' : '−'}
+                {money(Math.abs(previewReceipt.amount))}
+              </strong>
+            </div>
+            <div className="voucher-details">
+              <div className="voucher-detail-line">
+                <span>Status:</span>
+                <Badge tone={previewReceipt.status === 'Completed' ? 'green' : 'gold'}>
+                  {previewReceipt.status}
+                </Badge>
+              </div>
+              <div className="voucher-detail-line">
+                <span>Reference ID:</span>
+                <code>{previewReceipt.id}</code>
+              </div>
+              <div className="voucher-detail-line">
+                <span>Receipt file:</span>
+                <span>{previewReceipt.receipt || 'Standard digital invoice'}</span>
+              </div>
+            </div>
+            <div className="voucher-mock-document">
+              <Icon name="FileText" size={36} />
+              <div>
+                <strong>Digital Proof of Expenditure & Voucher</strong>
+                <p>
+                  {cloudMode
+                    ? 'Review the uploaded receipt before approving this expense.'
+                    : 'Sample voucher for the local demonstration.'}
+                </p>
+              </div>
+            </div>
+            <div
+              className="modal-actions"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '16px',
+              }}
+            >
+              <Button variant="secondary" onClick={() => setPreviewReceipt(null)}>
+                Close
+              </Button>
+              <Button
+                icon="Download"
+                onClick={() => {
+                  if (cloudMode) {
+                    void backendRequest<{ url: string }>(
+                      `/clubs/${clubId}/receipts/${previewReceipt.id}`,
+                    )
+                      .then((result) => {
+                        window.location.assign(result.url);
+                      })
+                      .catch((error) => toast(error.message));
+                    return;
+                  }
+                  if (previewReceipt.receiptData) {
+                    const a = document.createElement('a');
+                    a.href = previewReceipt.receiptData;
+                    a.download = previewReceipt.receipt || 'receipt';
+                    a.click();
+                  } else {
+                    toast('This demo voucher has no attached receipt to download.');
+                  }
+                  setPreviewReceipt(null);
+                }}
+              >
+                Download voucher copy
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );

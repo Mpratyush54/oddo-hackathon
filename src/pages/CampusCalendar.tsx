@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Empty, Icon, LinkButton, PageHeader } from '../components';
+import { Revealed } from '../components/PageMotion';
 import { date, today, useStore } from '../store';
 import { eventPhase, eventEnd } from '../event-utils';
 import '../campus-calendar.css';
 
 const keyFor = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-// A continuing event belongs on each calendar day it occupies.
+
 function eventDays(event: Parameters<typeof eventEnd>[0]): string[] {
   const end = new Date(eventEnd(event).getTime() - 1);
   const last = new Intl.DateTimeFormat('sv-SE', {
@@ -31,16 +32,35 @@ function eventDays(event: Parameters<typeof eventEnd>[0]): string[] {
   }
   return days;
 }
+
+const getCategoryClass = (category: string) => {
+  const c = (category || '').toLowerCase();
+  if (c.includes('meeting') || c.includes('official') || c.includes('agm')) return 'chip-teal';
+  if (c.includes('workshop') || c.includes('bootcamp') || c.includes('tech')) return 'chip-amber';
+  if (c.includes('social') || c.includes('mixer') || c.includes('fest')) return 'chip-emerald';
+  if (c.includes('fund') || c.includes('charity')) return 'chip-purple';
+  return 'chip-blue';
+};
+
 export default function CampusCalendar() {
   const { data } = useStore();
   const now = new Date(`${today}T12:00:00`);
   const [month, setMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [selected, setSelected] = useState(today);
-  const [view, setView] = useState('agenda');
+  const [view, setView] = useState<'agenda' | 'month'>('month');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
   const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
-  const monthEvents = data.events
+  const allMonthEvents = data.events
     .filter((e) => eventDays(e).some((day) => day.startsWith(monthKey)))
     .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+
+  const monthEvents = selectedCategory === 'all'
+    ? allMonthEvents
+    : allMonthEvents.filter((e) => e.category.toLowerCase().includes(selectedCategory.toLowerCase()));
+
+  const categories = ['all', ...new Set(allMonthEvents.map((e) => e.category))];
+
   const groups = [
     ...new Set(monthEvents.flatMap(eventDays).filter((day) => day.startsWith(monthKey))),
   ].sort();
@@ -49,12 +69,14 @@ export default function CampusCalendar() {
   const selectedEvents = data.events
     .filter((e) => eventDays(e).includes(selected))
     .sort((a, b) => a.time.localeCompare(b.time));
+
   const moveMonth = (offset: number) => {
     const next = new Date(month.getFullYear(), month.getMonth() + offset, 1);
     setMonth(next);
     setSelected(keyFor(next.getFullYear(), next.getMonth(), 1));
   };
   const monthName = month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
   const renderEvent = (event: (typeof data.events)[number]) => {
     const phase = eventPhase(event);
     return (
@@ -83,10 +105,11 @@ export default function CampusCalendar() {
       </Link>
     );
   };
+
   return (
     <>
       <PageHeader
-        eyebrow="MAKE ROOM FOR GOOD COMPANY"
+        eyebrow="CAMPUS TIMELINE"
         title="Your campus calendar."
         description="See the month clearly. Find the plan that fits your day."
         action={
@@ -95,124 +118,181 @@ export default function CampusCalendar() {
           </LinkButton>
         }
       />
-      <section className="campus-calendar">
-        <header className="campus-calendar-header">
-          <div>
-            <span className="campus-calendar-overline">{monthEvents.length} EVENTS THIS MONTH</span>
-            <h2>{monthName}</h2>
-          </div>
-          <div className="campus-calendar-controls">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-                setSelected(today);
-              }}
-            >
-              Today
-            </Button>
-            <button
-              className="icon-button"
-              aria-label="Previous month"
-              onClick={() => moveMonth(-1)}
-            >
-              <Icon name="ChevronLeft" />
-            </button>
-            <button className="icon-button" aria-label="Next month" onClick={() => moveMonth(1)}>
-              <Icon name="ChevronRight" />
-            </button>
-            <div className="campus-calendar-view">
-              <button
-                className={view === 'agenda' ? 'active' : ''}
-                aria-pressed={view === 'agenda'}
-                onClick={() => setView('agenda')}
-              >
-                Agenda
-              </button>
-              <button
-                className={view === 'month' ? 'active' : ''}
-                aria-pressed={view === 'month'}
-                onClick={() => setView('month')}
-              >
-                Month
-              </button>
+
+      <Revealed delay={60}>
+        <section className="campus-calendar">
+          <header className="campus-calendar-header">
+            <div>
+              <span className="campus-calendar-overline">
+                {monthEvents.length} EVENT{monthEvents.length !== 1 ? 'S' : ''} IN {month.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
+              </span>
+              <h2>{monthName}</h2>
             </div>
-          </div>
-        </header>
-        <div className={`campus-calendar-content view-${view}`}>
-          <div className="campus-calendar-agenda">
-            <div className="campus-calendar-agenda-heading">
-              <h3>Plans for {month.toLocaleDateString('en-GB', { month: 'long' })}</h3>
-              <p>A readable view of every event, day by day.</p>
-            </div>
-            {groups.map((day) => (
-              <section className="campus-agenda-group" key={day}>
-                <div className="campus-agenda-date">
-                  <span>{date(day, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                  {day === today && <Badge>Today</Badge>}
+            <div className="campus-calendar-controls">
+              {categories.length > 2 && (
+                <div className="calendar-cat-filter">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    aria-label="Filter events by category"
+                  >
+                    <option value="all">All categories ({allMonthEvents.length})</option>
+                    {categories.filter((c) => c !== 'all').map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                {monthEvents.filter((e) => eventDays(e).includes(day)).map(renderEvent)}
-              </section>
-            ))}
-            {!groups.length && (
-              <Empty
-                title="A fresh month to fill"
-                description="There are no club events in this month. Try the next month or explore all events."
-                action={<LinkButton to="/app/events">Browse events</LinkButton>}
-              />
-            )}
-          </div>
-          <div className="campus-calendar-month">
-            <div className="campus-calendar-weekdays">
-              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(
-                (d) => (
-                  <span key={d}>{d.slice(0, 3)}</span>
-                ),
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+                  setSelected(today);
+                }}
+              >
+                Today
+              </Button>
+              <button
+                className="icon-button"
+                aria-label="Previous month"
+                onClick={() => moveMonth(-1)}
+              >
+                <Icon name="ChevronLeft" />
+              </button>
+              <button className="icon-button" aria-label="Next month" onClick={() => moveMonth(1)}>
+                <Icon name="ChevronRight" />
+              </button>
+              <div className="campus-calendar-view">
+                <button
+                  className={view === 'month' ? 'active' : ''}
+                  aria-pressed={view === 'month'}
+                  onClick={() => setView('month')}
+                >
+                  Month
+                </button>
+                <button
+                  className={view === 'agenda' ? 'active' : ''}
+                  aria-pressed={view === 'agenda'}
+                  onClick={() => setView('agenda')}
+                >
+                  Agenda
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className={`campus-calendar-content view-${view}`}>
+            <div className="campus-calendar-agenda">
+              <div className="campus-calendar-agenda-heading">
+                <h3>Plans for {month.toLocaleDateString('en-GB', { month: 'long' })}</h3>
+                <p>A readable view of every event, day by day.</p>
+              </div>
+              {groups.map((day) => (
+                <section className="campus-agenda-group" key={day}>
+                  <div className="campus-agenda-date">
+                    <span>{date(day, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                    {day === today && <Badge>Today</Badge>}
+                  </div>
+                  {monthEvents.filter((e) => eventDays(e).includes(day)).map(renderEvent)}
+                </section>
+              ))}
+              {!groups.length && (
+                <Empty
+                  title="A fresh month to fill"
+                  description="There are no club events matching this view. Try another month or clear filters."
+                  action={<LinkButton to="/app/events">Browse events</LinkButton>}
+                />
               )}
             </div>
-            <div className="campus-calendar-grid">
-              {Array.from({ length: firstDay }, (_, i) => (
-                <div className="campus-calendar-blank" key={`blank-${i}`} />
-              ))}
-              {Array.from({ length: numberOfDays }, (_, i) => {
-                const day = keyFor(month.getFullYear(), month.getMonth(), i + 1);
-                const events = monthEvents.filter((e) => eventDays(e).includes(day));
-                return (
-                  <button
-                    key={day}
-                    className={`campus-calendar-cell ${day === selected ? 'selected' : ''} ${day === today ? 'today' : ''}`}
-                    aria-label={`${date(day, { weekday: 'long', day: 'numeric', month: 'long' })}, ${events.length} events`}
-                    aria-pressed={day === selected}
-                    onClick={() => setSelected(day)}
-                  >
-                    <span>{i + 1}</span>
-                    {events.slice(0, 2).map((e) => (
-                      <small key={e.id} title={e.title}>
-                        {e.time} · {e.title}
-                      </small>
-                    ))}
-                    {events.length > 2 && <strong>+{events.length - 2} more</strong>}
-                  </button>
-                );
-              })}
-            </div>
-            <section className="campus-calendar-day">
-              <div>
-                <h3>{date(selected, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-                <p>
-                  {selectedEvents.length
-                    ? `${selectedEvents.length} plan${selectedEvents.length > 1 ? 's' : ''} for your day.`
-                    : 'A little breathing room in your calendar.'}
-                </p>
+
+            <div className="campus-calendar-month">
+              <div className="campus-calendar-weekdays">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+                  <span key={d}>{d}</span>
+                ))}
               </div>
-              {selectedEvents.map(renderEvent)}
-            </section>
+              <div className="campus-calendar-grid">
+                {Array.from({ length: firstDay }, (_, i) => (
+                  <div className="campus-calendar-blank" key={`blank-${i}`} />
+                ))}
+                {Array.from({ length: numberOfDays }, (_, i) => {
+                  const day = keyFor(month.getFullYear(), month.getMonth(), i + 1);
+                  const events = monthEvents.filter((e) => eventDays(e).includes(day));
+                  const isToday = day === today;
+                  const isSelected = day === selected;
+
+                  return (
+                    <div
+                      key={day}
+                      className={`campus-calendar-cell ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
+                      onClick={() => setSelected(day)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setSelected(day);
+                        }
+                      }}
+                      aria-label={`${date(day, { weekday: 'long', day: 'numeric', month: 'long' })}, ${events.length} events`}
+                    >
+                      <div className="calendar-cell-top">
+                        <span className="calendar-day-num">{i + 1}</span>
+                        {events.length > 0 && (
+                          <span className="calendar-day-count">{events.length}</span>
+                        )}
+                      </div>
+                      <div className="calendar-cell-chips">
+                        {events.slice(0, 3).map((e) => (
+                          <Link
+                            key={e.id}
+                            to={`/app/events/${e.id}`}
+                            className={`calendar-chip ${getCategoryClass(e.category)}`}
+                            title={`${e.time} · ${e.title} (${e.category})`}
+                            onClick={(ev) => ev.stopPropagation()}
+                          >
+                            <span className="chip-dot" />
+                            <span className="chip-title">{e.title}</span>
+                          </Link>
+                        ))}
+                        {events.length > 3 && (
+                          <span className="calendar-chip-more">+{events.length - 3} more</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <section className="campus-calendar-day">
+                <div className="campus-calendar-day-header">
+                  <div>
+                    <span className="campus-day-overline">SELECTED DAY</span>
+                    <h3>{date(selected, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                  </div>
+                  <Badge tone={selected === today ? 'green' : 'neutral'}>
+                    {selected === today ? 'Today' : `${selectedEvents.length} scheduled`}
+                  </Badge>
+                </div>
+                {selectedEvents.length > 0 ? (
+                  <div className="campus-calendar-day-list">
+                    {selectedEvents.map(renderEvent)}
+                  </div>
+                ) : (
+                  <p className="campus-day-empty">
+                    No scheduled activities for this date. Click another day on the calendar or browse all upcoming events.
+                  </p>
+                )}
+              </section>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </Revealed>
+
       <div className="campus-calendar-mobile-note">
         <Icon name="CalendarDays" size={17} />
-        <p>The agenda keeps full event names and locations readable on your phone.</p>
+        <p>Switch between Month and Agenda views to explore upcoming campus schedules.</p>
       </div>
     </>
   );

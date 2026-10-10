@@ -19,6 +19,7 @@ import {
   StatCard,
   formValues,
 } from '../components';
+import { Revealed } from '../components/PageMotion';
 import { date, exportCSV, money, today, uid, useStore } from '../store';
 import type { Member, Task } from '../store';
 
@@ -29,6 +30,7 @@ export function MembersPage() {
     [status, setStatus] = useState(params.get('status') || 'All'),
     [sort, setSort] = useState('name'),
     [compact, setCompact] = useState(false),
+    [viewMode, setViewMode] = useState<'directory' | 'table'>('directory'),
     [page, setPage] = useState(1),
     [selected, setSelected] = useState<string[]>([]),
     [detail, setDetail] = useState<Member | null>(null);
@@ -71,6 +73,49 @@ export function MembersPage() {
     toast(`${member.name}'s membership is active. ${money(500)} added to the ledger.`);
     setDetail(null);
   };
+  const expiringMembers = data.members.filter((m) => m.status === 'Expiring');
+  const sendRenewalReminders = (targets?: Member[]) => {
+    const list = targets || expiringMembers;
+    if (!list.length) {
+      toast('No expiring members found to remind.');
+      return;
+    }
+    const newNotifications = list.map((m) => ({
+      id: uid('NOT'),
+      title: 'Membership renewal reminder',
+      body: `Hi ${m.name}, your membership expires on ${date(m.expires)}. Renew now to keep your club perks!`,
+      date: today,
+      read: false,
+      to: m.email,
+      audience: 'Renewing soon',
+    }));
+    const newDeliveries = list.flatMap((m) => [
+      {
+        id: uid('DEL'),
+        announcementId: 'RENEWAL-REMINDER',
+        channel: 'In-app' as const,
+        recipient: m.email,
+        status: 'Sent' as const,
+        date: today,
+        detail: `Sent in-app renewal reminder (expires ${m.expires})`,
+      },
+      {
+        id: uid('DEL'),
+        announcementId: 'RENEWAL-REMINDER',
+        channel: 'Email' as const,
+        recipient: m.email,
+        status: 'Prepared' as const,
+        date: today,
+        detail: `Queued outbound renewal email for ${m.email}`,
+      },
+    ]);
+    update((d) => ({
+      ...d,
+      notifications: [...newNotifications, ...(d.notifications || [])],
+      deliveries: [...newDeliveries, ...(d.deliveries || [])],
+    }));
+    toast(`Sent renewal reminders to ${list.length} expiring member${list.length > 1 ? 's' : ''}.`);
+  };
   const exportMembers = () =>
     exportCSV('skyline-members.csv', [
       ['Member ID', 'Name', 'Email', 'Course', 'Status', 'Expires'],
@@ -86,6 +131,15 @@ export function MembersPage() {
         description="A place for everyone. Keep your members connected and cared for."
         action={
           <>
+            {expiringMembers.length > 0 && (
+              <Button
+                variant="secondary"
+                icon="Bell"
+                onClick={() => sendRenewalReminders()}
+              >
+                Send renewal reminders ({expiringMembers.length})
+              </Button>
+            )}
             <Button variant="secondary" icon="Download" onClick={exportMembers}>
               Export members
             </Button>
@@ -95,188 +149,283 @@ export function MembersPage() {
           </>
         }
       />
-      <div className="four-stats">
-        <StatCard
-          icon="UsersRound"
-          label="Total members"
-          value={data.members.length}
-          note="Growing, one connection at a time"
-        />
-        <StatCard
-          icon="BadgeCheck"
-          label="Paid memberships"
-          value={data.members.filter((m) => m.status === 'Active').length}
-          tone="green"
-        />
-        <StatCard
-          icon="Clock3"
-          label="Awaiting dues"
-          value={data.members.filter((m) => m.status === 'Pending').length}
-          tone="gold"
-        />
-        <StatCard
-          icon="CalendarClock"
-          label="Renewing soon"
-          value={data.members.filter((m) => m.status === 'Expiring').length}
-          tone="purple"
-        />
-      </div>
-      <section className="card table-card">
-        <div className="table-toolbar">
-          <div className="segmented">
-            {['All', 'Active', 'Pending', 'Expiring'].map((s) => (
-              <button
-                key={s}
-                className={status === s ? 'selected' : ''}
-                onClick={() => {
-                  setStatus(s);
+      <Revealed delay={40}>
+        <div className="four-stats">
+          <StatCard
+            icon="UsersRound"
+            label="Total members"
+            value={data.members.length}
+            note="Growing, one connection at a time"
+          />
+          <StatCard
+            icon="BadgeCheck"
+            label="Paid memberships"
+            value={data.members.filter((m) => m.status === 'Active').length}
+            tone="green"
+          />
+          <StatCard
+            icon="Clock3"
+            label="Awaiting dues"
+            value={data.members.filter((m) => m.status === 'Pending').length}
+            tone="gold"
+          />
+          <StatCard
+            icon="CalendarClock"
+            label="Renewing soon"
+            value={data.members.filter((m) => m.status === 'Expiring').length}
+            tone="purple"
+          />
+        </div>
+      </Revealed>
+
+      <Revealed delay={80}>
+        <section className="card table-card members-card-crafted">
+          <div className="table-toolbar">
+            <div className="segmented">
+              {['All', 'Active', 'Pending', 'Expiring'].map((s) => (
+                <button
+                  key={s}
+                  className={status === s ? 'selected' : ''}
+                  onClick={() => {
+                    setStatus(s);
+                    setPage(1);
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className="table-tools">
+              <SearchField
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
                   setPage(1);
                 }}
-              >
-                {s}
-              </button>
-            ))}
+                placeholder="Find a member..."
+              />
+              <div className="segmented member-view-segmented">
+                <button
+                  className={viewMode === 'directory' ? 'selected' : ''}
+                  title="People Directory"
+                  onClick={() => setViewMode('directory')}
+                >
+                  <Icon name="LayoutGrid" size={16} />
+                </button>
+                <button
+                  className={viewMode === 'table' ? 'selected' : ''}
+                  title="Roster Table"
+                  onClick={() => setViewMode('table')}
+                >
+                  <Icon name="List" size={16} />
+                </button>
+              </div>
+              {viewMode === 'table' && (
+                <button
+                  className={`icon-button ${compact ? 'selected' : ''}`}
+                  title={compact ? 'Comfortable rows' : 'Compact rows'}
+                  aria-label="Toggle table density"
+                  onClick={() => setCompact(!compact)}
+                >
+                  <Icon name="Rows3" size={18} />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="table-tools">
-            <SearchField
-              value={search}
-              onChange={(v) => {
-                setSearch(v);
-                setPage(1);
-              }}
-              placeholder="Find a member..."
-            />
-            <button
-              className={`icon-button ${compact ? 'selected' : ''}`}
-              title={compact ? 'Comfortable rows' : 'Compact rows'}
-              aria-label="Toggle table density"
-              onClick={() => setCompact(!compact)}
-            >
-              <Icon name="Rows3" size={18} />
-            </button>
-          </div>
-        </div>
-        {selected.length > 0 && (
-          <div className="bulk-bar">
-            <span>{selected.length} members selected</span>
-            <Button variant="white" icon="Download" onClick={exportMembers}>
-              Export selected
-            </Button>
-            <button onClick={() => setSelected([])}>Clear selection</button>
-          </div>
-        )}
-        <div className="table-scroll">
-          <table className={compact ? 'compact' : ''}>
-            <thead>
-              <tr>
-                <th className="checkbox-cell">
-                  <input
-                    type="checkbox"
-                    aria-label="Select visible members"
-                    checked={visible.length > 0 && visible.every((m) => selected.includes(m.id))}
-                    onChange={(e) =>
-                      setSelected(
-                        e.target.checked
-                          ? [...new Set([...selected, ...visible.map((m) => m.id)])]
-                          : selected.filter((id) => !visible.some((m) => m.id === id)),
-                      )
-                    }
-                  />
-                </th>
-                <th>
-                  <button
-                    className="table-sort"
-                    onClick={() => setSort(sort === 'name' ? 'joined' : 'name')}
-                  >
-                    Member <Icon name="ArrowDownUp" size={12} />
-                  </button>
-                </th>
-                <th>Course</th>
-                <th>Membership</th>
-                <th>Valid until</th>
-                <th>Role</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
+          {selected.length > 0 && (
+            <div className="bulk-bar">
+              <span>{selected.length} members selected</span>
+              {data.members.some((m) => selected.includes(m.id) && m.status === 'Expiring') && (
+                <Button
+                  variant="white"
+                  icon="Bell"
+                  onClick={() => {
+                    const targets = data.members.filter(
+                      (m) => selected.includes(m.id) && m.status === 'Expiring',
+                    );
+                    sendRenewalReminders(targets);
+                  }}
+                >
+                  Send renewal reminder
+                </Button>
+              )}
+              <Button variant="white" icon="Download" onClick={exportMembers}>
+                Export selected
+              </Button>
+              <button onClick={() => setSelected([])}>Clear selection</button>
+            </div>
+          )}
+
+          {viewMode === 'directory' ? (
+            <div className="member-directory-grid">
               {visible.map((m, i) => (
-                <tr key={m.id} className={selected.includes(m.id) ? 'selected-row' : ''}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${m.name}`}
-                      checked={selected.includes(m.id)}
-                      onChange={(e) =>
-                        setSelected(
-                          e.target.checked
-                            ? [...selected, m.id]
-                            : selected.filter((id) => id !== m.id),
-                        )
+                <article
+                  key={m.id}
+                  className="member-card-crafted"
+                  onClick={() => setDetail(m)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setDetail(m);
+                  }}
+                >
+                  <div className="member-card-header">
+                    <Avatar name={m.name} index={i} />
+                    <Badge
+                      tone={
+                        m.status === 'Active'
+                          ? 'green'
+                          : m.status === 'Pending'
+                            ? 'gold'
+                            : 'purple'
                       }
-                    />
-                  </td>
-                  <td>
-                    <button className="member-cell" onClick={() => setDetail(m)}>
-                      <Avatar name={m.name} index={i} />
-                      <span>
-                        <strong>{m.name}</strong>
-                        <small>{m.email}</small>
-                      </span>
-                    </button>
-                  </td>
-                  <td>{m.course}</td>
-                  <td>
-                    <Badge tone={m.status === 'Active' ? 'green' : 'gold'}>{m.status}</Badge>
-                  </td>
-                  <td>{date(m.expires, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                  <td>
-                    <span className="role-label">{m.role}</span>
-                  </td>
-                  <td>
-                    <button
-                      className="icon-button"
-                      aria-label={`View ${m.name}`}
-                      onClick={() => setDetail(m)}
                     >
-                      <Icon name="ArrowUpRight" size={17} />
+                      {m.status}
+                    </Badge>
+                  </div>
+                  <div className="member-card-body">
+                    <h3>{m.name}</h3>
+                    <div className="member-card-pills">
+                      <span className="role-tag">{m.role}</span>
+                      <span className="course-tag">{m.course}</span>
+                    </div>
+                    <p className="member-email">{m.email}</p>
+                  </div>
+                  <div className="member-card-footer">
+                    <span className="member-validity">
+                      <Icon name="CalendarDays" size={13} />
+                      {date(m.expires, { month: 'short', year: 'numeric' })}
+                    </span>
+                    <button
+                      type="button"
+                      className="member-inspect-btn"
+                      aria-label={`View ${m.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetail(m);
+                      }}
+                    >
+                      Profile <Icon name="ArrowUpRight" size={13} />
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </article>
               ))}
-            </tbody>
-          </table>
-        </div>
-        {!visible.length && (
-          <Empty title="No members found" description="Try another name or adjust your filters." />
-        )}
-        <div className="table-footer">
-          <span>
-            Showing {filtered.length ? (currentPage - 1) * 8 + 1 : 0}–
-            {Math.min(currentPage * 8, filtered.length)} of {filtered.length} members
-          </span>
-          <div className="pagination">
-            <button
-              className="icon-button"
-              disabled={currentPage === 1}
-              onClick={() => setPage(currentPage - 1)}
-              aria-label="Previous page"
-            >
-              <Icon name="ChevronLeft" size={16} />
-            </button>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className={compact ? 'compact' : ''}>
+                <thead>
+                  <tr>
+                    <th className="checkbox-cell">
+                      <input
+                        type="checkbox"
+                        aria-label="Select visible members"
+                        checked={visible.length > 0 && visible.every((m) => selected.includes(m.id))}
+                        onChange={(e) =>
+                          setSelected(
+                            e.target.checked
+                              ? [...new Set([...selected, ...visible.map((m) => m.id)])]
+                              : selected.filter((id) => !visible.some((m) => m.id === id)),
+                          )
+                        }
+                      />
+                    </th>
+                    <th>
+                      <button
+                        className="table-sort"
+                        onClick={() => setSort(sort === 'name' ? 'joined' : 'name')}
+                      >
+                        Member <Icon name="ArrowDownUp" size={12} />
+                      </button>
+                    </th>
+                    <th>Course</th>
+                    <th>Membership</th>
+                    <th>Valid until</th>
+                    <th>Role</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((m, i) => (
+                    <tr key={m.id} className={selected.includes(m.id) ? 'selected-row' : ''}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${m.name}`}
+                          checked={selected.includes(m.id)}
+                          onChange={(e) =>
+                            setSelected(
+                              e.target.checked
+                                ? [...selected, m.id]
+                                : selected.filter((id) => id !== m.id),
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <button className="member-cell" onClick={() => setDetail(m)}>
+                          <Avatar name={m.name} index={i} />
+                          <span>
+                            <strong>{m.name}</strong>
+                            <small>{m.email}</small>
+                          </span>
+                        </button>
+                      </td>
+                      <td>{m.course}</td>
+                      <td>
+                        <Badge tone={m.status === 'Active' ? 'green' : 'gold'}>{m.status}</Badge>
+                      </td>
+                      <td>{date(m.expires, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                      <td>
+                        <span className="role-label">{m.role}</span>
+                      </td>
+                      <td>
+                        <button
+                          className="icon-button"
+                          aria-label={`View ${m.name}`}
+                          onClick={() => setDetail(m)}
+                        >
+                          <Icon name="ArrowUpRight" size={17} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!visible.length && (
+            <Empty title="No members found" description="Try another name or adjust your filters." />
+          )}
+          <div className="table-footer">
             <span>
-              {currentPage} / {pages}
+              Showing {filtered.length ? (currentPage - 1) * 8 + 1 : 0}–
+              {Math.min(currentPage * 8, filtered.length)} of {filtered.length} members
             </span>
-            <button
-              className="icon-button"
-              disabled={currentPage === pages}
-              onClick={() => setPage(currentPage + 1)}
-              aria-label="Next page"
-            >
-              <Icon name="ChevronRight" size={16} />
-            </button>
+            <div className="pagination">
+              <button
+                className="icon-button"
+                disabled={currentPage === 1}
+                onClick={() => setPage(currentPage - 1)}
+                aria-label="Previous page"
+              >
+                <Icon name="ChevronLeft" size={16} />
+              </button>
+              <span>
+                {currentPage} / {pages}
+              </span>
+              <button
+                className="icon-button"
+                disabled={currentPage === pages}
+                onClick={() => setPage(currentPage + 1)}
+                aria-label="Next page"
+              >
+                <Icon name="ChevronRight" size={16} />
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </Revealed>
       <div className="info-banner">
         <Icon name="HeartHandshake" size={22} />
         <div>
@@ -397,9 +546,23 @@ export function MembersPage() {
             </div>
           </dl>
           {detail.status !== 'Active' && (
-            <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
-              {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
-            </Button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              {detail.status === 'Expiring' && (
+                <Button
+                  variant="secondary"
+                  icon="Bell"
+                  className="full-width"
+                  onClick={() => {
+                    sendRenewalReminders([detail]);
+                  }}
+                >
+                  Send renewal reminder
+                </Button>
+              )}
+              <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
+                {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
+              </Button>
+            </div>
           )}
           <p className="form-note">
             Dues received in person can be recorded here. Members can use their ID to verify
@@ -417,7 +580,8 @@ export function TasksPage() {
   const [adding, setAdding] = useState(params.get('create') === 'true'),
     [view, setView] = useState('board'),
     [editing, setEditing] = useState<Task | null>(null),
-    [dragged, setDragged] = useState<string | null>(null);
+    [dragged, setDragged] = useState<string | null>(null),
+    [dropTarget, setDropTarget] = useState<Task['status'] | null>(null);
   const close = useCallback(() => {
     setAdding(false);
     setEditing(null);
@@ -429,65 +593,91 @@ export function TasksPage() {
     update((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, status } : t)) }));
     toast(`Task moved to ${status.toLowerCase()}.`);
   };
-  const renderTask = (task: Task) => (
-    <article
-      key={task.id}
-      className="task-card"
-      draggable
-      onDragStart={(e) => {
-        setDragged(task.id);
-        e.dataTransfer.setData('text/plain', task.id);
-      }}
-      onDragEnd={() => setDragged(null)}
-    >
-      <div className="task-top">
-        <Badge
-          tone={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'gold' : 'teal'}
-        >
-          {task.priority} priority
-        </Badge>
-        <button
-          className="plain-icon"
-          aria-label={`Edit ${task.title}`}
-          onClick={() => setEditing(task)}
-        >
-          <Icon name="Ellipsis" size={20} />
-        </button>
-      </div>
-      <h3>
-        <button className="plain-text" onClick={() => setEditing(task)}>
-          {task.title}
-        </button>
-      </h3>
-      <p>{task.description}</p>
-      <div className="task-meta">
-        <Avatar
-          name={task.assignee}
-          small
-          index={data.members.findIndex((m) => m.name === task.assignee)}
-        />
-        <span>{task.assignee.split(' ')[0]}</span>
-        <span>
-          <Icon name="CalendarDays" size={13} />
-          {date(task.due, { day: 'numeric', month: 'short' })}
-        </span>
-      </div>
-      <select
-        className="task-status-select"
-        aria-label={`Status for ${task.title}`}
-        value={task.status}
-        onChange={(e) => changeStatus(task.id, e.target.value as Task['status'])}
+  const renderTask = (task: Task) => {
+    const isOverdue = new Date(task.due) < new Date(today) && task.status !== 'Done';
+    const nextStatus = task.status === 'To do' ? 'In progress' : task.status === 'In progress' ? 'Done' : null;
+    const prevStatus = task.status === 'Done' ? 'In progress' : task.status === 'In progress' ? 'To do' : null;
+
+    return (
+      <article
+        key={task.id}
+        className={`task-card project-wall-card ${dragged === task.id ? 'is-dragging' : ''}`}
+        draggable
+        onDragStart={(e) => {
+          setDragged(task.id);
+          e.dataTransfer.setData('text/plain', task.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => {
+          setDragged(null);
+          setDropTarget(null);
+        }}
       >
-        {statuses.map((s) => (
-          <option key={s}>{s}</option>
-        ))}
-      </select>
-    </article>
-  );
+        <div className="task-top">
+          <Badge
+            tone={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'gold' : 'teal'}
+          >
+            {task.priority}
+          </Badge>
+          <button
+            className="plain-icon task-edit-trigger"
+            aria-label={`Edit ${task.title}`}
+            title="Edit task"
+            onClick={() => setEditing(task)}
+          >
+            <Icon name="Pencil" size={13} />
+          </button>
+        </div>
+        <h3 className="task-headline">
+          <button className="plain-text" onClick={() => setEditing(task)}>
+            {task.title}
+          </button>
+        </h3>
+        {task.description && <p className="task-notes">{task.description}</p>}
+        <div className="task-meta">
+          <div className="task-person">
+            <Avatar
+              name={task.assignee}
+              small
+              index={data.members.findIndex((m) => m.name === task.assignee)}
+            />
+            <span>{task.assignee}</span>
+          </div>
+          <span className={`task-deadline ${isOverdue ? 'is-overdue' : ''}`}>
+            <Icon name="CalendarDays" size={12} />
+            {date(task.due, { day: 'numeric', month: 'short' })}
+            {isOverdue && <span className="overdue-tag">Due</span>}
+          </span>
+        </div>
+        <div className="task-actions-row">
+          {prevStatus && (
+            <button
+              type="button"
+              className="task-step-btn prev"
+              onClick={() => changeStatus(task.id, prevStatus)}
+              title={`Move back to ${prevStatus}`}
+            >
+              ← {prevStatus}
+            </button>
+          )}
+          {nextStatus && (
+            <button
+              type="button"
+              className="task-step-btn next"
+              onClick={() => changeStatus(task.id, nextStatus)}
+              title={`Advance to ${nextStatus}`}
+            >
+              {nextStatus} →
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  };
   return (
     <>
       <PageHeader
-        eyebrow="A LITTLE TEAMWORK GOES A LONG WAY"
+        eyebrow="CAMPUS PROJECT WALL"
         title="Projects & tasks"
         description="Big ideas become real, one small task at a time."
         action={
@@ -496,97 +686,120 @@ export function TasksPage() {
           </Button>
         }
       />
-      <section className="project-hero dark-card">
-        <span className="project-hero-icon">
-          <Icon name="Cookie" size={37} />
-        </span>
-        <div>
-          <div className="hero-eyebrow">COMMUNITY FUNDRAISER</div>
-          <h2>Bake a difference</h2>
-          <p>Good bakes. Great people. A little good for our community.</p>
-          <div className="project-hero-meta">
-            <span>
-              <Icon name="CalendarDays" size={15} />
-              16 October 2026
-            </span>
-            <span>
-              <Icon name="MapPin" size={15} />
-              Student Union Courtyard
-            </span>
-            <span className="avatar-stack">
-              {data.members.slice(0, 4).map((m, i) => (
-                <Avatar name={m.name} small index={i} key={m.id} />
-              ))}
-            </span>
-          </div>
-        </div>
-        <div className="project-progress">
-          <Badge tone="green">On track</Badge>
-          <strong>{Math.round((completed / Math.max(data.tasks.length, 1)) * 100)}%</strong>
-          <span>
-            {completed} of {data.tasks.length} tasks complete
+      <Revealed delay={40}>
+        <section className="project-hero dark-card">
+          <span className="project-hero-icon">
+            <Icon name="Cookie" size={37} />
           </span>
-          <Progress value={(completed / Math.max(data.tasks.length, 1)) * 100} />
+          <div>
+            <div className="hero-eyebrow">COMMUNITY FUNDRAISER</div>
+            <h2>Bake a difference</h2>
+            <p>Good bakes. Great people. A little good for our community.</p>
+            <div className="project-hero-meta">
+              <span>
+                <Icon name="CalendarDays" size={15} />
+                16 October 2026
+              </span>
+              <span>
+                <Icon name="MapPin" size={15} />
+                Student Union Courtyard
+              </span>
+              <span className="avatar-stack">
+                {data.members.slice(0, 4).map((m, i) => (
+                  <Avatar name={m.name} small index={i} key={m.id} />
+                ))}
+              </span>
+            </div>
+          </div>
+          <div className="project-progress">
+            <Badge tone="green">On track</Badge>
+            <strong>{Math.round((completed / Math.max(data.tasks.length, 1)) * 100)}%</strong>
+            <span>
+              {completed} of {data.tasks.length} tasks complete
+            </span>
+            <Progress value={(completed / Math.max(data.tasks.length, 1)) * 100} />
+          </div>
+        </section>
+      </Revealed>
+
+      <Revealed delay={70}>
+        <div className="board-toolbar">
+          <div className="segmented">
+            <button className={view === 'board' ? 'selected' : ''} onClick={() => setView('board')}>
+              <Icon name="Columns3" size={16} />
+              Board view
+            </button>
+            <button className={view === 'list' ? 'selected' : ''} onClick={() => setView('list')}>
+              <Icon name="List" size={16} />
+              List view
+            </button>
+          </div>
+          <span className="muted">
+            <Icon name="Grip" size={15} />
+            Drag tasks between columns or use the step buttons to update progress
+          </span>
         </div>
-      </section>
-      <div className="board-toolbar">
-        <div className="segmented">
-          <button className={view === 'board' ? 'selected' : ''} onClick={() => setView('board')}>
-            <Icon name="Columns3" size={16} />
-            Board view
-          </button>
-          <button className={view === 'list' ? 'selected' : ''} onClick={() => setView('list')}>
-            <Icon name="List" size={16} />
-            List view
-          </button>
-        </div>
-        <span className="muted">
-          <Icon name="Grip" size={15} />
-          Drag tasks between columns, or change their status
-        </span>
-      </div>
-      {view === 'board' ? (
-        <div className="kanban-board">
-          {statuses.map((status, i) => (
-            <section
-              key={status}
-              className={`kanban-column ${dragged ? 'drop-ready' : ''}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData('text/plain');
-                if (data.tasks.some((t) => t.id === id)) changeStatus(id, status);
-                setDragged(null);
-              }}
-            >
-              <div className="column-heading">
-                <span className={`legend-dot ${['gold', 'teal', 'green'][i]}`} />
-                <h2>{status}</h2>
-                <span className="column-count">
-                  {data.tasks.filter((t) => t.status === status).length}
-                </span>
-                <button
-                  className="plain-icon"
-                  aria-label={`Add ${status} task`}
-                  onClick={() => setAdding(true)}
+        {view === 'board' ? (
+          <div className="kanban-board project-wall-board">
+            {statuses.map((status, i) => {
+              const isTarget = dropTarget === status;
+              return (
+                <section
+                  key={status}
+                  className={`kanban-column ${dragged ? 'drop-ready' : ''} ${isTarget ? 'drop-active' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dropTarget !== status) setDropTarget(status);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    if (dropTarget === status) setDropTarget(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain') || dragged;
+                    if (id && data.tasks.some((t) => t.id === id)) {
+                      changeStatus(id, status);
+                    }
+                    setDragged(null);
+                    setDropTarget(null);
+                  }}
                 >
-                  <Icon name="Plus" size={18} />
-                </button>
-              </div>
-              {data.tasks.filter((t) => t.status === status).map(renderTask)}
-              {!data.tasks.some((t) => t.status === status) && (
-                <div className="empty-column">Drop a task here</div>
-              )}
-              <button className="add-task-inline" onClick={() => setAdding(true)}>
-                <Icon name="Plus" size={16} />
-                Add a task
-              </button>
-            </section>
-          ))}
-        </div>
-      ) : (
-        <div className="task-list-view">{data.tasks.map(renderTask)}</div>
-      )}
+                  <div className="column-heading">
+                    <span className={`legend-dot ${['gold', 'teal', 'green'][i]}`} />
+                    <h2>{status}</h2>
+                    <span className="column-count">
+                      {data.tasks.filter((t) => t.status === status).length}
+                    </span>
+                    <button
+                      className="plain-icon"
+                      aria-label={`Add ${status} task`}
+                      onClick={() => setAdding(true)}
+                    >
+                      <Icon name="Plus" size={18} />
+                    </button>
+                  </div>
+                  {data.tasks.filter((t) => t.status === status).map(renderTask)}
+                  {isTarget && dragged && (
+                    <div className="kanban-drop-placeholder">
+                      <span>Drop here</span>
+                    </div>
+                  )}
+                  {!data.tasks.some((t) => t.status === status) && !isTarget && (
+                    <div className="empty-column">Drop a task here</div>
+                  )}
+                  <button className="add-task-inline" onClick={() => setAdding(true)}>
+                    <Icon name="Plus" size={16} />
+                    Add a task
+                  </button>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="task-list-view">{data.tasks.map(renderTask)}</div>
+        )}
+      </Revealed>
       {(adding || editing) && (
         <Modal
           title={editing ? 'A little task update' : 'Make a little progress'}

@@ -14,7 +14,11 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
       Math.max(1, Math.min(100, Number(env.AI_DAILY_LIMIT) || 30)),
       86400,
     );
-    return api('/ai/draft', 'POST', { notes: body.notes, audience: body.audience });
+    return api('/ai/draft', 'POST', {
+      notes: body.notes,
+      audience: body.audience,
+      tone: body.tone,
+    });
   }
   async function send(clubId, user, body) {
     requireRole(await domain.roleFor(user, clubId), ['admin', 'organizer']);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, FormEvent } from 'react';
 import {
   ArrowDownLeft,
@@ -495,6 +495,34 @@ export function StatCard({
   note?: string;
   tone?: string;
 }) {
+  const [animatedNumber, setAnimatedNumber] = useState<number | null>(() =>
+    typeof value === 'number' ? 0 : null,
+  );
+
+  useEffect(() => {
+    if (typeof value !== 'number') return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      setAnimatedNumber(value);
+      return;
+    }
+    const start = performance.now();
+    const duration = 400;
+    const target = value;
+    let animId: number;
+
+    const frame = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedNumber(Math.round(target * eased));
+      if (progress < 1) animId = requestAnimationFrame(frame);
+    };
+
+    animId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(animId);
+  }, [value]);
+
   return (
     <div className={`stat-card ${tone}`}>
       <div className="stat-top">
@@ -503,7 +531,9 @@ export function StatCard({
         </span>
         <span className="stat-label">{label}</span>
       </div>
-      <div className="stat-value">{value}</div>
+      <div className="stat-value">
+        {animatedNumber !== null ? animatedNumber : value}
+      </div>
       {note && (
         <div className="stat-note">
           <Icon name="TrendingUp" size={14} />

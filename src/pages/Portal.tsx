@@ -153,150 +153,170 @@ export function RoleDashboard() {
   const { role, user } = useSession();
   const { data } = useStore();
   const personal = usePersonal();
+  const membershipActive = personal.member?.status === 'Active' && personal.member.expires >= today;
   if (role === 'college') return <CollegeDashboard />;
   const completed = data.transactions.filter((t) => t.status === 'Completed');
   const balance = completed.reduce((n, t) => n + t.amount, 0);
   const pending = data.transactions.filter((t) => t.status === 'Pending');
   if (role === 'treasurer')
     return (
-      <>
-        <PageHeader
-          eyebrow="FINANCE WORKSPACE"
-          title={`Good morning, ${user.name.split(' ')[0]}.`}
-          description="Every rupee accounted for. Start with the decisions waiting on you."
-          action={
-            <LinkButton to="/app/finance" icon="ArrowUpRight">
-              Open ledger
-            </LinkButton>
-          }
-        />
-        <div className="portal-stat-grid">
-          <StatCard
-            icon="Wallet"
-            label="Available balance"
-            value={money(balance)}
-            note="Completed ledger entries"
-          />
-          <StatCard
-            icon="Receipt"
-            label="Awaiting review"
-            value={pending.length}
-            note={`${money(Math.abs(pending.reduce((n, t) => n + t.amount, 0)))} pending`}
-            tone="gold"
-          />
-          <StatCard
-            icon="TrendingUp"
-            label="Recorded income"
-            value={money(completed.filter((t) => t.amount > 0).reduce((n, t) => n + t.amount, 0))}
-          />
-          <StatCard
-            icon="ArrowUpRight"
-            label="Approved expenses"
-            value={money(
-              Math.abs(completed.filter((t) => t.amount < 0).reduce((n, t) => n + t.amount, 0)),
-            )}
-            tone="purple"
-          />
-        </div>
-        <div className="portal-columns">
-          <section className="portal-panel">
+      <div className="role-stage treasurer-stage">
+        <header className="treasurer-hero dark-hero-card">
+          <div className="treasurer-hero-main">
+            <span className="role-kicker">
+              <Icon name="Wallet" size={16} /> TREASURER DESK & APPROVAL STAGE
+            </span>
+            <h1>Good morning, {user.name.split(' ')[0]}.</h1>
+            <p>Every rupee accounted for. Keep club spending clean and transparent.</p>
+            <div className="treasurer-hero-actions">
+              <LinkButton to="/app/finance" icon="ArrowUpRight">
+                Open Ledger
+              </LinkButton>
+              <LinkButton to="/app/finance?action=request" variant="secondary" icon="Plus">
+                Record Reimbursement
+              </LinkButton>
+            </div>
+          </div>
+          <div className="treasurer-hero-badge-card">
+            <span className="treasurer-badge-label">Available Balance</span>
+            <strong className="treasurer-badge-amount">{money(balance)}</strong>
+            <div className="treasurer-balance-split">
+              <div>
+                <small>Income</small>
+                <span>
+                  +{money(completed.filter((t) => t.amount > 0).reduce((n, t) => n + t.amount, 0))}
+                </span>
+              </div>
+              <div>
+                <small>Expenses</small>
+                <span>
+                  -
+                  {money(
+                    Math.abs(
+                      completed.filter((t) => t.amount < 0).reduce((n, t) => n + t.amount, 0),
+                    ),
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="portal-columns" style={{ marginTop: '24px' }}>
+          <section className="portal-panel approval-stage-panel">
             <CardHeader
-              title="Your approval queue"
-              subtitle="Review the receipt before recording an expense."
+              title={`Approval Queue (${pending.length})`}
+              subtitle="Pending expenses awaiting treasurer approval."
               action={
                 <Link to="/app/finance" className="text-link">
-                  Review all →
+                  Open full ledger →
                 </Link>
               }
             />
             {pending.map((t) => (
-              <Link className="portal-row" to="/app/finance" key={t.id}>
+              <div className="approval-stage-row" key={t.id}>
                 <span className="icon-tile gold">
                   <Icon name="Receipt" />
                 </span>
-                <div>
+                <div className="approval-stage-info">
                   <strong>{t.title}</strong>
                   <small>
                     {t.receipt ? `Receipt: ${t.receipt}` : 'Receipt required'} · {date(t.date)}
                   </small>
                 </div>
-                <strong>{money(Math.abs(t.amount))}</strong>
-              </Link>
+                <div className="approval-stage-action">
+                  <strong>{money(Math.abs(t.amount))}</strong>
+                  <Link to="/app/finance" className="button secondary small-btn">
+                    Review
+                  </Link>
+                </div>
+              </div>
             ))}
             {!pending.length && (
-              <Empty title="All caught up" description="There are no pending expenses to review." />
+              <Empty
+                title="Ledger is clean"
+                description="There are no pending expenses to review."
+              />
             )}
           </section>
+
           <section className="portal-panel">
-            <CardHeader
-              title="Money in context"
-              subtitle="Follow the activity behind the ledger."
-            />
-            <Link className="portal-action-card" to="/app/events">
-              <Icon name="Ticket" />
-              <div>
-                <h3>Event revenue & readiness</h3>
-                <p>Open each event to compare capacity and bookings.</p>
-              </div>
-              <Icon name="ArrowUpRight" />
-            </Link>
-            <Link className="portal-action-card" to="/app/merchandise">
-              <Icon name="ShoppingBag" />
-              <div>
-                <h3>Merchandise inventory</h3>
-                <p>Review stock before your next production order.</p>
-              </div>
-              <Icon name="ArrowUpRight" />
-            </Link>
-            <div className="portal-note">
-              <Icon name="CircleHelp" size={18} />
-              <p>Pending expenses are excluded from the available balance until approved.</p>
+            <CardHeader title="Finance in context" subtitle="Follow activity behind the ledger." />
+            <div className="treasurer-context-cards">
+              <Link className="portal-action-card" to="/app/events">
+                <Icon name="Ticket" />
+                <div>
+                  <h3>Event revenue & bookings</h3>
+                  <p>Compare capacity, ticket revenue, and budget caps.</p>
+                </div>
+                <Icon name="ArrowUpRight" />
+              </Link>
+              <Link className="portal-action-card" to="/app/merchandise">
+                <Icon name="ShoppingBag" />
+                <div>
+                  <h3>Merch inventory & orders</h3>
+                  <p>Check sales and cash flow before next inventory run.</p>
+                </div>
+                <Icon name="ArrowUpRight" />
+              </Link>
+            </div>
+            <div className="portal-note" style={{ marginTop: '16px' }}>
+              <Icon name="ShieldCheck" size={18} />
+              <p>All transactions are mirrored on campus ledger with immutable audit logs.</p>
             </div>
           </section>
         </div>
-      </>
+      </div>
     );
+
   if (role === 'organizer')
     return (
-      <>
-        <PageHeader
-          eyebrow="EVENTS WORKSPACE"
-          title={`Let's make it happen, ${user.name.split(' ')[0]}.`}
-          description="A clear picture of your next event, your team, and the door."
-          action={
-            <LinkButton to="/app/check-in" icon="ScanLine">
-              Open check-in
-            </LinkButton>
-          }
-        />
-        <div className="portal-stat-grid">
-          <StatCard
-            icon="CalendarDays"
-            label="Upcoming events"
-            value={data.events.filter((e) => e.date >= today).length}
-          />
-          <StatCard icon="Ticket" label="Issued tickets" value={data.tickets.length} />
-          <StatCard
-            icon="UserCheck"
-            label="Checked in"
-            value={data.tickets.filter((t) => t.checkedIn).length}
-            tone="green"
-          />
-          <StatCard
-            icon="ListTodo"
-            label="Open team tasks"
-            value={data.tasks.filter((t) => t.status !== 'Done').length}
-            tone="gold"
-          />
-        </div>
-        <div className="portal-columns">
+      <div className="role-stage organizer-stage">
+        <header className="organizer-door-hero dark-hero-card">
+          <div className="organizer-hero-info">
+            <span className="role-kicker">
+              <Icon name="ScanLine" size={16} /> ORGANIZER DOOR BOARD & DISPATCH
+            </span>
+            <h1>Let's make it happen, {user.name.split(' ')[0]}.</h1>
+            <p>Live attendance readiness, guests arriving, and team assignments for tonight.</p>
+            <div className="organizer-hero-actions">
+              <LinkButton to="/app/check-in" icon="ScanLine">
+                Launch QR Door Station
+              </LinkButton>
+              <LinkButton to="/app/events/manage?create=true" variant="secondary" icon="Plus">
+                Create Event
+              </LinkButton>
+            </div>
+          </div>
+          <div className="organizer-door-meter">
+            <div className="door-meter-circle">
+              <Icon name="Users" size={28} />
+              <strong>
+                {data.tickets.filter((t) => t.checkedIn).length} / {data.tickets.length}
+              </strong>
+              <small>Checked in at door</small>
+            </div>
+            <div className="door-meter-stats">
+              <div>
+                <strong>{data.events.filter((e) => e.date >= today).length}</strong>
+                <span>Active events</span>
+              </div>
+              <div>
+                <strong>{data.tasks.filter((t) => t.status !== 'Done').length}</strong>
+                <span>Open tasks</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="portal-columns" style={{ marginTop: '24px' }}>
           <section className="portal-panel">
             <CardHeader
-              title="Event readiness"
-              subtitle="Capacity and bookings at a glance."
+              title="Door & Event Readiness"
+              subtitle="Live event capacity & attendee count."
               action={
                 <Link className="text-link" to="/app/events">
-                  Manage events →
+                  All events →
                 </Link>
               }
             />
@@ -310,7 +330,7 @@ export function RoleDashboard() {
                 </div>
                 <div>
                   <Badge tone={e.sold >= e.capacity ? 'gold' : 'teal'}>
-                    {e.sold >= e.capacity ? 'Full' : `${e.capacity - e.sold} spaces`}
+                    {e.sold >= e.capacity ? 'Full' : `${e.capacity - e.sold} spaces left`}
                   </Badge>
                   <Progress value={(e.sold / e.capacity) * 100} />
                   <small>
@@ -320,9 +340,11 @@ export function RoleDashboard() {
               </Link>
             ))}
           </section>
+
           <section className="portal-panel">
             <CardHeader
-              title="Team checklist"
+              title="Dispatch & Team Tasks"
+              subtitle="High priority checklist"
               action={
                 <Link to="/app/tasks" className="text-link">
                   Open board →
@@ -341,59 +363,57 @@ export function RoleDashboard() {
                       {t.assignee} · due {date(t.due)}
                     </small>
                   </div>
-                  <Badge tone={t.priority === 'High' ? 'gold' : 'teal'}>{t.status}</Badge>
+                  <Badge
+                    tone={t.priority === 'High' ? 'red' : t.priority === 'Medium' ? 'gold' : 'teal'}
+                  >
+                    {t.priority}
+                  </Badge>
                 </Link>
               ))}
           </section>
         </div>
-      </>
-    );
-  return (
-    <>
-      <PageHeader
-        eyebrow="YOUR STUDENT SPACE"
-        title={`Hey ${user.name.split(' ')[0]}, you're in good company.`}
-        description="Your people, your plans, and everything you need for campus life."
-        action={
-          <LinkButton to="/app/events" icon="CalendarPlus">
-            Explore events
-          </LinkButton>
-        }
-      />
-      <div className="portal-stat-grid">
-        <Revealed delay={0} pop>
-          <StatCard
-            icon="BadgeCheck"
-            label="Membership"
-            value={personal.member?.status || 'Not joined'}
-          />
-        </Revealed>
-        <Revealed delay={55} pop>
-          <StatCard icon="Ticket" label="My bookings" value={personal.tickets.length} />
-        </Revealed>
-        <Revealed delay={110} pop>
-          <StatCard
-            icon="ListTodo"
-            label="My open tasks"
-            value={personal.tasks.filter((t) => t.status !== 'Done').length}
-            tone="gold"
-          />
-        </Revealed>
-        <Revealed delay={165} pop>
-          <StatCard
-            icon="ShoppingBag"
-            label="My orders"
-            value={personal.orders.length}
-            tone="purple"
-          />
-        </Revealed>
       </div>
-      <Revealed>
-      <div className="portal-columns">
+    );
+
+  // Default: Member Pass Vibe landing
+  return (
+    <div className="role-stage member-stage">
+      <section className="member-pass-hero dark-hero-card">
+        <div className="member-pass-hero-content">
+          <span className="role-kicker">
+            <Icon name="BadgeCheck" size={16} /> OFFICIAL CAMPUS PASS
+          </span>
+          <h1>Welcome back, {user.name.split(' ')[0]}.</h1>
+          <p>
+            {membershipActive
+              ? 'Your pass is active. Explore student workshops, merchandise perks, and campus socials.'
+              : personal.member
+                ? 'Your enrollment is saved. Membership benefits become available when your dues are recorded.'
+                : 'Join this club to receive your campus membership pass.'}
+          </p>
+          <div className="member-pass-pills">
+            <span className="member-pass-pill">
+              <Icon name="Ticket" size={15} /> {personal.tickets.length} Booked Events
+            </span>
+            <span className="member-pass-pill">
+              <Icon name="HeartHandshake" size={15} />{' '}
+              {personal.tasks.filter((t) => t.status === 'Done').length} Volunteering Done
+            </span>
+            <span className="member-pass-pill">
+              <Icon name="ShoppingBag" size={15} /> {personal.orders.length} Club Orders
+            </span>
+          </div>
+        </div>
+        <div className="member-pass-card-widget">
+          <MemberPreview />
+        </div>
+      </section>
+
+      <div className="portal-columns" style={{ marginTop: '24px' }}>
         <section className="portal-panel">
           <CardHeader
             title="Coming up on campus"
-            subtitle="Make room for something good."
+            subtitle="Events with member rates"
             action={
               <Link to="/app/events" className="text-link">
                 All events →
@@ -402,66 +422,67 @@ export function RoleDashboard() {
           />
           <EventList />
         </section>
+
         <div className="portal-stack">
-          <MemberPreview />
           <section className="portal-panel">
             <CardHeader
-              title="Your next contribution"
+              title="Your assigned tasks"
+              subtitle="Current volunteer duties"
               action={
                 <Link className="text-link" to="/app/tasks">
-                  My tasks →
+                  View board →
                 </Link>
               }
             />
             {personal.tasks
               .filter((t) => t.status !== 'Done')
-              .slice(0, 2)
+              .slice(0, 3)
               .map((t) => (
                 <Link className="portal-row" key={t.id} to="/app/tasks">
                   <Icon name="ListTodo" />
                   <div>
                     <strong>{t.title}</strong>
                     <small>
-                      Due {date(t.due)} · {t.status}
+                      Due {date(t.due)} · {t.priority} priority
                     </small>
                   </div>
-                  <Icon name="ChevronRight" size={16} />
+                  <Badge tone={t.status === 'In progress' ? 'gold' : 'teal'}>{t.status}</Badge>
                 </Link>
               ))}
             {!personal.tasks.some((t) => t.status !== 'Done') && (
               <p className="portal-muted">
-                Nothing assigned right now. Join a project to lend a hand.
+                Nothing assigned right now. You're completely free to enjoy campus!
               </p>
             )}
           </section>
+
+          <section className="portal-panel">
+            <CardHeader
+              title="Club announcements"
+              action={
+                <Link to="/app/announcements" className="text-link">
+                  Feed →
+                </Link>
+              }
+            />
+            {data.announcements.slice(0, 2).map((a) => (
+              <Link className="portal-row" to="/app/announcements" key={a.id}>
+                <span className="icon-tile">
+                  <Icon name="Megaphone" />
+                </span>
+                <div>
+                  <strong>{a.title}</strong>
+                  <small>
+                    {a.author} · {date(a.date)}
+                  </small>
+                </div>
+                <Icon name="ArrowUpRight" size={16} />
+              </Link>
+            ))}
+          </section>
         </div>
       </div>
-      </Revealed>
-      <Revealed delay={80} as="section" className="portal-panel portal-latest">
-        <CardHeader
-          title="From your community"
-          action={
-            <Link to="/app/announcements" className="text-link">
-              All announcements →
-            </Link>
-          }
-        />
-        {data.announcements.slice(0, 2).map((a) => (
-          <Link className="portal-row" to="/app/announcements" key={a.id}>
-            <span className="icon-tile">
-              <Icon name="Megaphone" />
-            </span>
-            <div>
-              <strong>{a.title}</strong>
-              <small>
-                {a.author} · {date(a.date)}
-              </small>
-            </div>
-            <Icon name="ArrowUpRight" size={18} />
-          </Link>
-        ))}
-      </Revealed>
-    </>
+    </div>
   );
 }
 
@@ -804,7 +825,10 @@ export function MyTickets() {
                               : 'Ticket cancelled. Demo payment credited to the ledger.',
                           );
                         } catch (error) {
-                          if (cloudMode) { toast(error instanceof Error ? error.message : 'Cancellation failed.'); return; }
+                          if (cloudMode) {
+                            toast(error instanceof Error ? error.message : 'Cancellation failed.');
+                            return;
+                          }
                           update((d) => cancelEventTicket(d, t.id, user.id));
                           toast('Ticket cancelled locally. Demo payment credited to the ledger.');
                         }
@@ -1003,6 +1027,27 @@ function DemoAuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
           <em>Show up.</em>
         </h1>
         <p>Your events, tickets and community in one place.</p>
+        <div className="portal-auth-proof">
+          <div className="avatar-stack">
+            {['Alex Morgan', 'Priya Sharma', 'Jordan Lee', 'Aisha Patel'].map((n, i) => (
+              <Avatar key={n} name={n} index={i} small />
+            ))}
+          </div>
+          <div>
+            <strong>120+ active student leaders</strong>
+            <small style={{ display: 'block', color: '#9fb8a4', marginTop: '2px' }}>
+              Organizing events & managing clubs today
+            </small>
+          </div>
+        </div>
+        <div className="auth-testimonial-card">
+          <Icon name="Quote" size={18} />
+          <p>
+            "Skyline replaced three spreadsheets and an email list for our club. Everything just
+            works."
+          </p>
+          <small>— Priya Sharma, Skyline Lead Organizer</small>
+        </div>
         <Link to="/events">← Keep exploring events</Link>
       </aside>
       <main>
@@ -1011,7 +1056,7 @@ function DemoAuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
         <p>
           {returnTo
             ? 'Continue to your selected event or item after choosing a demo view.'
-            : 'Start with your student view. Club teams can choose their role below.'}
+            : 'Select your role or persona below to instantly experience the tailored workspace.'}
         </p>
         <form
           onSubmit={(event) => {
@@ -1020,29 +1065,60 @@ function DemoAuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
             navigate(selectedRole === 'college' ? '/app/college' : returnTo || '/app');
           }}
         >
-          <Field label="Choose a demo view">
-            <select
-              value={selectedRole}
-              onChange={(event) => setSelectedRole(event.target.value as typeof selectedRole)}
-            >
-              {roles.map((role) => (
-                <option key={role.role} value={role.role}>
-                  {role.title}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="login-role-summary">
-            <span className="icon-tile">
-              <Icon name={selected.icon} />
-            </span>
-            <div>
-              <strong>{selected.title}</strong>
-              <p>{selected.text}</p>
+          <div className="auth-persona-selector">
+            <label className="field-label">Select persona & role</label>
+            <div className="auth-role-grid" role="radiogroup" aria-label="Select demo role">
+              {roles.map((role) => {
+                const isSelected = selectedRole === role.role;
+                return (
+                  <button
+                    key={role.role}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`auth-role-tile ${isSelected ? 'selected' : ''}`}
+                    onClick={() => setSelectedRole(role.role)}
+                  >
+                    <span className="icon-tile">
+                      <Icon name={role.icon} />
+                    </span>
+                    <div className="auth-role-tile-info">
+                      <strong>{role.title}</strong>
+                      <small>{role.text}</small>
+                    </div>
+                    {isSelected && (
+                      <span className="auth-role-check">
+                        <Icon name="Check" size={16} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          <div className="auth-demo-credentials">
+            <Field label="Active Persona Email (Demo Mode)">
+              <input
+                type="text"
+                readOnly
+                value={
+                  selectedRole === 'member'
+                    ? 'alex@skyline.edu'
+                    : selectedRole === 'organizer'
+                      ? 'priya@skyline.edu'
+                      : selectedRole === 'treasurer'
+                        ? 'jordan@skyline.edu'
+                        : selectedRole === 'college'
+                          ? 'admin@campus.edu'
+                          : 'president@skyline.edu'
+                }
+              />
+            </Field>
+          </div>
+
           <Button type="submit" icon="ArrowRight" className="full-width">
-            Continue to workspace
+            Continue as {selected.title}
           </Button>
         </form>
         <p className="login-demo-note">
@@ -1260,8 +1336,8 @@ export function LandingPage() {
               More <em>belonging.</em>
             </h1>
             <p className="landing-stage-lede">
-              Events worth showing up for. People worth knowing. Money everyone can account for.
-              Run your whole student organization in one thoughtful space.
+              Events worth showing up for. People worth knowing. Money everyone can account for. Run
+              your whole student organization in one thoughtful space.
             </p>
             <div className="landing-stage-actions">
               <LinkButton to="/events" icon="ArrowRight">

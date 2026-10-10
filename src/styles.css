@@ -2793,6 +2793,41 @@ tbody tr:hover {
 .drop-ready {
   border-style: dashed;
   border-color: #a4b798;
+  transition: all 0.2s ease;
+}
+.kanban-column.is-drop-target {
+  background: #e2ede0;
+  border-color: #0f6b66;
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(15, 107, 102, 0.2);
+}
+.kanban-drop-placeholder {
+  border: 2px dashed #0f6b66;
+  background: rgba(15, 107, 102, 0.06);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #0f6b66;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+  animation: pulse-placeholder 1.5s infinite ease-in-out;
+}
+@keyframes pulse-placeholder {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+.task-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.task-card.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.98) rotate(-1deg);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+.task-overdue {
+  color: #dc2626 !important;
+  font-weight: 600;
 }
 .empty-column {
   font-size: 14px;
