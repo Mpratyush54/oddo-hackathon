@@ -18,6 +18,8 @@ Open another terminal from the repository root:
 ```powershell
 $env:PLAYWRIGHT_MODULE = "playwright"
 node scripts/interaction-coverage.cjs
+# Optional deeper pass: exercise every enabled select option individually
+npm run test:forms
 ```
 
 Optional overrides:
@@ -29,7 +31,7 @@ Optional overrides:
 - `CHECK_LINK_CLICKS=0`: inventory/validate links without clicking them.
 - `INTERACTION_TIMEOUT_MS`: per-action timeout in milliseconds; defaults to 2500.
 
-The report is written to `.artifacts/interaction-coverage.json`. Treat any reported failure as requiring triage, not automatically as a product defect; exploratory click audits can expose timing issues or an action needing a specific test fixture.
+The report is written to `.artifacts/interaction-coverage.json`. The optional `npm run test:forms` pass writes `.artifacts/form-control-coverage.json` and tries enabled select options separately. Treat reported failures as needing triage, not automatically as product defects; exploratory audits can expose timing issues or controls requiring specific fixtures.
 
 ## What the audit covers
 
