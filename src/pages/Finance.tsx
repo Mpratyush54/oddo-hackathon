@@ -14,6 +14,7 @@ import {
 } from '../components';
 import { date, exportCSV, money, today, uid, useStore } from '../store';
 import { useSession } from '../session';
+import { Revealed } from '../components/PageMotion';
 import '../commerce-finance.css';
 import type { Transaction } from '../store';
 
@@ -135,92 +136,97 @@ export function FinancePage() {
       />
       {viewAll && (
         <>
-          <section className="finance-hero dark-card">
-            <div>
-              <div className="hero-eyebrow">YOUR CLUB’S BIGGER PICTURE</div>
-              <h2>Good plans start with a clear balance.</h2>
-              <p>A healthy little foundation for your next big idea.</p>
-            </div>
-            <div className="finance-hero-stats">
+          <Revealed>
+            <section className="finance-hero dark-card">
               <div>
-                <span className="hero-icon">
-                  <Icon name="Wallet" size={24} />
-                </span>
-                <span>
-                  <small>Available balance · all time</small>
-                  <strong>{money(balance)}</strong>
-                </span>
+                <div className="hero-eyebrow">YOUR CLUB’S BIGGER PICTURE</div>
+                <h2>Good plans start with a clear balance.</h2>
+                <p>A healthy little foundation for your next big idea.</p>
               </div>
-              <div>
-                <span className="hero-icon">
-                  <Icon name="ArrowDownLeft" size={24} />
-                </span>
-                <span>
-                  <small>Money in · {period === 'month' ? 'October' : 'semester'}</small>
-                  <strong>{money(income)}</strong>
-                </span>
-              </div>
-              <div>
-                <span className="hero-icon">
-                  <Icon name="ArrowUpRight" size={24} />
-                </span>
-                <span>
-                  <small>Money out · {period === 'month' ? 'October' : 'semester'}</small>
-                  <strong>{money(expense)}</strong>
-                </span>
-              </div>
-            </div>
-          </section>
-          <div className="finance-charts">
-            <section className="card income-chart-card">
-              <CardHeader
-                title="The flow of things"
-                subtitle="Income and expenses, side by side."
-                action={
-                  <select
-                    aria-label="Financial period"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                  >
-                    <option value="semester">This semester</option>
-                    <option value="month">October 2026</option>
-                  </select>
-                }
-              />
-              <div className="light-chart-legend">
-                <span>
-                  <i className="legend-dot teal" />
-                  Money in
-                </span>
-                <span>
-                  <i className="legend-dot gold" />
-                  Money out
-                </span>
-              </div>
-              <FinanceChart values={months} dark={false} />
-            </section>
-            <section className="card income-breakdown">
-              <CardHeader title="Where it comes from" subtitle="Every contribution counts." />
-              <div className="source-list">
-                {sources.map((s) => (
-                  <div key={s.name}>
-                    <div>
-                      <span className={`legend-dot ${s.tone}`} />
-                      <span>{s.name}</span>
-                      <strong>{money(s.amount)}</strong>
-                    </div>
-                    <div className={`source-bar ${s.tone}`}>
-                      <span style={{ width: `${(s.amount / Math.max(income, 1)) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
+              <div className="finance-hero-stats">
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="Wallet" size={24} />
+                  </span>
+                  <span>
+                    <small>Available balance · all time</small>
+                    <strong>{money(balance)}</strong>
+                  </span>
+                </div>
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="ArrowDownLeft" size={24} />
+                  </span>
+                  <span>
+                    <small>Money in · {period === 'month' ? 'October' : 'semester'}</small>
+                    <strong>{money(income)}</strong>
+                  </span>
+                </div>
+                <div>
+                  <span className="hero-icon">
+                    <Icon name="ArrowUpRight" size={24} />
+                  </span>
+                  <span>
+                    <small>Money out · {period === 'month' ? 'October' : 'semester'}</small>
+                    <strong>{money(expense)}</strong>
+                  </span>
+                </div>
               </div>
             </section>
-          </div>
+          </Revealed>
+          <Revealed delay={90}>
+            <div className="finance-charts">
+              <section className="card income-chart-card">
+                <CardHeader
+                  title="The flow of things"
+                  subtitle="Income and expenses, side by side."
+                  action={
+                    <select
+                      aria-label="Financial period"
+                      value={period}
+                      onChange={(e) => setPeriod(e.target.value)}
+                    >
+                      <option value="semester">This semester</option>
+                      <option value="month">October 2026</option>
+                    </select>
+                  }
+                />
+                <div className="light-chart-legend">
+                  <span>
+                    <i className="legend-dot teal" />
+                    Money in
+                  </span>
+                  <span>
+                    <i className="legend-dot gold" />
+                    Money out
+                  </span>
+                </div>
+                <FinanceChart values={months} dark={false} />
+              </section>
+              <section className="card income-breakdown">
+                <CardHeader title="Where it comes from" subtitle="Every contribution counts." />
+                <div className="source-list">
+                  {sources.map((s) => (
+                    <div key={s.name}>
+                      <div>
+                        <span className={`legend-dot ${s.tone}`} />
+                        <span>{s.name}</span>
+                        <strong>{money(s.amount)}</strong>
+                      </div>
+                      <div className={`source-bar ${s.tone}`}>
+                        <span style={{ width: `${(s.amount / Math.max(income, 1)) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </Revealed>
         </>
       )}
-      <section className="card table-card ledger-card">
-        <div className="table-toolbar">
+      <Revealed delay={180}>
+        <section className="card table-card ledger-card">
+          <div className="table-toolbar">
           <div className="segmented">
             {['All transactions', 'Completed', 'Pending review', 'Rejected'].map((s) => (
               <button
@@ -559,16 +565,19 @@ export function FinancePage() {
           </span>
         </div>
       </section>
-      <div className="info-banner">
-        <Icon name="ShieldCheck" size={25} />
-        <div>
-          <strong>A little transparency goes a long way.</strong>
-          <p>
-            Every ticket, membership, and merchandise payment is recorded here. Reimbursements
-            affect your balance once approved.
-          </p>
+      </Revealed>
+      <Revealed delay={240}>
+        <div className="info-banner">
+          <Icon name="ShieldCheck" size={25} />
+          <div>
+            <strong>A little transparency goes a long way.</strong>
+            <p>
+              Every ticket, membership, and merchandise payment is recorded here. Reimbursements
+              affect your balance once approved.
+            </p>
+          </div>
         </div>
-      </div>
+      </Revealed>
       {adding && (
         <Modal
           title="Keep the books connected"

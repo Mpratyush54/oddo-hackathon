@@ -358,10 +358,443 @@
 @media (prefers-reduced-motion: reduce) {
   .landing-event,
   .landing-event img,
-  .nav-section summary svg {
+  .nav-section summary svg,
+  .member-card-crafted,
+  .project-wall-card {
     transition: none;
   }
-  .landing-event:hover {
+  .landing-event:hover,
+  .member-card-crafted:hover,
+  .project-wall-card:hover {
     transform: none;
   }
 }
+
+/* ============================================================
+   Issue #1: People Directory (Avatar-led grid with status identity)
+   ============================================================ */
+.member-view-segmented {
+  display: inline-flex;
+}
+.member-view-segmented button {
+  padding: 6px 10px;
+}
+.member-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+  padding: 24px;
+}
+.member-card-crafted {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e1e7dc;
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(18, 59, 41, 0.03);
+}
+.member-card-crafted:hover {
+  transform: translateY(-3px);
+  border-color: #9cb894;
+  box-shadow: 0 10px 24px rgba(15, 107, 102, 0.08);
+}
+.member-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.member-card-body h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #19382b;
+  margin: 0 0 8px 0;
+}
+.member-card-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.role-tag {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #0f6b66;
+  background: #e8f4f2;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.course-tag {
+  font-size: 12px;
+  color: #5d7568;
+  background: #f1f5ee;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.member-email {
+  font-size: 13px;
+  color: #798a80;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f4ec;
+}
+.member-validity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #76877c;
+}
+.member-inspect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f6b66;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+.member-inspect-btn:hover {
+  background: #e9f3f0;
+}
+
+/* ============================================================
+   Issue #7: Campus Project Wall (Less Trello, more campus wall)
+   ============================================================ */
+.project-wall-board {
+  gap: 20px;
+}
+.kanban-column.drop-active {
+  border-color: #0f6b66;
+  background: #e6f1ea;
+  box-shadow: 0 0 0 2px #0f6b66, 0 8px 24px rgba(15, 107, 102, 0.12);
+}
+.project-wall-card {
+  border: 1px solid #dce5d6;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(22, 59, 41, 0.04);
+}
+.project-wall-card:hover {
+  transform: translateY(-2px);
+  border-color: #9cb894;
+  box-shadow: 0 8px 20px rgba(15, 107, 102, 0.07);
+}
+.project-wall-card.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+}
+.task-edit-trigger {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #889c79;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.task-edit-trigger:hover {
+  background: #eef3e8;
+  color: #0f6b66;
+}
+.task-headline {
+  margin: 12px 0 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.task-headline button {
+  text-align: left;
+  color: #1e3d30;
+  transition: color 0.15s ease;
+}
+.task-headline button:hover {
+  color: #0f6b66;
+}
+.task-notes {
+  font-size: 13px;
+  color: #6d7f73;
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+}
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f2f5ee;
+}
+.task-person {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #3b5949;
+  font-weight: 500;
+}
+.task-deadline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #7b8e81;
+}
+.task-deadline.is-overdue {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.overdue-tag {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.task-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+.task-step-btn {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e0e8da;
+  background: #f7faf3;
+  color: #43624f;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.task-step-btn:hover {
+  background: #0f6b66;
+  color: #ffffff;
+  border-color: #0f6b66;
+}
+.task-step-btn.prev {
+  flex: 0 0 auto;
+  color: #687e70;
+}
+
+/* ==========================================================================
+   Issue #10: Quiet Brand Polish for Workspace Shell (Sidebar & Topbar)
+   ========================================================================== */
+.workspace-home {
+  display: inline-flex;
+  align-items: baseline;
+  letter-spacing: -0.5px;
+  font-weight: 700;
+  color: var(--text, #182a20);
+  text-decoration: none;
+  font-size: 20px;
+  transition: opacity 0.2s ease;
+}
+.workspace-home:hover {
+  opacity: 0.85;
+}
+.brand-dot {
+  color: var(--primary, #0f6b66);
+  font-size: 1.25em;
+  line-height: 0;
+  display: inline-block;
+  transform: translateY(-1px);
+}
+.workspace-v2 .topbar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(215, 226, 218, 0.85);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* ==========================================================================
+   Issue #19: Micro-interactions & animations (pulse, hover lift, shimmer)
+   ========================================================================== */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 7px rgba(225, 29, 72, 0);
+  }
+  100% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+  }
+}
+
+.notification-dot.pulse-ring {
+  width: 7px;
+  height: 7px;
+  background: #e11d48;
+  border-radius: 50%;
+  animation: pulse-ring 2.2s infinite cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* Card & Stat Card Hover Lift */
+.card,
+.stat-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card:hover,
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 107, 102, 0.06);
+}
+
+/* Shimmer placeholder utility */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(224, 234, 224, 0.5) 25%,
+    rgba(240, 246, 240, 0.8) 37%,
+    rgba(224, 234, 224, 0.5) 63%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s infinite ease-in-out;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-dot.pulse-ring {
+    animation: none;
+  }
+  .card:hover,
+  .stat-card:hover {
+    transform: none;
+  }
+  .skeleton-shimmer {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Issue #22: QR Check-In Station Scanning Beam & Live Attendance
+   ========================================================================== */
+.scanner-view {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanner-laser-beam {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #10b981 25%, #34d399 50%, #10b981 75%, transparent);
+  box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
+  border-radius: 2px;
+  z-index: 10;
+  pointer-events: none;
+  animation: scanner-beam-sweep 2.4s ease-in-out infinite;
+}
+
+@keyframes scanner-beam-sweep {
+  0% {
+    top: 8%;
+    opacity: 0.85;
+  }
+  50% {
+    top: 88%;
+    opacity: 1;
+  }
+  100% {
+    top: 8%;
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-laser-beam {
+    animation: none;
+    top: 50%;
+    opacity: 0.5;
+  }
+}
+
+.checkin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.checkin-stat.remaining strong {
+  color: #c98a2c;
+}
+
+.arrival-pace-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f0f7f3;
+  color: #1a5632;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.live-attendance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+  background: #ecfdf5;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid #a7f3d0;
+}
+
+.scan-result.valid {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+}
+
+.scan-result.invalid {
+  border-left: 4px solid #ef4444;
+  background: #fef2f2;
+}
+
+.scan-result.used {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+}
+
+

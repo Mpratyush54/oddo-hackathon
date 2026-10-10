@@ -381,7 +381,7 @@ export default function Workspace() {
             <Icon name="Menu" />
           </button>
           <Link to="/app" className="workspace-home">
-            skyline.
+            skyline<span className="brand-dot">.</span>
           </Link>
           <div className="global-search">
             <Icon name="Search" size={19} />
@@ -428,7 +428,7 @@ export default function Workspace() {
                 onClick={() => setMenu(menu === 'notifications' ? null : 'notifications')}
               >
                 <Icon name="Bell" />
-                {unread > 0 && <span className="notification-dot" />}
+                {unread > 0 && <span className="notification-dot pulse-ring" />}
               </button>
               {menu === 'notifications' && (
                 <div className="notification-popover">

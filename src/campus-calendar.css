@@ -168,76 +168,198 @@
   text-transform: uppercase;
   padding: 8px;
 }
+.calendar-cat-filter select {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #d9e2ce;
+  background: #fbfdf9;
+  color: #3f603c;
+  cursor: pointer;
+  outline: none;
+}
+.calendar-cat-filter select:focus {
+  border-color: #0f6b66;
+}
 .campus-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  gap: 6px;
 }
 .campus-calendar-cell {
-  padding: 10px;
+  padding: 8px;
   text-align: left;
-  min-height: 115px;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  background: #f9fbf6;
-  border: 1px solid #e8eddf;
-  border-radius: 9px;
-  overflow: hidden;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
+  gap: 6px;
+  background: #fbfdfa;
+  border: 1px solid #e5ebe0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .campus-calendar-cell:hover {
-  border-color: #9fb292;
-  background: #f1f7e9;
+  border-color: #a4bca0;
+  background: #f4f8f0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 107, 102, 0.06);
 }
-.campus-calendar-cell > span {
+.campus-calendar-cell:focus-visible {
+  outline: 2px solid #0f6b66;
+  outline-offset: 1px;
+}
+.calendar-cell-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.calendar-day-num {
   display: grid;
   place-items: center;
-  width: 25px;
-  height: 25px;
-  font-size: 14px;
-  color: #6c875d;
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #55704a;
+  border-radius: 6px;
 }
-.campus-calendar-cell.today > span {
-  background: #426e44;
+.campus-calendar-cell.today .calendar-day-num {
+  background: #0f6b66;
   color: #fff;
   border-radius: 50%;
 }
-.campus-calendar-cell.selected {
-  background: #eff5e8;
-  border-color: #95b184;
-  box-shadow: inset 0 0 0 1px #95b184;
+.calendar-day-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #63855a;
+  background: #e9f0e2;
+  padding: 1px 6px;
+  border-radius: 10px;
 }
-.campus-calendar-cell small {
-  font-size: 14px;
-  padding: 5px;
-  background: #e5eedb;
-  border-radius: 4px;
-  color: #5f8050;
-  text-align: left;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.campus-calendar-cell.selected {
+  background: #f1f7ed;
+  border-color: #0f6b66;
+  box-shadow: 0 0 0 1px #0f6b66;
+}
+.calendar-cell-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   overflow: hidden;
 }
-.campus-calendar-cell strong {
-  font-size: 14px;
-  color: #88a073;
+.calendar-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.3;
+  text-decoration: none;
   font-weight: 500;
+  transition: transform 0.12s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
+.calendar-chip:hover {
+  transform: translateX(2px);
+}
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-chip-more {
+  font-size: 11px;
+  color: #6d8862;
+  font-weight: 600;
+  padding-left: 2px;
+}
+
+/* Category Semantic Colors */
+.chip-teal {
+  background: #e6f4f2;
+  color: #0f6b66;
+  border-left: 2px solid #0f6b66;
+}
+.chip-teal .chip-dot {
+  background: #0f6b66;
+}
+.chip-amber {
+  background: #fef3c7;
+  color: #92400e;
+  border-left: 2px solid #d97706;
+}
+.chip-amber .chip-dot {
+  background: #d97706;
+}
+.chip-emerald {
+  background: #dcfce7;
+  color: #166534;
+  border-left: 2px solid #16a34a;
+}
+.chip-emerald .chip-dot {
+  background: #16a34a;
+}
+.chip-purple {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-left: 2px solid #9333ea;
+}
+.chip-purple .chip-dot {
+  background: #9333ea;
+}
+.chip-blue {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-left: 2px solid #0284c7;
+}
+.chip-blue .chip-dot {
+  background: #0284c7;
+}
+
 .campus-calendar-day {
-  margin-top: 26px;
-  padding: 23px;
-  border: 1px solid #dde8d2;
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #dde7d2;
   border-radius: 14px;
-  background: #fbfdf7;
+  background: #fdfefb;
 }
-.campus-calendar-day > div h3 {
-  font-size: 17px;
-  color: #496e44;
+.campus-calendar-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eef3e8;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.campus-day-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #7b946d;
+}
+.campus-calendar-day-header h3 {
+  font-size: 18px;
+  color: #2e533c;
+  margin-top: 2px;
+}
+.campus-calendar-day-list {
+  display: flex;
+  flex-direction: column;
+}
+.campus-day-empty {
+  font-size: 14px;
+  color: #7c8e71;
+  padding: 12px 0;
 }
 .campus-calendar-day > div p {
   font-size: 14px;
