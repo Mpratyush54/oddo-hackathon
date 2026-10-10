@@ -28,6 +28,7 @@ export class FinanceService extends ClubActionService {
       status: 'Pending',
       receipt: input.receipt,
       receiptKey,
+      receiptCheckId: input.receiptCheckId,
       eventId: input.eventId,
       createdBy: this.user.id,
     });

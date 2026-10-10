@@ -105,6 +105,7 @@ export const orderSchema = z.strictObject({
   status: orderStatusSchema.optional(),
 });
 export const transactionSchema = z.strictObject({
+  receiptCheckId: id.optional(),
   paymentId: id.optional(),
   id,
   title: text,

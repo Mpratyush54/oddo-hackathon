@@ -21,7 +21,12 @@ export function paymentAmount(action, result) {
     throw new HttpError(400, 'Invalid checkout amount.');
   return amount;
 }
-export function createDomain({ repo, clubs, paymentsRequired = false }) {
+export function createDomain({
+  repo,
+  clubs,
+  paymentsRequired = false,
+  receiptChecksRequired = false,
+}) {
   async function load(clubId) {
     if (!clubs.some((c) => c.id === clubId)) throw new HttpError(404, 'Club not found.');
     const item = await repo.get(clubKey(clubId), 'STATE');
@@ -54,6 +59,58 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
       }
       const current = await load(clubId);
       assertRefundUnlocked(current.data, action, user);
+      if (
+        receiptChecksRequired &&
+        action.type === 'expenses.review' &&
+        action.args.status === 'Completed'
+      ) {
+        const expense = current.data.transactions.find(
+          (row) => row.id === action.args.transactionId,
+        );
+        const receipt = expense?.receiptCheckId
+          ? await repo.get(pk, 'RECEIPT#' + expense.receiptCheckId)
+          : null;
+        if (
+          !receipt ||
+          receipt.status !== 'Consumed' ||
+          receipt.transactionId !== expense.id ||
+          receipt.receiptKey !== expense.receiptKey
+        )
+          throw new HttpError(
+            409,
+            'This request has no completed receipt checks. Ask the requester to resubmit through the receipt-check workflow.',
+          );
+      }
+      const receiptOperations = [];
+      if (receiptChecksRequired && action.type === 'expenses.create') {
+        const receipt = await repo.get(pk, 'RECEIPT#' + action.args.receiptCheckId);
+        if (
+          !receipt ||
+          receipt.userId !== user.id ||
+          receipt.clubId !== clubId ||
+          receipt.receiptKey !== action.args.receiptKey
+        )
+          throw new HttpError(400, 'Upload and check your receipt before submitting this expense.');
+        if (receipt.status !== 'Ready')
+          throw new HttpError(
+            409,
+            'Receipt checking or administrator clearance is required before submission.',
+          );
+        if (receipt.claimedAmount !== Math.round(action.args.amount * 100))
+          throw new HttpError(
+            409,
+            'The amount changed. Check the receipt again before submitting.',
+          );
+        const useKeys = [
+          'RECEIPT_USE#' + receipt.contentHash,
+          ...(receipt.invoiceFingerprint ? ['RECEIPT_USE#' + receipt.invoiceFingerprint] : []),
+        ];
+        for (const useKey of useKeys)
+          if (await repo.get(pk, useKey))
+            throw new HttpError(409, 'This receipt or invoice was already used for an expense.');
+        context.receipt = receipt;
+        context.receiptUseKeys = [...new Set(useKeys)];
+      }
       if (
         paymentsRequired &&
         action.type === 'members.add' &&
@@ -142,6 +199,27 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
         detail: `${user.name} · ${action.type}`,
       };
       data.audit = [audit, ...(data.audit || [])].slice(0, 100);
+      if (context.receipt) {
+        const receipt = context.receipt,
+          transactionId = data.transactions[0].id;
+        receiptOperations.push({
+          item: {
+            ...receipt,
+            status: 'Consumed',
+            version: receipt.version + 1,
+            transactionId,
+            consumedAt: timestamp(),
+          },
+          condition: '#version = :version',
+          names: { '#version': 'version' },
+          values: { ':version': receipt.version },
+        });
+        for (const useKey of context.receiptUseKeys)
+          receiptOperations.push({
+            item: { pk, sk: useKey, receiptId: receipt.id, transactionId, createdAt: timestamp() },
+            condition: 'attribute_not_exists(pk)',
+          });
+      }
       const { patch, ...safeResult } = result;
       if (
         await repo.commit(
@@ -164,7 +242,7 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
                   values: { ':version': payment.version },
                 },
               ]
-            : [],
+            : receiptOperations,
         )
       )
         return { ...safeResult, state: visibleState(data, user, role) };

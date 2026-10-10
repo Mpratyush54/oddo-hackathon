@@ -1,6 +1,7 @@
 import { pushRecordSchema, pushOwnerSchema } from './push.schema.js';
 import { z } from 'zod';
 import { refundRecordSchema } from './refund.schema.js';
+import { receiptCheckSchema, receiptUseSchema, ocrQuotaSchema } from './receipt.schema.js';
 import { paymentRecordSchema, paymentMappingSchema } from './payment.schema.js';
 import {
   emailVerificationSchema,
@@ -24,6 +25,9 @@ export const recordSchemas = {
   pushOwner: pushOwnerSchema,
   reminder: reminderRecordSchema,
   refund: refundRecordSchema,
+  ocrQuota: ocrQuotaSchema,
+  receiptCheck: receiptCheckSchema,
+  receiptUse: receiptUseSchema,
   payment: paymentRecordSchema,
   paymentMapping: paymentMappingSchema,
   emailVerification: emailVerificationSchema,
@@ -67,6 +71,8 @@ export function parseDatabaseRecord(item) {
   };
   const prefixes = [
     ['REFUND#', refundRecordSchema],
+    ['RECEIPT#', receiptCheckSchema],
+    ['RECEIPT_USE#', receiptUseSchema],
     ['PAYMENT#', paymentRecordSchema],
     ['PUSH#', pushRecordSchema],
     ['REMINDER#', reminderRecordSchema],
@@ -75,11 +81,14 @@ export function parseDatabaseRecord(item) {
     ['REQUEST#', requestSchema],
     ['DELIVERY#', deliveryRecordSchema],
   ];
-  const schema = item?.pk?.startsWith('MESSAGE#')
-    ? item.sk === 'STATUS'
-      ? messageStatusSchema
-      : messageMappingSchema
-    : exact[item?.sk] || prefixes.find(([prefix]) => item?.sk?.startsWith(prefix))?.[1];
+  const schema =
+    item?.pk === 'OCR_QUOTA#AZURE_F0'
+      ? ocrQuotaSchema
+      : item?.pk?.startsWith('MESSAGE#')
+        ? item.sk === 'STATUS'
+          ? messageStatusSchema
+          : messageMappingSchema
+        : exact[item?.sk] || prefixes.find(([prefix]) => item?.sk?.startsWith(prefix))?.[1];
   if (!schema)
     throw new DatabaseValidationError([{ path: ['sk'], message: 'Unknown record kind.' }]);
   const parsed = schema.safeParse(item);

@@ -381,3 +381,25 @@
   }
 }
 
+.receipt-check-panel,
+.receipt-review-queue {
+  padding: 18px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.receipt-review-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.receipt-review-row > div {
+  flex: 1 1 230px;
+  overflow-wrap: anywhere;
+}
+.receipt-check-panel ul {
+  padding-left: 20px;
+}

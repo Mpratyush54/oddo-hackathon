@@ -14,6 +14,15 @@
       "$ref": "#/$defs/refundRecord"
     },
     {
+      "$ref": "#/$defs/ocrQuotaRecord"
+    },
+    {
+      "$ref": "#/$defs/receiptCheckRecord"
+    },
+    {
+      "$ref": "#/$defs/receiptUseRecord"
+    },
+    {
       "$ref": "#/$defs/paymentRecord"
     },
     {
@@ -390,6 +399,211 @@
       ],
       "additionalProperties": false
     },
+    "ocrQuotaRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "const": "OCR_QUOTA#AZURE_F0"
+        },
+        "sk": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reservedPages": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 400
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "version",
+        "reservedPages"
+      ],
+      "additionalProperties": false
+    },
+    "receiptCheckRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "sk": {
+          "format": "starts_with",
+          "pattern": "^RECEIPT#.*",
+          "$ref": "#/$defs/__schema0"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "id": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "clubId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "userId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "sourceKey": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "receiptKey": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "claimedAmount": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Uploading",
+            "Processing",
+            "Ready",
+            "NeedsReview",
+            "Failed",
+            "Consumed"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAt": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "contentHash": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "invoiceFingerprint": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "jobId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "issues": {
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema7"
+          }
+        },
+        "extracted": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "vendor": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "dateText": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "invoiceNumber": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "currency": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "totalConfidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "clearedBy": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "clearedAt": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "clearanceReason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "transactionId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "consumedAt": {
+          "$ref": "#/$defs/__schema2"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "id",
+        "clubId",
+        "userId",
+        "sourceKey",
+        "receiptKey",
+        "claimedAmount",
+        "status",
+        "version",
+        "createdAt",
+        "issues"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "string",
+      "format": "sha256_hex",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "__schema7": {
+      "type": "string",
+      "maxLength": 250
+    },
+    "receiptUseRecord": {
+      "type": "object",
+      "properties": {
+        "pk": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "sk": {
+          "format": "starts_with",
+          "pattern": "^RECEIPT_USE#.*",
+          "$ref": "#/$defs/__schema0"
+        },
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "receiptId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "transactionId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/__schema2"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "receiptId",
+        "transactionId",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
     "paymentRecord": {
       "type": "object",
       "properties": {
@@ -431,7 +645,7 @@
                   "type": "object",
                   "properties": {
                     "eventId": {
-                      "$ref": "#/$defs/__schema7"
+                      "$ref": "#/$defs/__schema8"
                     }
                   },
                   "required": [
@@ -456,7 +670,7 @@
                   "type": "object",
                   "properties": {
                     "productId": {
-                      "$ref": "#/$defs/__schema7"
+                      "$ref": "#/$defs/__schema8"
                     },
                     "size": {
                       "type": "string",
@@ -593,7 +807,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema8"
+            "$ref": "#/$defs/__schema9"
           }
         }
       },
@@ -614,17 +828,12 @@
       ],
       "additionalProperties": false
     },
-    "__schema6": {
-      "type": "string",
-      "format": "sha256_hex",
-      "pattern": "^[0-9a-fA-F]{64}$"
-    },
-    "__schema7": {
+    "__schema8": {
       "type": "string",
       "minLength": 1,
       "maxLength": 250
     },
-    "__schema8": {
+    "__schema9": {
       "anyOf": [
         {
           "type": "string"
@@ -641,7 +850,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema8"
+            "$ref": "#/$defs/__schema9"
           }
         },
         {
@@ -650,7 +859,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema8"
+            "$ref": "#/$defs/__schema9"
           }
         }
       ]
@@ -711,7 +920,7 @@
           "$ref": "#/$defs/__schema0"
         },
         "email": {
-          "$ref": "#/$defs/__schema9"
+          "$ref": "#/$defs/__schema10"
         },
         "revoked": {
           "type": "boolean"
@@ -730,7 +939,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema9": {
+    "__schema10": {
       "type": "string",
       "maxLength": 254,
       "format": "email",
@@ -796,7 +1005,7 @@
           "maxLength": 80
         },
         "email": {
-          "$ref": "#/$defs/__schema9"
+          "$ref": "#/$defs/__schema10"
         },
         "emailVerified": {
           "type": "boolean"
@@ -1087,13 +1296,13 @@
           "type": "object",
           "properties": {
             "name": {
-              "$ref": "#/$defs/__schema10"
+              "$ref": "#/$defs/__schema11"
             },
             "email": {
-              "$ref": "#/$defs/__schema10"
+              "$ref": "#/$defs/__schema11"
             },
             "role": {
-              "$ref": "#/$defs/__schema10"
+              "$ref": "#/$defs/__schema11"
             }
           },
           "required": [
@@ -1103,7 +1312,7 @@
           ]
         },
         "preferences": {
-          "$ref": "#/$defs/__schema13"
+          "$ref": "#/$defs/__schema14"
         }
       },
       "required": [
@@ -1140,13 +1349,13 @@
           "$ref": "#/$defs/__schema0"
         },
         "name": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "email": {
-          "$ref": "#/$defs/__schema9"
+          "$ref": "#/$defs/__schema10"
         },
         "course": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "status": {
           "type": "string",
@@ -1158,13 +1367,13 @@
           ]
         },
         "joined": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "expires": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "role": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "phone": {
           "anyOf": [
@@ -1187,16 +1396,16 @@
           "$ref": "#/$defs/__schema2"
         },
         "participationPoints": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "volunteerPoints": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "contributionPoints": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "preferences": {
-          "$ref": "#/$defs/__schema13"
+          "$ref": "#/$defs/__schema14"
         },
         "readNotificationIds": {
           "maxItems": 100,
@@ -1209,7 +1418,7 @@
           "type": "boolean"
         },
         "enrollmentSource": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         }
       },
       "required": [
@@ -1224,20 +1433,20 @@
       ],
       "additionalProperties": false
     },
-    "__schema10": {
+    "__schema11": {
       "type": "string",
       "maxLength": 10000
     },
-    "__schema11": {
+    "__schema12": {
       "type": "string",
       "format": "date",
       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
     },
-    "__schema12": {
+    "__schema13": {
       "type": "number",
       "minimum": 0
     },
-    "__schema13": {
+    "__schema14": {
       "type": "object",
       "properties": {
         "events": {
@@ -1266,13 +1475,13 @@
           "$ref": "#/$defs/__schema0"
         },
         "title": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "date": {
           "$ref": "#/$defs/__schema11"
         },
+        "date": {
+          "$ref": "#/$defs/__schema12"
+        },
         "time": {
-          "$ref": "#/$defs/__schema14"
+          "$ref": "#/$defs/__schema15"
         },
         "capacity": {
           "type": "integer",
@@ -1284,40 +1493,40 @@
           "$ref": "#/$defs/__schema3"
         },
         "price": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "memberPrice": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "venue": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "category": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "description": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "image": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "budget": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "gallery": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema10"
+            "$ref": "#/$defs/__schema11"
           }
         },
         "recap": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "endDate": {
           "$ref": "#/$defs/__schema11"
         },
+        "endDate": {
+          "$ref": "#/$defs/__schema12"
+        },
         "endTime": {
-          "$ref": "#/$defs/__schema14"
+          "$ref": "#/$defs/__schema15"
         }
       },
       "required": [
@@ -1332,7 +1541,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema14": {
+    "__schema15": {
       "type": "string",
       "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
     },
@@ -1343,16 +1552,16 @@
           "$ref": "#/$defs/__schema0"
         },
         "name": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "type": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "price": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "memberPrice": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "stock": {
           "type": "object",
@@ -1366,7 +1575,7 @@
           }
         },
         "color": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "image": {
           "type": "string",
@@ -1376,7 +1585,7 @@
           "maxItems": 3,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema15"
+            "$ref": "#/$defs/__schema16"
           }
         },
         "delisted": {
@@ -1393,7 +1602,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema15": {
+    "__schema16": {
       "type": "string",
       "maxLength": 350000
     },
@@ -1416,10 +1625,10 @@
           "$ref": "#/$defs/__schema0"
         },
         "name": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "email": {
-          "$ref": "#/$defs/__schema9"
+          "$ref": "#/$defs/__schema10"
         },
         "member": {
           "type": "boolean"
@@ -1428,7 +1637,7 @@
           "type": "boolean"
         },
         "amount": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "status": {
           "type": "string",
@@ -1441,10 +1650,10 @@
           "type": "boolean"
         },
         "cancelledAt": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "checkedInAt": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         }
       },
       "required": [
@@ -1477,22 +1686,22 @@
           "$ref": "#/$defs/__schema0"
         },
         "name": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "email": {
-          "$ref": "#/$defs/__schema9"
-        },
-        "size": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "amount": {
-          "$ref": "#/$defs/__schema12"
-        },
-        "date": {
           "$ref": "#/$defs/__schema11"
         },
-        "promoCode": {
+        "email": {
           "$ref": "#/$defs/__schema10"
+        },
+        "size": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "amount": {
+          "$ref": "#/$defs/__schema13"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "promoCode": {
+          "$ref": "#/$defs/__schema11"
         },
         "simulated": {
           "type": "boolean"
@@ -1502,10 +1711,10 @@
           "$ref": "#/$defs/__schema3"
         },
         "subtotal": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "discount": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "status": {
           "$ref": "#/$defs/orderStatus"
@@ -1533,6 +1742,9 @@
     "transaction": {
       "type": "object",
       "properties": {
+        "receiptCheckId": {
+          "$ref": "#/$defs/__schema0"
+        },
         "paymentId": {
           "$ref": "#/$defs/__schema0"
         },
@@ -1540,16 +1752,16 @@
           "$ref": "#/$defs/__schema0"
         },
         "title": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "category": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "amount": {
           "type": "number"
         },
         "date": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "status": {
           "type": "string",
@@ -1560,13 +1772,13 @@
           ]
         },
         "receipt": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "receiptKey": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "receiptData": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "eventId": {
           "$ref": "#/$defs/__schema0"
@@ -1581,7 +1793,7 @@
           "$ref": "#/$defs/__schema2"
         },
         "rejectionReason": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "simulated": {
           "type": "boolean"
@@ -1610,19 +1822,19 @@
           "$ref": "#/$defs/__schema0"
         },
         "title": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "description": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "assignee": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "assigneeId": {
           "$ref": "#/$defs/__schema0"
         },
         "due": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "priority": {
           "type": "string",
@@ -1659,10 +1871,10 @@
           "$ref": "#/$defs/__schema0"
         },
         "title": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "body": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "audience": {
           "type": "string",
@@ -1675,10 +1887,10 @@
           ]
         },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "author": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "authorId": {
           "$ref": "#/$defs/__schema0"
@@ -1715,22 +1927,22 @@
           "$ref": "#/$defs/__schema0"
         },
         "title": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "body": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "read": {
           "type": "boolean"
         },
         "to": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "audience": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "userId": {
           "$ref": "#/$defs/__schema0"
@@ -1744,7 +1956,7 @@
           ]
         },
         "membershipExpires": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "ticketId": {
           "$ref": "#/$defs/__schema0"
@@ -1773,64 +1985,64 @@
           "$ref": "#/$defs/__schema0"
         },
         "channel": {
-          "$ref": "#/$defs/__schema16"
-        },
-        "recipient": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "status": {
           "$ref": "#/$defs/__schema17"
         },
-        "date": {
-          "$ref": "#/$defs/__schema10"
+        "recipient": {
+          "$ref": "#/$defs/__schema11"
         },
-        "detail": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "actor": {
+        "status": {
           "$ref": "#/$defs/__schema18"
         },
-        "userId": {
+        "date": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "actor": {
           "$ref": "#/$defs/__schema19"
         },
-        "notificationId": {
+        "userId": {
           "$ref": "#/$defs/__schema20"
         },
-        "membershipExpires": {
+        "notificationId": {
           "$ref": "#/$defs/__schema21"
         },
-        "ticketId": {
+        "membershipExpires": {
           "$ref": "#/$defs/__schema22"
         },
-        "eventId": {
+        "ticketId": {
           "$ref": "#/$defs/__schema23"
         },
-        "title": {
+        "eventId": {
           "$ref": "#/$defs/__schema24"
         },
-        "body": {
+        "title": {
           "$ref": "#/$defs/__schema25"
         },
-        "url": {
+        "body": {
           "$ref": "#/$defs/__schema26"
         },
-        "kind": {
+        "url": {
           "$ref": "#/$defs/__schema27"
         },
-        "version": {
+        "kind": {
           "$ref": "#/$defs/__schema28"
         },
-        "testOnly": {
+        "version": {
           "$ref": "#/$defs/__schema29"
         },
-        "providerStatus": {
+        "testOnly": {
           "$ref": "#/$defs/__schema30"
         },
-        "providerTimestamp": {
+        "providerStatus": {
           "$ref": "#/$defs/__schema31"
         },
-        "providerMessageId": {
+        "providerTimestamp": {
           "$ref": "#/$defs/__schema32"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema33"
         }
       },
       "required": [
@@ -1844,7 +2056,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema16": {
+    "__schema17": {
       "type": "string",
       "enum": [
         "Email",
@@ -1853,7 +2065,7 @@
         "Browser"
       ]
     },
-    "__schema17": {
+    "__schema18": {
       "type": "string",
       "enum": [
         "Prepared",
@@ -1862,9 +2074,6 @@
         "Unknown"
       ]
     },
-    "__schema18": {
-      "$ref": "#/$defs/__schema0"
-    },
     "__schema19": {
       "$ref": "#/$defs/__schema0"
     },
@@ -1872,24 +2081,27 @@
       "$ref": "#/$defs/__schema0"
     },
     "__schema21": {
-      "$ref": "#/$defs/__schema11"
+      "$ref": "#/$defs/__schema0"
     },
     "__schema22": {
-      "$ref": "#/$defs/__schema0"
+      "$ref": "#/$defs/__schema12"
     },
     "__schema23": {
       "$ref": "#/$defs/__schema0"
     },
     "__schema24": {
-      "$ref": "#/$defs/__schema10"
+      "$ref": "#/$defs/__schema0"
     },
     "__schema25": {
-      "$ref": "#/$defs/__schema10"
+      "$ref": "#/$defs/__schema11"
     },
     "__schema26": {
-      "$ref": "#/$defs/__schema10"
+      "$ref": "#/$defs/__schema11"
     },
     "__schema27": {
+      "$ref": "#/$defs/__schema11"
+    },
+    "__schema28": {
       "type": "string",
       "enum": [
         "announcement",
@@ -1899,13 +2111,13 @@
         "browser"
       ]
     },
-    "__schema28": {
+    "__schema29": {
       "$ref": "#/$defs/__schema3"
     },
-    "__schema29": {
+    "__schema30": {
       "type": "boolean"
     },
-    "__schema30": {
+    "__schema31": {
       "type": "string",
       "enum": [
         "accepted",
@@ -1915,41 +2127,41 @@
         "failed"
       ]
     },
-    "__schema31": {
+    "__schema32": {
       "$ref": "#/$defs/__schema3"
     },
-    "__schema32": {
+    "__schema33": {
       "$ref": "#/$defs/__schema0"
     },
     "audit": {
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/$defs/__schema33"
+          "$ref": "#/$defs/__schema34"
         },
         "actor": {
           "$ref": "#/$defs/__schema0"
         },
         "action": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "clubId": {
-          "$ref": "#/$defs/__schema34"
-        },
-        "collegeId": {
           "$ref": "#/$defs/__schema35"
         },
-        "entity": {
+        "collegeId": {
           "$ref": "#/$defs/__schema36"
         },
-        "entityId": {
+        "entity": {
           "$ref": "#/$defs/__schema37"
         },
+        "entityId": {
+          "$ref": "#/$defs/__schema38"
+        },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "detail": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         }
       },
       "required": [
@@ -1960,9 +2172,6 @@
       ],
       "additionalProperties": false
     },
-    "__schema33": {
-      "$ref": "#/$defs/__schema0"
-    },
     "__schema34": {
       "$ref": "#/$defs/__schema0"
     },
@@ -1970,9 +2179,12 @@
       "$ref": "#/$defs/__schema0"
     },
     "__schema36": {
-      "$ref": "#/$defs/__schema10"
+      "$ref": "#/$defs/__schema0"
     },
     "__schema37": {
+      "$ref": "#/$defs/__schema11"
+    },
+    "__schema38": {
       "$ref": "#/$defs/__schema0"
     },
     "waitlist": {
@@ -1985,13 +2197,13 @@
           "$ref": "#/$defs/__schema0"
         },
         "name": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "email": {
-          "$ref": "#/$defs/__schema9"
+          "$ref": "#/$defs/__schema10"
         },
         "joined": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "status": {
           "type": "string",
@@ -2005,7 +2217,7 @@
           "$ref": "#/$defs/__schema0"
         },
         "promotedAt": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         }
       },
       "required": [
@@ -2044,10 +2256,10 @@
           "type": "boolean"
         },
         "reason": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "eventId": {
           "$ref": "#/$defs/__schema0"
@@ -2088,7 +2300,7 @@
           ]
         },
         "value": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "active": {
           "type": "boolean"
@@ -2104,13 +2316,13 @@
           "type": "boolean"
         },
         "minSubtotal": {
-          "$ref": "#/$defs/__schema12"
+          "$ref": "#/$defs/__schema13"
         },
         "expires": {
-          "$ref": "#/$defs/__schema11"
+          "$ref": "#/$defs/__schema12"
         },
         "description": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "productId": {
           "$ref": "#/$defs/__schema0"
@@ -2176,7 +2388,7 @@
           "$ref": "#/$defs/__schema0"
         },
         "authorName": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "rating": {
           "type": "integer",
@@ -2185,10 +2397,10 @@
           "$ref": "#/$defs/__schema3"
         },
         "comment": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         }
       },
       "required": [
@@ -2206,31 +2418,31 @@
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/$defs/__schema33"
+          "$ref": "#/$defs/__schema34"
         },
         "actor": {
           "$ref": "#/$defs/__schema0"
         },
         "action": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "clubId": {
-          "$ref": "#/$defs/__schema34"
-        },
-        "collegeId": {
           "$ref": "#/$defs/__schema35"
         },
-        "entity": {
+        "collegeId": {
           "$ref": "#/$defs/__schema36"
         },
-        "entityId": {
+        "entity": {
           "$ref": "#/$defs/__schema37"
         },
+        "entityId": {
+          "$ref": "#/$defs/__schema38"
+        },
         "date": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "detail": {
-          "$ref": "#/$defs/__schema10"
+          "$ref": "#/$defs/__schema11"
         },
         "pk": {
           "$ref": "#/$defs/__schema4"
@@ -2267,64 +2479,64 @@
           "$ref": "#/$defs/__schema0"
         },
         "channel": {
-          "$ref": "#/$defs/__schema16"
-        },
-        "recipient": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "status": {
           "$ref": "#/$defs/__schema17"
         },
-        "date": {
-          "$ref": "#/$defs/__schema10"
+        "recipient": {
+          "$ref": "#/$defs/__schema11"
         },
-        "detail": {
-          "$ref": "#/$defs/__schema10"
-        },
-        "actor": {
+        "status": {
           "$ref": "#/$defs/__schema18"
         },
-        "userId": {
+        "date": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "detail": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "actor": {
           "$ref": "#/$defs/__schema19"
         },
-        "notificationId": {
+        "userId": {
           "$ref": "#/$defs/__schema20"
         },
-        "membershipExpires": {
+        "notificationId": {
           "$ref": "#/$defs/__schema21"
         },
-        "ticketId": {
+        "membershipExpires": {
           "$ref": "#/$defs/__schema22"
         },
-        "eventId": {
+        "ticketId": {
           "$ref": "#/$defs/__schema23"
         },
-        "title": {
+        "eventId": {
           "$ref": "#/$defs/__schema24"
         },
-        "body": {
+        "title": {
           "$ref": "#/$defs/__schema25"
         },
-        "url": {
+        "body": {
           "$ref": "#/$defs/__schema26"
         },
-        "kind": {
+        "url": {
           "$ref": "#/$defs/__schema27"
         },
-        "version": {
+        "kind": {
           "$ref": "#/$defs/__schema28"
         },
-        "testOnly": {
+        "version": {
           "$ref": "#/$defs/__schema29"
         },
-        "providerStatus": {
+        "testOnly": {
           "$ref": "#/$defs/__schema30"
         },
-        "providerTimestamp": {
+        "providerStatus": {
           "$ref": "#/$defs/__schema31"
         },
-        "providerMessageId": {
+        "providerTimestamp": {
           "$ref": "#/$defs/__schema32"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema33"
         },
         "pk": {
           "$ref": "#/$defs/__schema4"
@@ -2375,7 +2587,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema38"
+            "$ref": "#/$defs/__schema39"
           }
         },
         "expiresAt": {
@@ -2391,7 +2603,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema38": {
+    "__schema39": {
       "anyOf": [
         {
           "type": "string"
@@ -2408,7 +2620,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema38"
+            "$ref": "#/$defs/__schema39"
           }
         },
         {
@@ -2417,7 +2629,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema38"
+            "$ref": "#/$defs/__schema39"
           }
         }
       ]

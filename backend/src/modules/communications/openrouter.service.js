@@ -68,7 +68,7 @@ export const createOpenRouter =
     };
   };
 
-function removeMarkdownFence(value) {
+export function removeMarkdownFence(value) {
   let content = value.trim();
   if (content.startsWith('```json')) content = content.slice('```json'.length);
   else if (content.startsWith('```')) content = content.slice('```'.length);
