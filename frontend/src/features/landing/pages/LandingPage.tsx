@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
-import { date } from '../../../shared/utils/format';
+import { date, money } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import '../../../shared/styles/portal.css';
 import '../styles/landing.css';
@@ -143,18 +143,123 @@ export function LandingPage() {
       </section>
 
       <div className="landing-after-stage" ref={afterRef}>
-        <Revealed>
-          <section className="portal-proof">
-            <span>ONE CONNECTED CAMPUS.</span>
-            {organizations.map((c) => (
-              <span key={c.id}>
-                <Icon name="Sprout" size={18} />
-                {c.name}
-              </span>
+        <section className="portal-proof" aria-label="Campus clubs ticker">
+          <div className="portal-proof-ticker">
+            {[0, 1].map((copyIndex) => (
+              <div
+                key={copyIndex}
+                className="portal-proof-track"
+                aria-hidden={copyIndex > 0 ? 'true' : undefined}
+              >
+                {Array.from({ length: 3 }).map((_, repeatIndex) => (
+                  <span
+                    key={repeatIndex}
+                    className="portal-proof-segment"
+                  >
+                    <span className="ticker-label">ONE CONNECTED CAMPUS.</span>
+                    {organizations.map((c) => (
+                      <span key={`${c.id}-${repeatIndex}`} className="ticker-item">
+                        <Icon name="Sprout" size={18} />
+                        <span>{c.name}</span>
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </div>
             ))}
-          </section>
-        </Revealed>
+          </div>
+        </section>
         <LandingEvents />
+
+        {/* Merchandise Teaser */}
+        <section className="landing-merch-section" aria-labelledby="landing-merch-title">
+          <Revealed>
+            <header className="landing-section-header">
+              <div>
+                <span className="portal-kicker">COMMUNITY APPAREL & GOODS</span>
+                <h2 id="landing-merch-title">Official club merchandise</h2>
+                <p>Support your clubs and wear your community with pride.</p>
+              </div>
+              <LinkButton to="/app/merchandise" variant="secondary" icon="ArrowRight">
+                Shop all gear
+              </LinkButton>
+            </header>
+          </Revealed>
+          <div className="landing-merch-grid">
+            {(allClubs.skyline?.products || []).slice(0, 3).map((prod, i) => (
+              <Revealed key={prod.id} delay={i * 70} pop>
+                <Link
+                  className="landing-event"
+                  to="/app/merchandise"
+                  aria-label={`View ${prod.name}`}
+                >
+                  <div className="landing-event-image">
+                    {prod.image && <img src={prod.image} alt={prod.name} loading="lazy" />}
+                    <span>{prod.type}</span>
+                    <span
+                      className="landing-event-arrow"
+                      role="img"
+                      aria-label={`View ${prod.name}`}
+                    >
+                      <Icon name="ArrowUpRight" />
+                    </span>
+                  </div>
+                  <small>Skyline Collection · {prod.color}</small>
+                  <h3>{prod.name}</h3>
+                  <p>In stock in campus shop</p>
+                  <footer>
+                    <strong>
+                      {money(prod.memberPrice)} (Members) · {money(prod.price)}
+                    </strong>
+                    <span>Member discount</span>
+                  </footer>
+                </Link>
+              </Revealed>
+            ))}
+          </div>
+        </section>
+
+        {/* Latest Announcements */}
+        <section
+          className="landing-announcements-section"
+          aria-labelledby="landing-announcements-title"
+        >
+          <Revealed>
+            <header className="landing-section-header">
+              <div>
+                <span className="portal-kicker">BULLETIN & UPDATES</span>
+                <h2 id="landing-announcements-title">Latest announcements</h2>
+                <p>Stay in the loop with what matters across campus.</p>
+              </div>
+              <LinkButton to="/app/announcements" variant="secondary" icon="ArrowRight">
+                View all updates
+              </LinkButton>
+            </header>
+          </Revealed>
+          <div className="landing-announcements-grid">
+            {(allClubs.skyline?.announcements || []).slice(0, 3).map((ann, i) => (
+              <Revealed key={ann.id} delay={i * 70} pop>
+                <article className="landing-announcement-card">
+                  <div className="landing-announcement-meta">
+                    <span className="landing-announcement-date">
+                      {date(ann.date, { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="landing-announcement-audience">{ann.audience}</span>
+                  </div>
+                  <h3>{ann.title}</h3>
+                  <p>{ann.body}</p>
+                  <div className="landing-announcement-footer">
+                    <span>By {ann.author}</span>
+                    <Link to="/app/announcements" className="landing-announcement-link">
+                      Read more <Icon name="ArrowRight" size={14} />
+                    </Link>
+                  </div>
+                </article>
+              </Revealed>
+            ))}
+          </div>
+        </section>
+
         <Revealed>
           <section className="portal-feature-section" id="how-it-works">
             <span className="portal-kicker">EVERYTHING YOUR CLUB NEEDS</span>
@@ -210,7 +315,7 @@ export function LandingPage() {
                 need the bigger picture. Skyline gives each person a useful starting point.
               </p>
               <LinkButton to="/login" icon="ArrowRight">
-                Try a different perspective
+                Explore roles
               </LinkButton>
             </div>
             <div className="portal-role-list">
@@ -239,7 +344,7 @@ export function LandingPage() {
               starts with your people.
             </h2>
             <LinkButton to="/login" icon="ArrowRight">
-              Step into Skyline
+              Join your club
             </LinkButton>
           </section>
         </Revealed>

@@ -8,6 +8,64 @@ type PageMotionProps = {
   className?: string;
 };
 
+const routeMeta: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'Skyline — Your community, connected',
+    description:
+      'Skyline brings your student community together. Manage members, events, projects, and finances in one thoughtful workspace.',
+  },
+  '/events': {
+    title: 'Campus Events — Skyline',
+    description:
+      'Browse campus events, reserve tickets, and discover what is happening across student clubs at Skyline.',
+  },
+  '/clubs': {
+    title: 'Clubs Directory — Skyline',
+    description: 'Explore active student clubs and campus organizations on Skyline.',
+  },
+  '/shop': {
+    title: 'Campus Shop — Skyline',
+    description: 'Official student club merchandise, apparel, and goods with member pricing.',
+  },
+  '/login': {
+    title: 'Sign In — Skyline',
+    description: 'Sign in to your Skyline student organization portal and workspace.',
+  },
+  '/signup': {
+    title: 'Create Account — Skyline',
+    description: 'Join your campus community and register for Skyline student clubs.',
+  },
+  '/app/merchandise': {
+    title: 'Club Merchandise — Skyline',
+    description:
+      'Manage and explore club merchandise catalog, inventory, and order fulfillment on Skyline.',
+  },
+  '/app/events': {
+    title: 'Manage Events — Skyline',
+    description: 'Plan, publish, and review campus events, venues, and ticket sales.',
+  },
+  '/app/members': {
+    title: 'Membership Directory — Skyline',
+    description: 'Manage club members, renewals, roles, and digital member passes.',
+  },
+  '/app/finance': {
+    title: 'Club Finances & Ledger — Skyline',
+    description: 'Track club revenue, dues, receipt approvals, and reimbursement claims.',
+  },
+  '/app/announcements': {
+    title: 'Announcements & Communication — Skyline',
+    description: 'Publish updates to members across email and club messaging channels.',
+  },
+  '/app/tasks': {
+    title: 'Projects & Tasks — Skyline',
+    description: 'Coordinate volunteer tasks, event operations, and club priorities.',
+  },
+  '/app/calendar': {
+    title: 'Master Campus Calendar — Skyline',
+    description: 'View upcoming deadlines, meetings, and student club events.',
+  },
+};
+
 /** A short visual cue for navigation, independent of request/loading state. */
 export function PageMotion({ children, className = '' }: PageMotionProps) {
   const { pathname } = useLocation();
@@ -17,6 +75,36 @@ export function PageMotion({ children, className = '' }: PageMotionProps) {
   const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
+    // Dynamic document title and meta per route
+    const matchedMeta =
+      routeMeta[pathname] ||
+      (pathname.startsWith('/app/merchandise')
+        ? routeMeta['/app/merchandise']
+        : pathname.startsWith('/app/events')
+          ? routeMeta['/app/events']
+          : pathname.startsWith('/app/members')
+            ? routeMeta['/app/members']
+            : pathname.startsWith('/app/finance')
+              ? routeMeta['/app/finance']
+              : pathname.startsWith('/app')
+                ? {
+                    title: 'Workspace — Skyline',
+                    description: 'Skyline student organization workspace.',
+                  }
+                : {
+                    title: 'Skyline — Your community, connected',
+                    description:
+                      'Skyline brings your student community together. Manage members, events, projects, and finances in one thoughtful workspace.',
+                  });
+
+    document.title = matchedMeta.title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', matchedMeta.description);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', matchedMeta.title);
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', matchedMeta.description);
+
     if (previousPath.current === pathname) return;
     previousPath.current = pathname;
     let transition: Animation | undefined;
@@ -77,15 +165,22 @@ export function useReveal<T extends HTMLElement = HTMLDivElement>() {
     if (bounds.top < window.innerHeight - 24 && bounds.bottom > 0) return;
     setRevealed(false);
 
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
     const reveal = () => {
       setRevealed(true);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
       observer.disconnect();
     };
+
+    // Ensure animation completes reliably even if viewport/scroll edges interfere
+    fallbackTimer = setTimeout(reveal, 1000);
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) reveal();
       },
-      { threshold: 0.08, rootMargin: '0px 0px -24px 0px' },
+      { threshold: 0.01, rootMargin: '0px 0px 60px 0px' },
     );
     observer.observe(element);
 
@@ -95,6 +190,7 @@ export function useReveal<T extends HTMLElement = HTMLDivElement>() {
     };
     reducedMotion.addEventListener('change', preferenceChanged);
     return () => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
       observer.disconnect();
       reducedMotion.removeEventListener('change', preferenceChanged);
     };

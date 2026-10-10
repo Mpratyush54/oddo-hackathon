@@ -31,30 +31,51 @@ export function LandingEvents() {
         </header>
       </Revealed>
       <div className="landing-event-grid">
-        {events.map(({ club, event }, i) => (
-          <Revealed key={`${club.id}-${event.id}`} delay={i * 70} pop>
-            <Link className="landing-event" to={`/e/${club.id}/${event.id}`}>
-              <div className="landing-event-image">
-                <img src={event.image} alt={event.title} loading="lazy" />
-                <span>{date(event.date, { month: 'short', day: 'numeric' })}</span>
-                <span className="landing-event-arrow">
-                  <Icon name="ArrowUpRight" />
-                </span>
-              </div>
-              <small>
-                {club.name} · {event.category}
-              </small>
-              <h3>{event.title}</h3>
-              <p>
-                {event.venue} · {event.time}
-              </p>
-              <footer>
-                <strong>{event.price ? `From ${money(event.memberPrice)}` : 'Free entry'}</strong>
-                <span>{Math.max(0, event.capacity - event.sold)} seats left</span>
-              </footer>
-            </Link>
-          </Revealed>
-        ))}
+        {events.map(({ club, event }, i) => {
+          const hasMemberPrice =
+            event.price > 0 &&
+            event.memberPrice !== undefined &&
+            event.memberPrice < event.price;
+          const priceLabel =
+            event.price > 0
+              ? hasMemberPrice
+                ? `${money(event.memberPrice)} members · ${money(event.price)} guests`
+                : money(event.price)
+              : 'Free entry';
+
+          return (
+            <Revealed key={`${club.id}-${event.id}`} delay={i * 70} pop>
+              <Link
+                className="landing-event"
+                to={`/e/${club.id}/${event.id}`}
+                aria-label={`View ${event.title}`}
+              >
+                <div className="landing-event-image">
+                  <img src={event.image} alt={event.title} loading="lazy" />
+                  <span>{date(event.date, { month: 'short', day: 'numeric' })}</span>
+                  <span
+                    className="landing-event-arrow"
+                    role="img"
+                    aria-label={`View ${event.title}`}
+                  >
+                    <Icon name="ArrowUpRight" />
+                  </span>
+                </div>
+                <small>
+                  {club.name} · {event.category}
+                </small>
+                <h3>{event.title}</h3>
+                <p>
+                  {event.venue} · {event.time}
+                </p>
+                <footer>
+                  <strong>{priceLabel}</strong>
+                  <span>{Math.max(0, event.capacity - event.sold)} seats left</span>
+                </footer>
+              </Link>
+            </Revealed>
+          );
+        })}
       </div>
     </section>
   );

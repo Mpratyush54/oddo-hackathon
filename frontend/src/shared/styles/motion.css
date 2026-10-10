@@ -235,3 +235,10 @@
     transform: none !important;
   }
 }
+
+.no-js .motion-reveal,
+.no-js .motion-reveal.reveal-ready,
+.no-js .motion-reveal.pop.reveal-ready {
+  opacity: 1 !important;
+  transform: none !important;
+}
