@@ -536,6 +536,10 @@ async function reactClickSurfacesOn(page) {
   return result;
 }
 async function main() {
+  const targetUrl = new URL(BASE_URL);
+  if (!['localhost', '127.0.0.1', '::1'].includes(targetUrl.hostname)) {
+    throw new Error('Safety stop: interaction-coverage audit only runs against localhost/127.0.0.1/::1. Do not target production or shared staging data.');
+  }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const report = {
     repository: 'Mpratyush54/oddo-hackathon',
