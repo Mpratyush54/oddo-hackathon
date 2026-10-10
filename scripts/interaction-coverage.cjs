@@ -21,7 +21,7 @@ const SCREENSHOTS = process.env.INTERACTION_SCREENSHOTS !== '0';
 const CHECK_LINK_CLICKS = process.env.CHECK_LINK_CLICKS !== '0';
 const TIMEOUT = Number(process.env.INTERACTION_TIMEOUT_MS || 2500);
 const RESET_PARAM = '__qa_reset';
-const BUTTONS = 'button:visible, [role="button"]:visible, input[type="button"]:visible, input[type="submit"]:visible';
+const BUTTONS = 'button:visible, [role="button"]:visible, [role="tab"]:visible, [role="menuitem"]:visible, summary:visible, [onclick]:visible, input[type="button"]:visible, input[type="submit"]:visible, input[type="reset"]:visible';
 const LINKS = 'a:visible';
 
 const PUBLIC_ROUTES = [
@@ -321,6 +321,142 @@ async function clickButton(browser, route, role, steps, report) {
   report.buttons.push(result);
   return result;
 }
+
+async function auditFields(browser, route, role, report) {
+  const locators = [
+    'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"])',
+    'select', 'textarea', '[role="combobox"]', '[role="slider"]',
+  ];
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(scenarioUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    const results = [];
+    for (const selector of locators) {
+      const collection = page.locator(selector);
+      for (let index = 0; index < await collection.count(); index++) {
+        const element = collection.nth(index);
+        if (!(await element.isVisible().catch(() => false))) continue;
+        const info = await element.evaluate((el) => ({
+          tag: el.tagName.toLowerCase(),
+          type: (el.getAttribute('type') || '').toLowerCase(),
+          name: el.getAttribute('name') || '',
+          id: el.id || '',
+          disabled: Boolean(el.disabled) || el.getAttribute('aria-disabled') === 'true',
+          readOnly: Boolean(el.readOnly),
+          required: Boolean(el.required),
+          value: el.value || '',
+        }));
+        const label = await nameOf(element);
+        const result = { route, role, selector, index, label, ...info, status: 'pending' };
+        if (!label) {
+          result.status = 'failed';
+          result.detail = 'Visible input/control has no accessible name.';
+          report.failures.push({ type: 'field-name', route, role, detail: result.detail, control: JSON.stringify(info) });
+          results.push(result);
+          continue;
+        }
+        if (info.disabled || info.readOnly) {
+          result.status = 'state-covered';
+          result.detail = info.disabled ? 'Disabled control asserted.' : 'Read-only control asserted.';
+          results.push(result);
+          continue;
+        }
+        try {
+          if (info.tag === 'select') {
+            const options = await element.locator('option').evaluateAll((opts) =>
+              opts.map((o) => ({ value: o.value, disabled: o.disabled }))
+                .filter((o) => !o.disabled && o.value !== ''),
+            );
+            if (!options.length) {
+              result.status = 'empty-select';
+              result.detail = 'No enabled non-empty option to select.';
+            } else {
+              const previous = await element.inputValue().catch(() => '');
+              const candidate = options.find((o) => o.value !== previous) || options[0];
+              await element.selectOption(candidate.value);
+              if ((await element.inputValue()) !== candidate.value) throw new Error('Select value did not update.');
+              result.status = 'changed';
+              result.detail = 'Selected option value ' + candidate.value + '.';
+            }
+          } else if (info.type === 'checkbox' || info.type === 'radio') {
+            const before = await element.isChecked();
+            await element.setChecked(!before);
+            const after = await element.isChecked();
+            if (info.type === 'checkbox' && after !== !before) throw new Error('Checkbox state did not toggle.');
+            if (info.type === 'radio' && !after) throw new Error('Radio option did not become selected.');
+            result.status = 'changed';
+            result.detail = info.type + ' state changed from ' + before + ' to ' + after + '.';
+          } else if (info.type === 'range' || info.tag === 'div' && selector.includes('slider')) {
+            await element.focus();
+            await page.keyboard.press('End');
+            result.status = 'changed';
+            result.detail = 'Keyboard interaction reached the slider end.';
+          } else {
+            let sample = 'QA test input';
+            if (info.type === 'email') sample = 'qa-coverage@example.test';
+            else if (info.type === 'password') sample = 'QA-Test-Password-123!';
+            else if (info.type === 'number') sample = '2';
+            else if (info.type === 'date') sample = '2026-10-15';
+            else if (info.type === 'tel') sample = '+31612345678';
+            else if (info.type === 'url') sample = 'https://example.test';
+            else if (info.type === 'search') sample = 'QA';
+            await element.fill(sample);
+            if ((await element.inputValue()) !== sample) throw new Error('Entered value did not persist.');
+            result.status = 'changed';
+            result.detail = 'Filled test value without submitting the form.';
+          }
+        } catch (error) {
+          result.status = 'failed';
+          result.detail = error instanceof Error ? error.message : String(error);
+          report.failures.push({ type: 'field-interaction', route, role, control: label, detail: result.detail });
+        }
+        results.push(result);
+      }
+    }
+    report.fields.push(...results);
+  } catch (error) {
+    report.failures.push({ type: 'field-audit', route, role, detail: error instanceof Error ? error.message : String(error) });
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+async function auditRowActions(browser, route, role, report) {
+  const errors = [], dialogs = [];
+  const { context, page } = await newPage(browser, role, errors, dialogs);
+  try {
+    await page.goto(scenarioUrl(route, role), { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    const rows = await page.locator('table tbody tr, [role="table"] [role="row"], [role="grid"] [role="row"]').evaluateAll((items) =>
+      items.map((row, rowIndex) => ({
+        rowIndex,
+        text: (row.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        actions: [...row.querySelectorAll('button, [role="button"], a, input[type="button"], input[type="submit"]')]
+          .filter((el) => {
+            const rect = el.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+          })
+          .map((el) => ({
+            tag: el.tagName.toLowerCase(),
+            name: el.getAttribute('aria-label') || el.getAttribute('title') || (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(),
+            disabled: Boolean(el.disabled) || el.getAttribute('aria-disabled') === 'true',
+          })),
+      })),
+    );
+    const tables = await page.locator('table, [role="table"], [role="grid"]').count();
+    report.tableActions.push({ route, role, tables, rows });
+    for (const row of rows) for (const action of row.actions) if (!action.name) {
+      report.failures.push({ type: 'table-action-name', route, role, detail: 'Row ' + (row.rowIndex + 1) + ' contains an action without an accessible name.' });
+    }
+  } catch (error) {
+    report.failures.push({ type: 'table-action-audit', route, role, detail: error instanceof Error ? error.message : String(error) });
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+
 async function clickLink(browser, route, role, link, report) {
   const result = { route, role, name: link.name, href: link.href, status: 'pending' };
   let url;
@@ -368,7 +504,7 @@ async function main() {
     baseUrl: BASE_URL,
     environment: 'LOCAL DEMO ONLY — never run this mutating audit against production',
     startedAt: new Date().toISOString(),
-    routes: [], buttons: [], links: [], failures: [], warnings: [], summary: {},
+    routes: [], buttons: [], links: [], fields: [], tableActions: [], failures: [], warnings: [], summary: {},
   };
   const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
   try {
@@ -377,6 +513,8 @@ async function main() {
     for (const routeCase of routeCases) {
       for (const role of routeCase.roles) {
         const inventory = await inspectRoute(browser, routeCase.path, role, report);
+        await auditFields(browser, routeCase.path, role, report);
+        await auditRowActions(browser, routeCase.path, role, report);
         const queue = inventory.controls.map((button) => ({
           steps: [{ index: button.index, name: button.name, tag: button.tag }],
           names: [button.name],
@@ -437,6 +575,12 @@ async function main() {
     disabledStateCovered: count(report.buttons, 'disabled-state-covered'),
     providerButtonsSafetySkipped: count(report.buttons, 'safety-skipped'),
     buttonFailures: count(report.buttons, 'failed'),
+    fieldsInventoried: report.fields.length,
+    fieldsChanged: report.fields.filter((item) => item.status === 'changed').length,
+    fieldStateCovered: report.fields.filter((item) => item.status === 'state-covered').length,
+    fieldFailures: report.fields.filter((item) => item.status === 'failed').length,
+    tableInstancesInspected: report.tableActions.reduce((sum, item) => sum + item.tables, 0),
+    rowsInspected: report.tableActions.reduce((sum, item) => sum + item.rows.length, 0),
     linksInventoried: report.links.length,
     linksClicked: count(report.links, 'clicked'),
     linksSafetySkipped: count(report.links, 'safety-skipped'),
