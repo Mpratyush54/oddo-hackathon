@@ -95,6 +95,7 @@ Run only against the local demo app; this exploratory audit clicks UI controls a
 In a second terminal:
 
     npm run test:interaction
+    npm run test:forms  # optional: exercise each enabled select option separately
 
 The JSON report is written to `.artifacts/interaction-coverage.json`. See [component and interaction coverage instructions](docs/INTERACTION_COVERAGE.md) for scope, safety skips, report interpretation and the focused assertions still required for business-critical actions.
 
