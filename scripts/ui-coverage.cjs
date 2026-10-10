@@ -227,7 +227,9 @@ async function collectUiSnapshot(page) {
         name: nameOf(element),
         tag: element.tagName.toLowerCase(),
         role: element.getAttribute('role') || (element.tagName === 'BUTTON' ? 'button' : ''),
-        type: element.getAttribute('type') || '',
+        type: element.tagName === 'BUTTON'
+          ? element.type
+          : element.getAttribute('type') || '',
         disabled: Boolean(element.disabled || element.getAttribute('aria-disabled') === 'true'),
         expanded: element.getAttribute('aria-expanded'),
         hasPopup: element.getAttribute('aria-haspopup'),
@@ -238,8 +240,11 @@ async function collectUiSnapshot(page) {
       }));
 
     const links = Array.from(document.querySelectorAll('a[href]'))
-      .filter(visible)
-      .map((element) => ({
+      .map((element, domIndex) => ({ element, domIndex }))
+      .filter(({ element }) => visible(element))
+      .map(({ element, domIndex }, index) => ({
+        index,
+        domIndex,
         name: nameOf(element),
         href: element.getAttribute('href') || '',
         target: element.getAttribute('target') || '',
@@ -247,10 +252,13 @@ async function collectUiSnapshot(page) {
       }));
 
     const fields = Array.from(
-      document.querySelectorAll('input:not([type="hidden"]), select, textarea, [role="combobox"], [role="checkbox"], [role="switch"]'),
+      document.querySelectorAll('input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]), select, textarea, [role="combobox"], [role="checkbox"], [role="switch"]'),
     )
-      .filter(visible)
-      .map((element) => ({
+      .map((element, domIndex) => ({ element, domIndex }))
+      .filter(({ element }) => visible(element))
+      .map(({ element, domIndex }, index) => ({
+        index,
+        domIndex,
         name: nameOf(element),
         tag: element.tagName.toLowerCase(),
         type: element.getAttribute('type') || '',
@@ -412,6 +420,8 @@ async function auditRoute(browser, testCase, report) {
     status: null,
     counts: { buttons: 0, links: 0, fields: 0, tables: 0, forms: 0, tabs: 0 },
     buttons: [],
+    links: [],
+    fields: [],
     tables: [],
     forms: [],
     issues: [],
@@ -429,6 +439,7 @@ async function auditRoute(browser, testCase, report) {
       const classification = classifyButton(button);
       entry.buttons.push({
         index: button.index,
+        domIndex: button.domIndex,
         name: button.name,
         type: button.type,
         disabled: button.disabled,
@@ -441,6 +452,15 @@ async function auditRoute(browser, testCase, report) {
     });
 
     snapshot.links.forEach((link, index) => {
+      entry.links.push({
+        index: link.index,
+        domIndex: link.domIndex,
+        name: link.name,
+        href: link.href,
+        target: link.target,
+        exercised: false,
+        reason: '',
+      });
       if (!link.name) entry.issues.push('Visible link #' + index + ' has no accessible name');
       if (!link.href) entry.issues.push('Visible link #' + index + ' has no href');
       if (link.target === '_blank' && !/\bnoopener\b/i.test(link.rel)) {
@@ -449,6 +469,16 @@ async function auditRoute(browser, testCase, report) {
     });
 
     snapshot.fields.forEach((field, index) => {
+      entry.fields.push({
+        index: field.index,
+        domIndex: field.domIndex,
+        name: field.name,
+        tag: field.tag,
+        type: field.type,
+        disabled: field.disabled,
+        exercised: false,
+        reason: '',
+      });
       if (!field.name) entry.issues.push('Visible ' + field.tag + ' #' + index + ' has no accessible name');
     });
 
@@ -561,6 +591,172 @@ async function auditRoute(browser, testCase, report) {
       }
     }
 
+    // Audit visible links as well. Internal links are clicked in a local demo
+    // context; external/provider links are checked but not followed.
+    const safeLinkIndexes = snapshot.links
+      .filter((link) => {
+        if (!link.href || link.target === '_blank') return false;
+        if (/^(mailto:|tel:|javascript:|data:)/i.test(link.href)) return false;
+        try {
+          return new URL(link.href, BASE_URL).origin === new URL(BASE_URL).origin;
+        } catch {
+          return false;
+        }
+      })
+      .map((link) => link.index);
+
+    for (const index of safeLinkIndexes) {
+      await visit(page, testCase.route);
+      const link = snapshot.links[index];
+      const liveLinks = page.locator('a[href]');
+      const count = await liveLinks.count();
+      if (link.domIndex >= count) {
+        entry.issues.push('Link DOM index ' + link.domIndex + ' disappeared after route reset');
+        continue;
+      }
+
+      const locator = liveLinks.nth(link.domIndex);
+      if (!(await locator.isVisible())) {
+        entry.issues.push('Internal link "' + link.name + '" is not visible after route reset');
+        continue;
+      }
+
+      const errorsBeforeClick = pageErrors.length;
+      await locator.click({ timeout: 3000 });
+      await page.waitForTimeout(80);
+      entry.links[index].exercised = true;
+      entry.links[index].reason = 'Clicked internal link in local demo context';
+      if (pageErrors.length > errorsBeforeClick) {
+        entry.issues.push(
+          'Clicking internal link "' + link.name + '" raised: ' +
+          pageErrors.slice(errorsBeforeClick).join(' | '),
+        );
+      }
+    }
+
+    // Exercise field-level behavior without submitting forms. A fresh route load
+    // keeps the next field independent. File uploads are deliberately not sent.
+    const fieldSelector =
+      'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]), ' +
+      'select, textarea, [role="combobox"], [role="checkbox"], [role="switch"]';
+
+    for (const field of snapshot.fields) {
+      if (field.disabled) {
+        entry.fields[field.index].reason = 'Disabled field state audited';
+        continue;
+      }
+
+      await visit(page, testCase.route);
+      const liveFields = page.locator(fieldSelector);
+      const count = await liveFields.count();
+      if (field.domIndex >= count) {
+        entry.issues.push('Field DOM index ' + field.domIndex + ' disappeared after route reset');
+        continue;
+      }
+      const locator = liveFields.nth(field.domIndex);
+      if (!(await locator.isVisible())) {
+        entry.issues.push('Field "' + field.name + '" is not visible after route reset');
+        continue;
+      }
+
+      const errorsBeforeField = pageErrors.length;
+      try {
+        const kind = await locator.evaluate((element) => ({
+          tag: element.tagName.toLowerCase(),
+          type: (element.getAttribute('type') || '').toLowerCase(),
+          role: element.getAttribute('role') || '',
+          checked: Boolean(element.checked),
+          disabled: Boolean(element.disabled || element.getAttribute('aria-disabled') === 'true'),
+          value: element.value,
+          options: element.tagName === 'SELECT'
+            ? Array.from(element.options)
+                .filter((option) => !option.disabled)
+                .map((option) => ({ value: option.value, selected: option.selected }))
+            : [],
+        }));
+
+        if (kind.disabled) {
+          entry.fields[field.index].reason = 'Disabled field state audited';
+        } else if (kind.type === 'file') {
+          entry.fields[field.index].reason = 'File chooser accessible name and enabled state checked; no file uploaded';
+        } else if (kind.tag === 'select' || kind.role === 'combobox') {
+          const currentValue = await locator.inputValue();
+          const alternative = kind.options.find((option) => option.value !== currentValue);
+          if (alternative) {
+            await locator.selectOption(alternative.value);
+            const changed = await locator.inputValue();
+            if (changed !== alternative.value) fail('Select did not change value');
+            entry.fields[field.index].exercised = true;
+            entry.fields[field.index].reason = 'Changed to a different enabled option';
+          } else {
+            entry.fields[field.index].reason = 'Only one enabled option; selection state audited';
+          }
+        } else if (kind.type === 'checkbox' || kind.role === 'checkbox' || kind.role === 'switch') {
+          if (kind.checked) await locator.uncheck();
+          else await locator.check();
+          if (await locator.isChecked() === kind.checked) fail('Checkbox/switch state did not change');
+          entry.fields[field.index].exercised = true;
+          entry.fields[field.index].reason = 'Toggled and asserted checked state';
+        } else if (kind.type === 'radio') {
+          const radios = page.locator('input[type="radio"]');
+          const radioCount = await radios.count();
+          let alternativeIndex = -1;
+          for (let radioIndex = 0; radioIndex < radioCount; radioIndex += 1) {
+            const radio = radios.nth(radioIndex);
+            if (!(await radio.isVisible())) continue;
+            if ((await radio.getAttribute('name')) === await locator.getAttribute('name') &&
+                !(await radio.isChecked())) {
+              alternativeIndex = radioIndex;
+              break;
+            }
+          }
+          if (alternativeIndex >= 0) {
+            await radios.nth(alternativeIndex).check();
+            entry.fields[field.index].exercised = true;
+            entry.fields[field.index].reason = 'Selected an alternative option in the radio group';
+          } else {
+            entry.fields[field.index].reason = 'Single-option radio group audited';
+          }
+        } else if (kind.tag === 'input' || kind.tag === 'textarea') {
+          let value = 'QA coverage';
+          if (kind.type === 'email') value = 'qa@example.com';
+          else if (kind.type === 'url') value = 'https://example.com';
+          else if (kind.type === 'number') value = '1';
+          else if (kind.type === 'date') value = '2026-01-15';
+          else if (kind.type === 'tel') value = '1234567890';
+          else if (kind.type === 'password') value = 'QA-Coverage-Password-123!';
+          else if (kind.type === 'search') value = 'QA';
+          else if (kind.type === 'range') {
+            const range = await locator.evaluate((element) => ({
+              min: Number(element.min || 0),
+              max: Number(element.max || 100),
+            }));
+            value = String(Math.min(range.max, range.min + 1));
+          }
+          await locator.fill(value);
+          if (await locator.inputValue() !== value) fail('Field value did not update after fill');
+          entry.fields[field.index].exercised = true;
+          entry.fields[field.index].reason = 'Filled with a type-appropriate non-submitting QA value';
+        } else {
+          await locator.focus();
+          entry.fields[field.index].exercised = true;
+          entry.fields[field.index].reason = 'Focused interactive field';
+        }
+      } catch (error) {
+        entry.issues.push(
+          'Field "' + field.name + '" probe failed: ' +
+          (error && error.message ? error.message : String(error)),
+        );
+      }
+
+      if (pageErrors.length > errorsBeforeField) {
+        entry.issues.push(
+          'Interacting with field "' + field.name + '" raised: ' +
+          pageErrors.slice(errorsBeforeField).join(' | '),
+        );
+      }
+    }
+
     if (pageErrors.length > 0) {
       entry.issues.push('Uncaught page error(s): ' + pageErrors.join(' | '));
     }
@@ -582,6 +778,10 @@ async function auditRoute(browser, testCase, report) {
     report.summary.buttonsNeedingBehaviorAssertion += entry.buttons.filter(
       (button) => button.classification === 'visible-action-contract',
     ).length;
+    report.summary.linksClicked += entry.links.filter((link) => link.exercised).length;
+    report.summary.fieldsExercised += entry.fields.filter((field) => field.exercised).length;
+    report.summary.internalLinksNotClicked += entry.links.filter((link) => !link.exercised).length;
+    report.summary.fieldsNotExercised += entry.fields.filter((field) => !field.exercised).length;
 
     if (entry.issues.length > 0) {
       report.summary.failedRoutes += 1;
@@ -632,7 +832,11 @@ async function main() {
       buttonsRequiringDedicatedWorkflow: 0,
       buttonsNeedingBehaviorAssertion: 0,
       links: 0,
+      linksClicked: 0,
+      internalLinksNotClicked: 0,
       fields: 0,
+      fieldsExercised: 0,
+      fieldsNotExercised: 0,
       tables: 0,
       forms: 0,
       tabs: 0,
