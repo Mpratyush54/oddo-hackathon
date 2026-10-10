@@ -27,5 +27,4 @@ export const personal: NavItem[] = [
   { to: '/app/my-orders', label: 'My orders', icon: 'Package' },
   { to: '/app/my-tasks', label: 'My tasks', icon: 'ListTodo' },
   { to: '/app/expenses', label: 'My expenses', icon: 'Receipt', permission: 'request_expense' },
-  { to: '/app/settings', label: 'Account settings', icon: 'Settings2' },
 ];

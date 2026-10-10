@@ -16,7 +16,6 @@ import { UsersPage } from '../../features/admin/pages/UsersPage';
 import { EmailVerificationNotice } from '../../features/auth/EmailVerificationNotice';
 import { MembersPage } from '../../features/membership/pages/MembersPage';
 import { TasksPage } from '../../features/tasks/pages/TasksPage';
-import { AccountSettings } from '../../features/account/pages/AccountSettings';
 import { EventsPage } from '../../features/events/pages/EventsPage';
 import { CheckoutPage } from '../../features/commerce/pages/CheckoutPage';
 import { CheckInPage } from '../../features/tickets/pages/CheckInPage';
@@ -128,7 +127,7 @@ export default function Workspace() {
         ];
   const myNav =
     role === 'college'
-      ? [{ to: '/app/settings', label: 'Account settings', icon: 'Settings2' }]
+      ? [{ to: '/app/profile', label: 'My profile', icon: 'UserRound' }]
       : personal.filter((n) => !n.permission || can(n.permission));
   const tools =
     role === 'college'
@@ -315,7 +314,7 @@ export default function Workspace() {
           ? [
               { to: '/app/college', label: 'Campus', icon: 'LayoutDashboard' },
               { to: '/app/college-clubs', label: 'Clubs', icon: 'UsersRound' },
-              { to: '/app/settings', label: 'Settings', icon: 'Settings2' },
+              { to: '/app/profile', label: 'You', icon: 'UserRound' },
             ]
           : [
               { to: '/app', label: 'Home', icon: 'LayoutDashboard' },
@@ -475,7 +474,6 @@ export default function Workspace() {
                           ['BadgeCheck', 'Membership card', '/app/my-card'],
                           ['Ticket', 'Tickets & orders', '/app/my-tickets'],
                         ]),
-                    ['Settings2', 'Account settings', '/app/settings'],
                   ].map(([icon, label, to]) => (
                     <Link key={to} to={to}>
                       <Icon name={icon} size={17} />
@@ -655,7 +653,7 @@ export default function Workspace() {
               }
             />
             <Route path="calendar" element={<CampusCalendar />} />
-            <Route path="settings" element={<AccountSettings />} />
+            <Route path="settings" element={<Navigate to="/app/profile?settings=1" replace />} />
             <Route
               path="check-in"
               element={

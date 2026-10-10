@@ -2,11 +2,17 @@ import { parseRequest } from '../../shared/request-validation.js';
 import {
   orderRequestSchema,
   inventoryRequestSchema,
+  updateOrderSchema,
   awardPointsSchema,
   savePromoSchema,
 } from './commerce.schemas.js';
 import { HttpError, recordId } from '../../shared/records.js';
-import { adjustInventory, awardPoints, placeOrder } from './commerce.domain.js';
+import {
+  adjustInventory,
+  awardPoints,
+  placeOrder,
+  updateOrderStatus,
+} from './commerce.domain.js';
 import { staff, requireRole } from '../../shared/authorization.js';
 import { ownMember } from '../../shared/validation.js';
 import { ClubActionService } from '../clubs/club-action.service.js';
@@ -26,7 +32,7 @@ export class CommerceService extends ClubActionService {
     });
     result.patch.orders = result.patch.orders.map((o) =>
       result.orders.some((x) => x.id === o.id)
-        ? { ...o, userId: this.user.id, simulated: true }
+        ? { ...o, userId: this.user.id, simulated: true, status: o.status || 'Placed' }
         : o,
     );
     result.patch.members = result.patch.members.map((m) =>
@@ -36,6 +42,18 @@ export class CommerceService extends ClubActionService {
     );
     this.data = { ...this.data, ...result.patch };
 
+    return result;
+  }
+
+  updateOrder(input) {
+    input = parseRequest(updateOrderSchema, input);
+    requireRole(this.role, ['admin', 'treasurer', 'organizer']);
+    const result = updateOrderStatus(this.data, {
+      orderId: input.orderId,
+      status: input.status,
+      actor: this.actor,
+    });
+    this.data = { ...this.data, ...result.patch };
     return result;
   }
 

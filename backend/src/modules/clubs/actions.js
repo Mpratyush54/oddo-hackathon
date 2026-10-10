@@ -20,6 +20,7 @@ const handlers = new Map([
   ['check-in', { Service: TicketService, method: 'checkIn' }],
   ['waitlist.join', { Service: TicketService, method: 'joinWaitlist' }],
   ['orders', { Service: CommerceService, method: 'placeOrder' }],
+  ['orders.update', { Service: CommerceService, method: 'updateOrder' }],
   ['inventory', { Service: CommerceService, method: 'adjustInventory' }],
   ['points.award', { Service: CommerceService, method: 'awardPoints' }],
   ['promos.save', { Service: CommerceService, method: 'savePromo' }],

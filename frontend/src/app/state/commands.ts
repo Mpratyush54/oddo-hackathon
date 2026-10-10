@@ -80,6 +80,12 @@ export function actionFromChange(
     added(before.promos || [], after.promos || []) ||
     changed(before.promos || [], after.promos || []);
   if (promo) return { type: 'promos.save', args: { promo } };
+  const orderStatus = changed(before.orders || [], after.orders || []);
+  if (orderStatus)
+    return {
+      type: 'orders.update',
+      args: { orderId: orderStatus.id, status: orderStatus.status },
+    };
   const reminder = added(before.deliveries, after.deliveries);
   if (reminder?.announcementId.startsWith('REM-'))
     return { type: 'reminders.prepare', args: { status: reminder.announcementId.split('-')[1] } };

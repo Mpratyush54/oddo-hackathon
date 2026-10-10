@@ -32,6 +32,10 @@ export const inventoryRequestSchema = z.object({
     .refine((value) => value !== 0, 'Enter a stock adjustment.'),
   reason: requiredText(200).min(4),
 });
+export const updateOrderSchema = z.object({
+  orderId: entityId,
+  status: z.enum(['Placed', 'Ready for pickup', 'Picked up', 'Cancelled']),
+});
 export const awardPointsSchema = z.object({
   memberId: entityId,
   kind: z.enum(['participation', 'volunteer', 'contribution']),

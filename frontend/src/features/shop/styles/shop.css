@@ -163,6 +163,13 @@
 .shop-staff-toggle .button {
   font-size: 14px;
 }
+.shop-ops-heading h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  letter-spacing: -1px;
+}
+.shop-ops-card {
+  margin-bottom: 18px;
+}
 .sky-shop-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1060,12 +1067,46 @@
 .shop-promo-input {
   display: flex;
   gap: 8px;
+  align-items: stretch;
   margin: 12px 0 8px;
 }
 .shop-promo-input input {
   flex: 1;
+  min-height: 43px;
+  border: 1px solid #dbe5d5;
+  border-radius: 10px;
+  background: #fcfdfb;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-strong, #1a3832);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  box-sizing: border-box;
+}
+.shop-promo-input input:focus {
+  border-color: var(--primary, #0f6b66);
+  outline: none;
+  background: #fff;
+}
+.shop-promo-input input::placeholder {
+  color: #a0ab98;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.shop-order-status-cell {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+}
+.shop-order-status-select {
+  min-height: 34px;
+  border: 1px solid #d5e2d8;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 13px;
 }
 .shop-promo-message {
   margin: 0 0 10px;

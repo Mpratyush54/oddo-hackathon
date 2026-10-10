@@ -13,7 +13,7 @@ type Health = {
   ai: { configured: boolean; provider: string };
   whatsapp: { configured: boolean; template: string };
 };
-export function AccountSettings() {
+export function AccountSettings({ embedded = false }: { embedded?: boolean } = {}) {
   const { data, update, toast } = useStore();
   const { user, role, can, clubId } = useSession();
   const [tab, setTab] = useState('Preferences'),
@@ -60,12 +60,14 @@ export function AccountSettings() {
   };
   return (
     <>
-      <PageHeader
-        eyebrow="YOUR ACCOUNT"
-        title="Settings"
-        description="Preferences for this club, sign-in details, and workspace export."
-      />
-      <div className="settings-layout">
+      {!embedded && (
+        <PageHeader
+          eyebrow="YOUR ACCOUNT"
+          title="Settings"
+          description="Preferences for this club, sign-in details, and workspace export."
+        />
+      )}
+      <div className={`settings-layout${embedded ? ' settings-layout-embedded' : ''}`}>
         <nav className="settings-nav" aria-label="Settings sections">
           {[
             ['Bell', 'Preferences'],
@@ -216,10 +218,12 @@ export function AccountSettings() {
                 </form>
               )}
               <div className="form-footer">
-                <Link to="/app/profile" className="button secondary">
-                  <Icon name="UserRound" size={17} />
-                  Open my profile
-                </Link>
+                {!embedded && (
+                  <Link to="/app/profile" className="button secondary">
+                    <Icon name="UserRound" size={17} />
+                    Open my profile
+                  </Link>
+                )}
                 <Button icon="Download" variant="secondary" onClick={backup}>
                   Export my records
                 </Button>

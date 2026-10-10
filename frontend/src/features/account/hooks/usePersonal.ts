@@ -14,7 +14,11 @@ export function usePersonal() {
     tickets: data.tickets.filter(
       (t) => t.email.toLowerCase() === user.email.toLowerCase() && t.status !== 'Cancelled',
     ),
-    orders: data.orders.filter((o) => o.name === user.name),
+    orders: data.orders.filter(
+      (o) =>
+        o.name === user.name ||
+        (!!o.email && o.email.toLowerCase() === user.email.toLowerCase()),
+    ),
     tasks: data.tasks.filter((t) => t.assignee === user.name),
   };
 }

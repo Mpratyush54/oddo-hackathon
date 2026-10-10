@@ -86,7 +86,10 @@ export function ensureCommerceFields(store) {
     promos: Array.isArray(store.promos) ? store.promos : structuredClone(DEFAULT_PROMOS),
     pointLedger: Array.isArray(store.pointLedger) ? store.pointLedger : [],
     waitlist: Array.isArray(store.waitlist) ? store.waitlist : [],
-    orders: Array.isArray(store.orders) ? store.orders : [],
+    orders: (Array.isArray(store.orders) ? store.orders : []).map((o) => ({
+      ...o,
+      status: o.status || 'Placed',
+    })),
     products: (store.products || []).map((p) => ({
       ...p,
       image: p.image || PRODUCT_IMAGES[p.type] || PRODUCT_IMAGES.Hoodie,
@@ -207,10 +210,13 @@ export function placeOrder(
     id,
     productId,
     name: actor.name,
+    email: actor.email,
     size: sizeKey,
     amount: Math.round((Math.max(0, subtotal - promoDiscount) / qty) * 100) / 100 || 0,
     date: today,
     promoCode: promo?.code,
+    status: 'Placed',
+    quantity: 1,
   }));
 
   let members = club.members;
@@ -340,6 +346,29 @@ export function placeOrder(
     promoDiscount,
     membershipFee,
     memberPriceApplied: treatedAsMember,
+  };
+}
+
+export function updateOrderStatus(store, { orderId, status, actor }) {
+  const club = ensureCommerceFields(store);
+  const order = club.orders.find((o) => o.id === orderId);
+  if (!order) throw new CommerceError(404, 'Order not found.');
+  if (order.status === status) return { patch: {} };
+  const orders = club.orders.map((o) => (o.id === orderId ? { ...o, status } : o));
+  const auditEntry = {
+    id: uid('AUD'),
+    actor: actor?.name || 'Staff',
+    action: 'Updated',
+    entity: 'orders',
+    entityId: orderId,
+    date: new Date().toISOString(),
+    detail: `Order status ${order.status || 'Placed'} → ${status}`,
+  };
+  return {
+    patch: {
+      orders,
+      audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
+    },
   };
 }
 

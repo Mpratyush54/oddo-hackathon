@@ -10,13 +10,21 @@ import { Logo } from '../../../shared/ui/Logo';
 import { Modal } from '../../../shared/ui/Modal';
 import { ProductArt } from '../../../shared/ui/ProductArt';
 import { SearchField } from '../../../shared/ui/SearchField';
-import { exportInvoicePdf, money, today } from '../../../shared/utils/format';
+import { date, exportCSV, exportInvoicePdf, money, today } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
-import type { Product, Store } from '../../../shared/types/domain';
+import type { OrderStatus, Product, Store } from '../../../shared/types/domain';
+const orderStatuses: OrderStatus[] = ['Placed', 'Ready for pickup', 'Picked up', 'Cancelled'];
+const orderStatusTone = (status?: string) =>
+  status === 'Picked up'
+    ? 'green'
+    : status === 'Cancelled'
+      ? 'neutral'
+      : status === 'Ready for pickup'
+        ? 'teal'
+        : 'gold';
 import { clubRequest } from '../../commerce/api/commerce.api';
 import { useSession } from '../../auth/session';
 import GarmentPreview from '../components/GarmentPreview';
-import { ShopPage as InventoryShop } from '../../commerce/pages/LegacyShop';
 import { Revealed } from '../../../shared/components/PageMotion';
 import '../styles/shop.css';
 
@@ -58,7 +66,8 @@ const productNotes: Record<string, string> = {
   'Tote bag': 'Books, groceries, a brilliant idea. Make room for whatever your day brings.',
 };
 export function ShopPage({ publicView = false }: { publicView?: boolean }) {
-  const { data, applyServerPatch, toast, organizations, selectedClub, selectClub } = useStore();
+  const { data, applyServerPatch, update, toast, organizations, selectedClub, selectClub } =
+    useStore();
   const { user, signedIn, can } = useSession();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -73,8 +82,11 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [height, setHeight] = useState(''),
     [chest, setChest] = useState(''),
     [fitResult, setFitResult] = useState(''),
-    [agree, setAgree] = useState(false),
-    [staff, setStaff] = useState(false);
+    [agree, setAgree] = useState(false);
+  const canManageOrders = can('manage_orders');
+  const canManageInventory = can('manage_inventory');
+  const isOpsRole = !publicView && (canManageOrders || canManageInventory);
+  const [staff, setStaff] = useState(isOpsRole);
   const [receipt, setReceipt] = useState<{
     refs: string[];
     name: string;
@@ -94,7 +106,11 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [inventorySize, setInventorySize] = useState(''),
     [delta, setDelta] = useState('1'),
     [inventoryReason, setInventoryReason] = useState('');
+  useEffect(() => {
+    if (isOpsRole) setStaff(true);
+  }, [isOpsRole, selectedClub]);
   const organization = organizations.find((c) => c.id === selectedClub);
+  const clubOrders = data.orders;
   const product = data.products.find((p) => p.id === productId);
   const member =
     signedIn &&
@@ -273,99 +289,122 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       setPending(false);
     }
   };
+  const showOps = staff && isOpsRole;
   const content = (
-    <div className="sky-shop">
+    <div className={`sky-shop ${showOps ? 'sky-shop-ops' : ''}`}>
       <div className="shop-breadcrumb">
         <Link to={publicView ? '/' : '/app'}>Skyline</Link>
         <Icon name="ChevronRight" size={13} />
-        <span>The campus collection</span>
+        <span>{showOps ? 'Merchandise desk' : 'The campus collection'}</span>
       </div>
-      <header className="sky-shop-heading">
-        <div>
-          <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
-          <h1>
-            A little more
-            <br />
-            <em>you. A little more us.</em>
-          </h1>
-        </div>
-        <p>
-          Thoughtful pieces for everyday campus life.
-          <br />
-          Wear your community. Support what comes next.
-        </p>
-      </header>
-      <section className="sky-shop-hero">
-        <div className="sky-shop-hero-copy">
-          <Badge tone="gold">THE EVERYDAY EDIT</Badge>
-          <h2>
-            Belonging
-            <br />
-            looks good on you.
-          </h2>
-          <p>From the first coffee to the last study session. Meet your next campus staple.</p>
-          <Button
-            icon="ArrowUpRight"
-            onClick={() => {
-              const p = data.products.find((p) => p.type === 'Hoodie') || data.products[0];
-              if (p) openProduct(p.id);
-            }}
-          >
-            Explore the collection
-          </Button>
-          <span>{organization?.name} · Student-led, community-first</span>
-        </div>
-        <div className="sky-shop-hero-art">
-          <ProductPhoto
-            product={
-              data.products.find((p) => p.type === 'Hoodie') ||
-              data.products[0] || {
-                id: 'hero',
-                name: 'Hoodie',
-                type: 'Hoodie',
-                color: 'teal',
-                price: 0,
-                memberPrice: 0,
-                stock: {},
-              }
-            }
-          />
-          <span className="shop-hero-stamp">
-            MADE TO
-            <br />
-            <strong>BELONG.</strong>
-          </span>
-        </div>
-      </section>
-      <div className="shop-value-strip">
-        <span>
-          <Icon name="MapPin" size={17} />
-          Easy campus pickup
-        </span>
-        <span>
-          <Icon name="BadgeCheck" size={17} />
-          Member prices, verified
-        </span>
-        <span>
-          <Icon name="Heart" size={17} />
-          Every order supports your club
-        </span>
-      </div>
-      {!publicView && can('manage_orders') && (
+      {showOps ? (
+        <header className="sky-shop-heading shop-ops-heading">
+          <div>
+            <span className="shop-overline">
+              {canManageInventory ? 'INVENTORY & ORDERS' : 'CLUB ORDERS'}
+            </span>
+            <h1>{canManageInventory ? 'Merchandise desk' : 'Order desk'}</h1>
+          </div>
+          <p>
+            {canManageInventory
+              ? 'Adjust stock, track pickups, and keep the collection moving.'
+              : 'Track merchandise orders and campus pickups. Inventory stays with the club admin.'}
+          </p>
+        </header>
+      ) : (
+        <>
+          <header className="sky-shop-heading">
+            <div>
+              <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
+              <h1>
+                A little more
+                <br />
+                <em>you. A little more us.</em>
+              </h1>
+            </div>
+            <p>
+              Thoughtful pieces for everyday campus life.
+              <br />
+              Wear your community. Support what comes next.
+            </p>
+          </header>
+          <section className="sky-shop-hero">
+            <div className="sky-shop-hero-copy">
+              <Badge tone="gold">THE EVERYDAY EDIT</Badge>
+              <h2>
+                Belonging
+                <br />
+                looks good on you.
+              </h2>
+              <p>From the first coffee to the last study session. Meet your next campus staple.</p>
+              <Button
+                icon="ArrowUpRight"
+                onClick={() => {
+                  const p = data.products.find((p) => p.type === 'Hoodie') || data.products[0];
+                  if (p) openProduct(p.id);
+                }}
+              >
+                Explore the collection
+              </Button>
+              <span>{organization?.name} · Student-led, community-first</span>
+            </div>
+            <div className="sky-shop-hero-art">
+              <ProductPhoto
+                product={
+                  data.products.find((p) => p.type === 'Hoodie') ||
+                  data.products[0] || {
+                    id: 'hero',
+                    name: 'Hoodie',
+                    type: 'Hoodie',
+                    color: 'teal',
+                    price: 0,
+                    memberPrice: 0,
+                    stock: {},
+                  }
+                }
+              />
+              <span className="shop-hero-stamp">
+                MADE TO
+                <br />
+                <strong>BELONG.</strong>
+              </span>
+            </div>
+          </section>
+          <div className="shop-value-strip">
+            <span>
+              <Icon name="MapPin" size={17} />
+              Easy campus pickup
+            </span>
+            <span>
+              <Icon name="BadgeCheck" size={17} />
+              Member prices, verified
+            </span>
+            <span>
+              <Icon name="Heart" size={17} />
+              Every order supports your club
+            </span>
+          </div>
+        </>
+      )}
+      {isOpsRole && (
         <div className="shop-staff-toggle">
           <Button
             variant="secondary"
-            icon={staff ? 'ShoppingBag' : 'Package'}
+            icon={staff ? 'ShoppingBag' : canManageInventory ? 'Package' : 'Package'}
             onClick={() => setStaff(!staff)}
           >
-            {staff ? 'Back to the collection' : 'Inventory & order management'}
+            {staff
+              ? 'Browse catalog'
+              : canManageInventory
+                ? 'Inventory & orders'
+                : 'View club orders'}
           </Button>
         </div>
       )}
-      {staff && !publicView && can('manage_orders') ? (
+      {showOps ? (
         <>
           <div className="shop-management-actions">
-            {can('manage_inventory') && (
+            {canManageInventory && (
               <Button
                 icon="Package"
                 onClick={() => {
@@ -378,11 +417,172 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 Adjust stock
               </Button>
             )}
-            <LinkButton to="/app/contributions" variant="secondary" icon="HeartHandshake">
-              Contribution points & promos
-            </LinkButton>
+            {canManageInventory && (
+              <LinkButton to="/app/contributions" variant="secondary" icon="HeartHandshake">
+                Promos & points
+              </LinkButton>
+            )}
+            <Button
+              variant="secondary"
+              icon="Download"
+              onClick={() =>
+                exportCSV('skyline-orders.csv', [
+                  ['Order', 'Name', 'Product', 'Size', 'Amount', 'Date'],
+                  ...clubOrders.map((o) => [
+                    o.id,
+                    o.name,
+                    data.products.find((p) => p.id === o.productId)?.name || '',
+                    o.size,
+                    o.amount,
+                    o.date,
+                  ]),
+                ])
+              }
+            >
+              Export orders
+            </Button>
           </div>
-          <InventoryShop />
+
+          {canManageInventory && (
+            <section className="card table-card shop-ops-card">
+              <div className="table-toolbar">
+                <h2>Stock levels</h2>
+              </div>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Type</th>
+                      <th>Sizes in stock</th>
+                      <th className="numeric">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.products.map((p) => {
+                      const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
+                      return (
+                        <tr key={p.id}>
+                          <td>
+                            <strong>{p.name}</strong>
+                          </td>
+                          <td>{p.type}</td>
+                          <td>
+                            {Object.entries(p.stock)
+                              .map(([s, n]) => `${s}: ${n}`)
+                              .join(' · ') || '—'}
+                          </td>
+                          <td className="numeric">
+                            <Badge tone={total < 10 ? 'gold' : 'green'}>{total}</Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          <section className="card table-card shop-ops-card">
+            <div className="table-toolbar">
+              <h2>Orders ({clubOrders.length})</h2>
+            </div>
+            {clubOrders.length ? (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Order</th>
+                      <th>Customer</th>
+                      <th>Product</th>
+                      <th>Size</th>
+                      <th className="numeric">Total</th>
+                      <th>Date</th>
+                      <th>Delivery status</th>
+                      <th>Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...clubOrders]
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .map((o) => {
+                        const productName =
+                          data.products.find((p) => p.id === o.productId)?.name || 'Merchandise';
+                        const status = (o.status || 'Placed') as OrderStatus;
+                        return (
+                          <tr key={o.id}>
+                            <td>{o.id}</td>
+                            <td>{o.name}</td>
+                            <td>{productName}</td>
+                            <td>{o.size}</td>
+                            <td className="numeric">{money(o.amount)}</td>
+                            <td>{date(o.date, { day: 'numeric', month: 'short' })}</td>
+                            <td>
+                              <div className="shop-order-status-cell">
+                                <Badge tone={orderStatusTone(status)}>{status}</Badge>
+                                <select
+                                  aria-label={`Update status for ${o.id}`}
+                                  className="shop-order-status-select"
+                                  value={status}
+                                  onChange={(e) => {
+                                    const next = e.target.value as OrderStatus;
+                                    update((d) => ({
+                                      ...d,
+                                      orders: d.orders.map((row) =>
+                                        row.id === o.id ? { ...row, status: next } : row,
+                                      ),
+                                    }));
+                                    toast(`Order ${o.id} → ${next}`);
+                                  }}
+                                >
+                                  {orderStatuses.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td>
+                              <Button
+                                variant="secondary"
+                                icon="Download"
+                                onClick={() =>
+                                  exportInvoicePdf(`${o.id}-invoice.pdf`, {
+                                    title: 'Skyline merchandise invoice',
+                                    reference: o.id,
+                                    customer: o.name,
+                                    email: o.email,
+                                    lines: [
+                                      { label: 'Item', value: productName },
+                                      { label: 'Size', value: o.size },
+                                      { label: 'Status', value: status },
+                                      ...(o.promoCode
+                                        ? [{ label: 'Promo', value: o.promoCode }]
+                                        : []),
+                                      { label: 'Payment', value: 'Demo payment — no money charged' },
+                                    ],
+                                    total: money(o.amount),
+                                  })
+                                }
+                              >
+                                Invoice
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Empty
+                title="No orders yet"
+                description="Club merchandise orders will show up here after checkout."
+              />
+            )}
+          </section>
         </>
       ) : (
         <>

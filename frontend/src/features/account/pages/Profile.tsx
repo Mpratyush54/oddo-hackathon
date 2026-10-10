@@ -1,9 +1,12 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Badge } from '../../../shared/ui/Badge';
+import { Button } from '../../../shared/ui/Button';
 import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
+import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { date } from '../../../shared/utils/format';
 import { useSession } from '../../auth/session';
@@ -12,10 +15,23 @@ import '../../landing/styles/landing.css';
 import { roles } from '../../auth/config/roles';
 import { usePersonal } from '../hooks/usePersonal';
 import { NotificationPreferences } from '../components/NotificationPreferences';
+import { AccountSettings } from './AccountSettings';
 
 export function PersonalProfile() {
   const { user, member, tasks, tickets, orders } = usePersonal();
   const { role, clubs, clubId } = useSession();
+  const [params, setParams] = useSearchParams();
+  const [settingsOpen, setSettingsOpen] = useState(params.get('settings') === '1');
+  useEffect(() => {
+    setSettingsOpen(params.get('settings') === '1');
+  }, [params]);
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    if (params.get('settings')) {
+      params.delete('settings');
+      setParams(params, { replace: true });
+    }
+  };
   return (
     <>
       <PageHeader
@@ -30,9 +46,16 @@ export function PersonalProfile() {
           <p>{user.email}</p>
           <Badge>{roles.find((r) => r.role === role)?.title}</Badge>
         </div>
-        <LinkButton to="/app/settings" variant="secondary" icon="Settings2">
+        <Button
+          variant="secondary"
+          icon="Settings2"
+          onClick={() => {
+            setSettingsOpen(true);
+            setParams({ settings: '1' }, { replace: true });
+          }}
+        >
           Account settings
-        </LinkButton>
+        </Button>
       </section>
       <div className="portal-columns">
         <section className="portal-panel">
@@ -92,6 +115,16 @@ export function PersonalProfile() {
         </section>
       </div>
       <NotificationPreferences />
+      {settingsOpen && (
+        <Modal
+          title="Account settings"
+          description="Preferences, sign-in, and workspace export."
+          onClose={closeSettings}
+          wide
+        >
+          <AccountSettings embedded />
+        </Modal>
+      )}
     </>
   );
 }

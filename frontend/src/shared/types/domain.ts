@@ -122,14 +122,19 @@ export type Ticket = {
   status?: 'Confirmed' | 'Cancelled';
 };
 
+export type OrderStatus = 'Placed' | 'Ready for pickup' | 'Picked up' | 'Cancelled';
+
 export type Order = {
   id: string;
   productId: string;
   name: string;
+  email?: string;
   size: string;
   amount: number;
   date: string;
   promoCode?: string;
+  status?: OrderStatus;
+  quantity?: number;
 };
 
 export type Organization = {

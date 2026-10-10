@@ -852,6 +852,9 @@
         },
         "discount": {
           "$ref": "#/$defs/__schema10"
+        },
+        "status": {
+          "$ref": "#/$defs/orderStatus"
         }
       },
       "required": [
@@ -863,6 +866,15 @@
         "date"
       ],
       "additionalProperties": false
+    },
+    "orderStatus": {
+      "type": "string",
+      "enum": [
+        "Placed",
+        "Ready for pickup",
+        "Picked up",
+        "Cancelled"
+      ]
     },
     "transaction": {
       "type": "object",

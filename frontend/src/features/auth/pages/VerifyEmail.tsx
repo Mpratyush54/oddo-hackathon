@@ -43,7 +43,7 @@ export function VerifyEmail() {
         </p>
       )}
       <p>
-        <Link to={signedIn ? '/app/settings' : '/login'}>
+        <Link to={signedIn ? '/app/profile?settings=1' : '/login'}>
           {signedIn ? 'Account settings' : 'Sign in'}
         </Link>
       </p>

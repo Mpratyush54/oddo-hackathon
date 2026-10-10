@@ -2984,6 +2984,16 @@ tbody tr:hover {
   grid-template-columns: 200px minmax(0, 650px);
   gap: 25px;
 }
+.settings-layout-embedded {
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 18px;
+}
+.settings-layout-embedded .settings-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .settings-nav {
   display: flex;
   flex-direction: column;

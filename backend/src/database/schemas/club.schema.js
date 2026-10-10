@@ -79,6 +79,12 @@ export const ticketSchema = z.strictObject({
   cancelledAt: text.optional(),
   checkedInAt: text.optional(),
 });
+export const orderStatusSchema = z.enum([
+  'Placed',
+  'Ready for pickup',
+  'Picked up',
+  'Cancelled',
+]);
 export const orderSchema = z.strictObject({
   id,
   productId: id,
@@ -93,6 +99,7 @@ export const orderSchema = z.strictObject({
   quantity: count.min(1).optional(),
   subtotal: nonnegative.optional(),
   discount: nonnegative.optional(),
+  status: orderStatusSchema.optional(),
 });
 export const transactionSchema = z.strictObject({
   id,
