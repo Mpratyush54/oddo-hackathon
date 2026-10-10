@@ -82,6 +82,22 @@ WhatsApp is sent only by the explicit test button, after server-side consent and
 
 Email is prepared only; no email provider or automated delivery schedule is configured.
 
+## UI interaction coverage
+
+A separate Playwright audit inventories and exercises visible controls across public routes and the demo role matrix, checks internal links, form fields, tables and row actions, and produces a JSON report with failure details.
+
+Run only against the local demo app; this exploratory audit clicks UI controls and must not be aimed at production:
+
+    npm install -D playwright
+    npx playwright install chromium
+    npm run dev:demo
+
+In a second terminal:
+
+    npm run test:interaction
+
+The JSON report is written to `.artifacts/interaction-coverage.json`. See [component and interaction coverage instructions](docs/INTERACTION_COVERAGE.md) for scope, safety skips, report interpretation and the focused assertions still required for business-critical actions.
+
 ## Validation
 
 API tests cover JWT/CSRF/session rotation and revocation, role isolation, concurrency, authoritative pricing, waitlist offers, private data filtering, expense review, and persistent WhatsApp timeout deduplication/signatures.
