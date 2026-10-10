@@ -8,6 +8,7 @@ import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Empty } from '../../../shared/ui/Empty';
 import { Field } from '../../../shared/ui/Field';
 import { Icon } from '../../../shared/ui/Icon';
+import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { StatCard } from '../../../shared/ui/StatCard';
 import { Revealed } from '../../../shared/components/PageMotion';
@@ -64,23 +65,36 @@ export function CommunicationsPage() {
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({
     'ANN-1': { '👏': 14, '❤️': 8, '🎉': 12, '💡': 5 },
   });
+  // Emojis the current user has reacted with, keyed by `${userKey}::${announcementId}`.
+  // One entry per (user, announcement, emoji): reacting again removes the reaction.
+  const [myReactions, setMyReactions] = useState<Record<string, string[]>>({});
   const [query, setQuery] = useState('');
+  const [compose, setCompose] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [health, setHealth] = useState<ProviderHealth | null>(null);
 
-  const toggleReaction = (annId: string, emoji: string) => {
+  const toggleReaction = (annId: string, emoji: string, base: Record<string, number>) => {
+    const key = `${user.email || user.id}::${annId}`;
+    const alreadyReacted = (myReactions[key] || []).includes(emoji);
+    setMyReactions((prev) => {
+      const current = prev[key] || [];
+      return {
+        ...prev,
+        [key]: alreadyReacted ? current.filter((e) => e !== emoji) : [...current, emoji],
+      };
+    });
     setReactions((prev) => {
-      const current = prev[annId] || {};
+      const current = prev[annId] || base;
       const count = current[emoji] || 0;
       return {
         ...prev,
         [annId]: {
           ...current,
-          [emoji]: count + 1,
+          [emoji]: alreadyReacted ? Math.max(0, count - 1) : count + 1,
         },
       };
     });
-    toast(`Reacted with ${emoji}`);
+    toast(alreadyReacted ? `Removed your ${emoji} reaction` : `Reacted with ${emoji}`);
   };
 
   const formatWhatsAppBroadcast = (annTitle: string, annBody: string) => {
@@ -184,7 +198,7 @@ export function CommunicationsPage() {
     setTitle('');
     setBody('');
     setDraft(null);
-    setTab('Feed');
+    setCompose(false);
   };
   const generateDraft = async () => {
     if (!notes.trim() || !allowed) return;
@@ -399,7 +413,7 @@ export function CommunicationsPage() {
         }
         action={
           allowed ? (
-            <Button icon="PenLine" onClick={() => setTab('Compose')}>
+            <Button icon="PenLine" onClick={() => setCompose(true)}>
               Write announcement
             </Button>
           ) : undefined
@@ -424,7 +438,7 @@ export function CommunicationsPage() {
           </div>
 
           <div className="segmented comms-tabs" aria-label="Communication views">
-            {['Feed', 'Compose', 'Delivery log'].map((t) => (
+            {['Feed', 'Delivery log'].map((t) => (
               <button key={t} className={tab === t ? 'selected' : ''} onClick={() => setTab(t)}>
                 {t}
               </button>
@@ -443,7 +457,7 @@ export function CommunicationsPage() {
                   <h2>Campus Bulletin</h2>
                 </div>
                 {allowed && (
-                  <Button icon="PenLine" onClick={() => setTab('Compose')}>
+                  <Button icon="PenLine" onClick={() => setCompose(true)}>
                     Post update
                   </Button>
                 )}
@@ -485,18 +499,28 @@ export function CommunicationsPage() {
 
                     <div className="bulletin-interactions">
                       <div className="bulletin-reactions-bar">
-                        {(['👏', '❤️', '🎉', '💡'] as const).map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            className="bulletin-reaction-pill"
-                            onClick={() => toggleReaction(a.id, emoji)}
-                            title={`React with ${emoji}`}
-                          >
-                            <span>{emoji}</span>
-                            <span className="reaction-count">{postReactions[emoji] || 0}</span>
-                          </button>
-                        ))}
+                        {(['👏', '❤️', '🎉', '💡'] as const).map((emoji) => {
+                          const hasReacted = (
+                            myReactions[`${user.email || user.id}::${a.id}`] || []
+                          ).includes(emoji);
+                          return (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className={`bulletin-reaction-pill${hasReacted ? ' active' : ''}`}
+                              aria-pressed={hasReacted}
+                              onClick={() => toggleReaction(a.id, emoji, postReactions)}
+                              title={
+                                hasReacted
+                                  ? `Remove your ${emoji} reaction`
+                                  : `React with ${emoji}`
+                              }
+                            >
+                              <span>{emoji}</span>
+                              <span className="reaction-count">{postReactions[emoji] || 0}</span>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <div className="bulletin-share-actions">
@@ -560,7 +584,7 @@ export function CommunicationsPage() {
                     <Button
                       icon="Sparkles"
                       className="full-width"
-                      onClick={() => setTab('Compose')}
+                      onClick={() => setCompose(true)}
                     >
                       AI Announcement Studio
                     </Button>
@@ -618,14 +642,15 @@ export function CommunicationsPage() {
         </Revealed>
       )}
 
-      {allowed && tab === 'Compose' && (
-        <Revealed delay={40}>
+      {compose && (
+        <Modal
+          title="A new community update"
+          description="Clear, useful, and ready for your members."
+          onClose={() => setCompose(false)}
+          wide
+        >
           <div className="comms-layout">
             <form className="card comms-composer" onSubmit={publish}>
-              <CardHeader
-                title="A new community update"
-                subtitle="Clear, useful, and ready for your members."
-              />
               <Field label="Headline">
                 <input
                   value={title}
@@ -786,7 +811,7 @@ export function CommunicationsPage() {
               )}
             </aside>
           </div>
-        </Revealed>
+        </Modal>
       )}
       {allowed && tab === 'Delivery log' && (
         <section className="card comms-deliveries">

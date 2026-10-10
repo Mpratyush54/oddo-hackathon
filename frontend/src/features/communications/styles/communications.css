@@ -36,6 +36,9 @@
   gap: 24px;
   align-items: start;
 }
+.modal .comms-layout {
+  grid-template-columns: 1fr;
+}
 .comms-search {
   display: flex;
   gap: 10px;
@@ -448,6 +451,12 @@
   background: #e5f0df;
   border-color: #0f6b66;
   transform: translateY(-1px);
+}
+.bulletin-reaction-pill.active {
+  background: #e0f0e9;
+  border-color: #0f6b66;
+  color: #0b5753;
+  font-weight: 700;
 }
 .reaction-count {
   font-size: 11px;
