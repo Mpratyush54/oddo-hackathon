@@ -68,33 +68,45 @@ export function CommunicationsPage() {
   // Emojis the current user has reacted with, keyed by `${userKey}::${announcementId}`.
   // One entry per (user, announcement, emoji): reacting again removes the reaction.
   const [myReactions, setMyReactions] = useState<Record<string, string[]>>({});
+  const reactionTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  useEffect(
+    () => () => {
+      Object.values(reactionTimers.current).forEach(clearTimeout);
+    },
+    [],
+  );
   const [query, setQuery] = useState('');
   const [compose, setCompose] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [health, setHealth] = useState<ProviderHealth | null>(null);
 
   const toggleReaction = (annId: string, emoji: string, base: Record<string, number>) => {
-    const key = `${user.email || user.id}::${annId}`;
-    const alreadyReacted = (myReactions[key] || []).includes(emoji);
-    setMyReactions((prev) => {
-      const current = prev[key] || [];
-      return {
-        ...prev,
-        [key]: alreadyReacted ? current.filter((e) => e !== emoji) : [...current, emoji],
-      };
-    });
-    setReactions((prev) => {
-      const current = prev[annId] || base;
-      const count = current[emoji] || 0;
-      return {
-        ...prev,
-        [annId]: {
-          ...current,
-          [emoji]: alreadyReacted ? Math.max(0, count - 1) : count + 1,
-        },
-      };
-    });
-    toast(alreadyReacted ? `Removed your ${emoji} reaction` : `Reacted with ${emoji}`);
+    const timerKey = `${annId}::${emoji}`;
+    if (reactionTimers.current[timerKey]) clearTimeout(reactionTimers.current[timerKey]);
+    reactionTimers.current[timerKey] = setTimeout(() => {
+      const key = `${user.email || user.id}::${annId}`;
+      const alreadyReacted = (myReactions[key] || []).includes(emoji);
+      setMyReactions((prev) => {
+        const current = prev[key] || [];
+        return {
+          ...prev,
+          [key]: alreadyReacted ? current.filter((e) => e !== emoji) : [...current, emoji],
+        };
+      });
+      setReactions((prev) => {
+        const current = prev[annId] || base;
+        const count = current[emoji] || 0;
+        return {
+          ...prev,
+          [annId]: {
+            ...current,
+            [emoji]: alreadyReacted ? Math.max(0, count - 1) : count + 1,
+          },
+        };
+      });
+      toast(alreadyReacted ? `Removed your ${emoji} reaction` : `Reacted with ${emoji}`);
+      delete reactionTimers.current[timerKey];
+    }, 300);
   };
 
   const formatWhatsAppBroadcast = (annTitle: string, annBody: string) => {
@@ -451,17 +463,12 @@ export function CommunicationsPage() {
         <Revealed delay={40}>
           <div className="comms-layout">
             <section className="comms-feed bulletin-feed">
-              <div className="bulletin-feed-header">
-                <div>
-                  <span className="bulletin-overline">OFFICIAL DISPATCH WALL</span>
-                  <h2>Campus Bulletin</h2>
+                <div className="bulletin-feed-header">
+                  <div>
+                    <span className="bulletin-overline">OFFICIAL DISPATCH WALL</span>
+                    <h2>Campus Bulletin</h2>
+                  </div>
                 </div>
-                {allowed && (
-                  <Button icon="PenLine" onClick={() => setCompose(true)}>
-                    Post update
-                  </Button>
-                )}
-              </div>
 
               <label className="comms-search">
                 <Icon name="Search" size={18} />
