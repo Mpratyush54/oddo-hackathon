@@ -65,6 +65,7 @@ export const productSchema = z.strictObject({
   color: text.optional(),
   image: z.string().max(350000).optional(),
   gallery: z.array(z.string().max(350000)).max(3).optional(),
+  delisted: z.boolean().optional(),
 });
 export const ticketSchema = z.strictObject({
   id,

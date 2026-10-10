@@ -71,6 +71,7 @@ export type Product = {
   stock: Record<string, number>;
   image?: string;
   gallery?: string[];
+  delisted?: boolean;
 };
 
 export type PromoCode = {

@@ -9,6 +9,8 @@ import {
   checkInWithPoints,
   CommerceError,
   createProduct,
+  updateProduct,
+  deleteProduct,
   ensureCommerceFields,
   joinWaitlist,
   placeOrder,
@@ -228,6 +230,14 @@ export function createApi({ env = process.env, fetchImpl = fetch } = {}) {
       if (path === '/products') {
         const store = requireSnapshot(body);
         return createProduct(store, body);
+      }
+      if (path === '/products/update') {
+        const store = requireSnapshot(body);
+        return updateProduct(store, body);
+      }
+      if (path === '/products/delete') {
+        const store = requireSnapshot(body);
+        return deleteProduct(store, body);
       }
       if (path === '/tickets/cancel') {
         const store = requireSnapshot(body);

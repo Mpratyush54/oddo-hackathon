@@ -3,6 +3,8 @@ import {
   orderRequestSchema,
   inventoryRequestSchema,
   createProductSchema,
+  updateProductSchema,
+  deleteProductSchema,
   updateOrderSchema,
   awardPointsSchema,
   savePointRulesSchema,
@@ -13,6 +15,8 @@ import {
   adjustInventory,
   awardPoints,
   createProduct,
+  updateProduct,
+  deleteProduct,
   placeOrder,
   savePointRules,
   updateOrderStatus,
@@ -75,6 +79,22 @@ export class CommerceService extends ClubActionService {
     input = parseRequest(createProductSchema, input);
     requireRole(this.role, ['admin', 'treasurer']);
     const result = createProduct(this.data, { ...input, actor: this.actor });
+    this.data = { ...this.data, ...result.patch };
+    return result;
+  }
+
+  updateProduct(input) {
+    input = parseRequest(updateProductSchema, input);
+    requireRole(this.role, ['admin', 'treasurer']);
+    const result = updateProduct(this.data, { ...input, actor: this.actor });
+    this.data = { ...this.data, ...result.patch };
+    return result;
+  }
+
+  deleteProduct(input) {
+    input = parseRequest(deleteProductSchema, input);
+    requireRole(this.role, ['admin', 'treasurer']);
+    const result = deleteProduct(this.data, { productId: input.productId, actor: this.actor });
     this.data = { ...this.data, ...result.patch };
     return result;
   }

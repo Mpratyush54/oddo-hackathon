@@ -754,6 +754,9 @@
           "items": {
             "$ref": "#/$defs/__schema13"
           }
+        },
+        "delisted": {
+          "type": "boolean"
         }
       },
       "required": [

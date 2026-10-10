@@ -4,6 +4,8 @@ export function registerCommerceRoutes(app, controller) {
     '/orders': 'orders',
     '/inventory': 'inventory',
     '/products': 'products.create',
+    '/products/update': 'products.update',
+    '/products/delete': 'products.delete',
     '/tickets/cancel': 'tickets.cancel',
     '/waitlist/join': 'waitlist.join',
     '/points/award': 'points.award',

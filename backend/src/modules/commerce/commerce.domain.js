@@ -5,6 +5,8 @@ import {
   orderRequestSchema,
   inventoryRequestSchema,
   createProductSchema,
+  updateProductSchema,
+  deleteProductSchema,
   awardPointsSchema,
 } from './commerce.schemas.js';
 
@@ -433,6 +435,88 @@ export function createProduct(store, input) {
     product,
     patch: {
       products: [product, ...(club.products || [])],
+      audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
+    },
+  };
+}
+
+export function updateProduct(store, input) {
+  const parsed = parseRequest(updateProductSchema, input);
+  const club = ensureCommerceFields(store);
+  if (!input?.actor?.name) throw new CommerceError(400, 'Staff actor required.');
+  const existing = club.products.find((p) => p.id === parsed.id);
+  if (!existing) throw new CommerceError(404, 'Product not found.');
+  const typeLabel = parsed.type === 'Other' ? 'Merchandise' : parsed.type || existing.type;
+
+  const isUsableImage = (value) =>
+    typeof value === 'string' &&
+    (/^https?:\/\//i.test(value) || /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(value));
+  const gallery =
+    parsed.gallery !== undefined
+      ? [...new Set((parsed.gallery || []).filter(isUsableImage))].slice(0, 3)
+      : existing.gallery;
+  const primary =
+    (isUsableImage(parsed.image) && parsed.image) ||
+    (parsed.image === '' ? '' : existing.image) ||
+    gallery?.[0] ||
+    PRODUCT_IMAGES[typeLabel] ||
+    PRODUCT_IMAGES.Hoodie;
+
+  const updated = {
+    ...existing,
+    ...(parsed.name ? { name: parsed.name } : {}),
+    type: typeLabel,
+    ...(parsed.color ? { color: parsed.color } : {}),
+    ...(parsed.price !== undefined ? { price: parsed.price } : {}),
+    ...(parsed.memberPrice !== undefined ? { memberPrice: parsed.memberPrice } : {}),
+    ...(parsed.stock ? { stock: parsed.stock } : {}),
+    image: primary,
+    ...(gallery && gallery.length ? { gallery } : {}),
+    ...(parsed.delisted !== undefined ? { delisted: !!parsed.delisted } : {}),
+  };
+
+  const auditEntry = {
+    id: uid('AUD'),
+    actor: input.actor.name,
+    action: 'products.update',
+    entity: 'products',
+    entityId: updated.id,
+    date: new Date().toISOString(),
+    detail: `Updated ${updated.name} · ${updated.type}${parsed.delisted !== undefined ? (parsed.delisted ? ' · Delisted' : ' · Relisted') : ''}`,
+  };
+
+  const products = club.products.map((p) => (p.id === updated.id ? updated : p));
+  return {
+    product: updated,
+    patch: {
+      products,
+      audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
+    },
+  };
+}
+
+export function deleteProduct(store, input) {
+  const parsed = parseRequest(deleteProductSchema, input);
+  const club = ensureCommerceFields(store);
+  if (!input?.actor?.name) throw new CommerceError(400, 'Staff actor required.');
+  const existing = club.products.find((p) => p.id === parsed.productId);
+  if (!existing) throw new CommerceError(404, 'Product not found.');
+
+  const products = club.products.filter((p) => p.id !== parsed.productId);
+  const auditEntry = {
+    id: uid('AUD'),
+    actor: input.actor.name,
+    action: 'products.delete',
+    entity: 'products',
+    entityId: parsed.productId,
+    date: new Date().toISOString(),
+    detail: `Deleted ${existing.name} (${existing.type}) from collection`,
+  };
+
+  return {
+    productId: parsed.productId,
+    patch: {
+      products,
       audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
     },
   };

@@ -8,6 +8,8 @@ import {
   joinWaitlist,
   placeOrder,
   quotePromo,
+  updateProduct,
+  deleteProduct,
   MEMBERSHIP_FEE,
 } from '../../src/modules/commerce/commerce.domain.js';
 
@@ -194,4 +196,32 @@ test('awardPoints updates volunteer balance', () => {
   });
   assert.equal(result.patch.members.find((m) => m.id === 'MEM-005').volunteerPoints, 25);
   assert.equal(result.patch.pointLedger[0].kind, 'volunteer');
+});
+
+test('updateProduct updates details, price, and delisting flag with audit trail', () => {
+  const store = baseStore();
+  const result = updateProduct(store, {
+    id: 'PROD-001',
+    name: 'Updated Campus Hoodie',
+    price: 999,
+    memberPrice: 799,
+    delisted: true,
+    actor: { name: 'Alex Morgan' },
+  });
+  const updated = result.patch.products.find((p) => p.id === 'PROD-001');
+  assert.equal(updated.name, 'Updated Campus Hoodie');
+  assert.equal(updated.price, 999);
+  assert.equal(updated.memberPrice, 799);
+  assert.equal(updated.delisted, true);
+  assert.match(result.patch.audit[0].detail, /Delisted/);
+});
+
+test('deleteProduct removes product from collection with audit record', () => {
+  const store = baseStore();
+  const result = deleteProduct(store, {
+    productId: 'PROD-001',
+    actor: { name: 'Alex Morgan' },
+  });
+  assert.equal(result.patch.products.some((p) => p.id === 'PROD-001'), false);
+  assert.match(result.patch.audit[0].detail, /Deleted The everyday hoodie/);
 });
