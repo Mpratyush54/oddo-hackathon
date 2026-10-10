@@ -27,6 +27,9 @@ const url = process.env.TEST_URL || 'http://127.0.0.1:5174';
     await page.getByRole('button', { name: 'Sign in to order', exact: true }).count(),
     1,
   );
+  // The product modal defaults to photography. Switch to the interactive
+  // preview before asserting rotation and garment-face controls.
+  await page.getByRole('tab', { name: 'Interactive preview', exact: true }).click();
   const slider = page.getByRole('slider', { name: 'Garment rotation' });
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   assert.match(await slider.getAttribute('aria-valuetext'), /back/);
