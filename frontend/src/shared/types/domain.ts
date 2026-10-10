@@ -43,6 +43,7 @@ export type Transaction = {
   status: 'Completed' | 'Pending' | 'Rejected';
   receipt?: string;
   receiptData?: string;
+  receiptKey?: string;
   eventId?: string;
   createdBy?: string;
   reviewedBy?: string;

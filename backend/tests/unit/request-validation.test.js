@@ -26,19 +26,26 @@ test('shared format schemas reject punctuation and malformed formats', () => {
 
 test('finance methods validate direct calls before mutating their supplied state', () => {
   const data = { transactions: [], events: [] };
-  const service = new FinanceService({
+  const treasurer = new FinanceService({
     data,
     user: { id: 'USR-one' },
     role: 'treasurer',
     clubId: 'skyline',
     now: '2026-10-10',
   });
+  const admin = new FinanceService({
+    data,
+    user: { id: 'USR-one' },
+    role: 'admin',
+    clubId: 'skyline',
+    now: '2026-10-10',
+  });
   assert.throws(
-    () => service.createIncome({ title: 'Donation', category: 'Donations', amount: '100' }),
+    () => treasurer.createIncome({ title: 'Donation', category: 'Donations', amount: '100' }),
     (error) => error.status === 400 && error.details[0].field === 'amount',
   );
   assert.throws(
-    () => service.reviewExpense({ transactionId: 'TX-one', status: 'Rejected' }),
+    () => admin.reviewExpense({ transactionId: 'TX-one', status: 'Rejected' }),
     (error) => error.status === 400,
   );
   assert.deepEqual(data.transactions, []);
@@ -49,7 +56,11 @@ test('finance methods validate direct calls before mutating their supplied state
     createdBy: 'USR-other',
   });
   assert.throws(
-    () => service.reviewExpense({ transactionId: 'TX-income', status: 'Completed' }),
+    () => treasurer.reviewExpense({ transactionId: 'TX-income', status: 'Completed' }),
+    (error) => error.status === 403,
+  );
+  assert.throws(
+    () => admin.reviewExpense({ transactionId: 'TX-income', status: 'Completed' }),
     (error) => error.status === 409,
   );
   assert.equal(data.transactions[0].status, 'Pending');

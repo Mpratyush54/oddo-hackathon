@@ -49,7 +49,6 @@ const permissions: Record<Role, string[]> = {
     'book_ticket',
     'view_finance',
     'record_income',
-    'approve_expense',
     'audit',
     'manage_orders',
   ],

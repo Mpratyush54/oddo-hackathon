@@ -376,6 +376,18 @@ export function EventDetail() {
                   value={money(event.budget || 0)}
                   tone="purple"
                 />
+                <StatCard
+                  icon="Ticket"
+                  label="Ticket sales"
+                  value={money(tickets.reduce((s, t) => s + (t.amount || 0), 0))}
+                  tone="teal"
+                />
+                <StatCard
+                  icon="UserCheck"
+                  label="Check-in"
+                  value={`${checked}/${tickets.length || 0}`}
+                  tone="green"
+                />
               </div>
               <div className="budget-status">
                 <span>

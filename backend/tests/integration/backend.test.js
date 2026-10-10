@@ -132,7 +132,7 @@ test('a promoted waitlist member can claim the reserved last seat without overse
     0,
   );
 });
-test('expense approval requires finance role, pending state, and another reviewer', async () => {
+test('expense approval requires club admin, pending state, and another reviewer', async () => {
   const { repo, domain } = await fixture();
   await domain.execute(
     'skyline',
@@ -157,6 +157,20 @@ test('expense approval requires finance role, pending state, and another reviewe
     pk: `USER#${user.id}`,
     sk: 'ACCESS#skyline',
     role: 'treasurer',
+    clubId: 'skyline',
+  });
+  await assert.rejects(
+    domain.execute(
+      'skyline',
+      action('expenses.review', { transactionId: tx.id, status: 'Completed' }),
+      user,
+    ),
+    (e) => e.status === 403,
+  );
+  await repo.put({
+    pk: `USER#${user.id}`,
+    sk: 'ACCESS#skyline',
+    role: 'admin',
     clubId: 'skyline',
   });
   await domain.execute(
@@ -325,15 +339,20 @@ test('invalid action payloads leave state, audit and idempotency records unchang
   assert.equal((await repo.list(clubKey('skyline'), 'REQUEST#')).length, 0);
 });
 
-test('expense rejection requires a reason, a different treasurer, and a pending negative transaction', async () => {
+test('expense rejection requires a reason, a club admin reviewer, and a pending negative transaction', async () => {
   const { repo, domain } = await fixture();
-  for (const person of [user, other])
-    await repo.put({
-      pk: `USER#${person.id}`,
-      sk: 'ACCESS#skyline',
-      clubId: 'skyline',
-      role: 'treasurer',
-    });
+  await repo.put({
+    pk: `USER#${user.id}`,
+    sk: 'ACCESS#skyline',
+    clubId: 'skyline',
+    role: 'admin',
+  });
+  await repo.put({
+    pk: `USER#${other.id}`,
+    sk: 'ACCESS#skyline',
+    clubId: 'skyline',
+    role: 'treasurer',
+  });
   await domain.execute(
     'skyline',
     action('expenses.create', {

@@ -38,13 +38,13 @@ export class FinanceService extends ClubActionService {
   reviewExpense(input) {
     input = parseRequest(reviewExpenseSchema, input);
 
-    requireRole(this.role, finance);
+    requireRole(this.role, ['admin']);
     const expense = this.data.transactions.find((t) => t.id === input.transactionId);
     if (!expense) throw new HttpError(404, 'Expense not found.');
     if (!pendingExpenseSchema.safeParse(expense).success)
       throw new HttpError(409, 'Only pending expenses can be reviewed.');
     if (expense.createdBy === this.user.id)
-      throw new HttpError(403, 'Another treasurer must review your expense.');
+      throw new HttpError(403, 'Another club administrator must review your expense.');
 
     expense.status = input.status;
     expense.reviewedBy = this.user.id;

@@ -1,11 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
-import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Empty } from '../../../shared/ui/Empty';
 import { Field } from '../../../shared/ui/Field';
-import { FinanceChart } from '../../../shared/ui/FinanceChart';
-import { FormFooter } from '../../../shared/ui/FormFooter';
 import { Icon } from '../../../shared/ui/Icon';
 import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
@@ -16,6 +13,7 @@ import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
 import { backendPost, backendRequest, cloudMode } from '../../../shared/api/client';
 import { Revealed } from '../../../shared/components/PageMotion';
+import { FinanceAnalytics } from '../components/FinanceAnalytics';
 import '../styles/finance.css';
 import type { Transaction } from '../../../shared/types/domain';
 
@@ -25,6 +23,8 @@ export function FinancePage() {
   const viewAll = can('view_finance');
   const [rejecting, setRejecting] = useState<Transaction | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<Transaction | null>(null);
+  const [detail, setDetail] = useState<Transaction | null>(null);
+  const canApprove = can('approve_expense');
   const [adding, setAdding] = useState(false),
     [search, setSearch] = useState(''),
     [category, setCategory] = useState('All categories'),
@@ -32,7 +32,6 @@ export function FinancePage() {
     [period, setPeriod] = useState('semester'),
     [kind, setKind] = useState('expense'),
     [receipt, setReceipt] = useState<File | null>(null),
-    [compact, setCompact] = useState(false),
     [descending, setDescending] = useState(true),
     [saving, setSaving] = useState(false),
     [error, setError] = useState('');
@@ -61,28 +60,6 @@ export function FinancePage() {
           (status === 'Pending review' ? t.status === 'Pending' : t.status === status)),
     )
     .sort((a, b) => (descending ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)));
-  const sources = [
-    ['Membership', 'teal'],
-    ['Tickets', 'purple'],
-    ['Merchandise', 'gold'],
-    ['Fundraiser', 'green'],
-  ].map(([name, tone]) => ({
-    name,
-    tone,
-    amount: approved
-      .filter((t) => t.category === name && t.amount > 0)
-      .reduce((s, t) => s + t.amount, 0),
-  }));
-  const months = ['Aug', 'Sep', 'Oct']
-    .map((label, i) => {
-      const rows = approved.filter((t) => Number(t.date.slice(5, 7)) === i + 8);
-      return {
-        label,
-        income: rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0),
-        expense: -rows.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0),
-      };
-    })
-    .filter((m) => period !== 'month' || m.label === 'Oct');
   const exportLedger = () =>
     exportCSV('skyline-ledger.csv', [
       ['ID', 'Description', 'Category', 'Amount (INR)', 'Date', 'Status', 'Receipt'],
@@ -109,17 +86,19 @@ export function FinancePage() {
   return (
     <>
       <PageHeader
-        eyebrow="CLARITY FOR YOUR COMMUNITY"
-        title={viewAll ? 'Every rupee, accounted for' : 'Your reimbursement requests'}
+        eyebrow="FINANCES"
+        title={viewAll ? 'Club ledger' : 'Your reimbursements'}
         description={
           viewAll
-            ? 'A connected ledger, accountable approvals, and a clear balance.'
-            : 'Submit your receipt and follow the review, without chasing the treasurer.'
+            ? canApprove
+              ? 'Overall and event analytics, ledger review, and expense approvals.'
+              : 'Overall and event analytics plus the ledger. Club admins approve pending expenses.'
+            : 'Submit a receipt and track review status.'
         }
         action={
           <>
             <Button variant="secondary" icon="Download" onClick={exportLedger}>
-              Export ledger
+              Export CSV
             </Button>
             <Button icon="Plus" onClick={() => setAdding(true)}>
               {viewAll ? 'Add transaction' : 'Request reimbursement'}
@@ -130,94 +109,42 @@ export function FinancePage() {
       {viewAll && (
         <>
           <Revealed>
-            <section className="finance-hero dark-card">
+            <div className="finance-summary-strip">
               <div>
-                <div className="hero-eyebrow">YOUR CLUB’S BIGGER PICTURE</div>
-                <h2>Good plans start with a clear balance.</h2>
-                <p>A healthy little foundation for your next big idea.</p>
+                <small>Balance</small>
+                <strong>{money(balance)}</strong>
               </div>
-              <div className="finance-hero-stats">
-                <div>
-                  <span className="hero-icon">
-                    <Icon name="Wallet" size={24} />
-                  </span>
-                  <span>
-                    <small>Available balance · all time</small>
-                    <strong>{money(balance)}</strong>
-                  </span>
-                </div>
-                <div>
-                  <span className="hero-icon">
-                    <Icon name="ArrowDownLeft" size={24} />
-                  </span>
-                  <span>
-                    <small>Money in · {period === 'month' ? 'October' : 'semester'}</small>
-                    <strong>{money(income)}</strong>
-                  </span>
-                </div>
-                <div>
-                  <span className="hero-icon">
-                    <Icon name="ArrowUpRight" size={24} />
-                  </span>
-                  <span>
-                    <small>Money out · {period === 'month' ? 'October' : 'semester'}</small>
-                    <strong>{money(expense)}</strong>
-                  </span>
-                </div>
+              <div>
+                <small>In · {period === 'month' ? 'October' : 'semester'}</small>
+                <strong className="amount-in">{money(income)}</strong>
               </div>
-            </section>
-          </Revealed>
-          <Revealed delay={90}>
-            <div className="finance-charts">
-              <section className="card income-chart-card">
-                <CardHeader
-                  title="The flow of things"
-                  subtitle="Income and expenses, side by side."
-                  action={
-                    <select
-                      aria-label="Financial period"
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value)}
-                    >
-                      <option value="semester">This semester</option>
-                      <option value="month">October 2026</option>
-                    </select>
-                  }
-                />
-                <div className="light-chart-legend">
-                  <span>
-                    <i className="legend-dot teal" />
-                    Money in
-                  </span>
-                  <span>
-                    <i className="legend-dot gold" />
-                    Money out
-                  </span>
-                </div>
-                <FinanceChart values={months} dark={false} />
-              </section>
-              <section className="card income-breakdown">
-                <CardHeader title="Where it comes from" subtitle="Every contribution counts." />
-                <div className="source-list">
-                  {sources.map((s) => (
-                    <div key={s.name}>
-                      <div>
-                        <span className={`legend-dot ${s.tone}`} />
-                        <span>{s.name}</span>
-                        <strong>{money(s.amount)}</strong>
-                      </div>
-                      <div className={`source-bar ${s.tone}`}>
-                        <span style={{ width: `${(s.amount / Math.max(income, 1)) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <div>
+                <small>Out · {period === 'month' ? 'October' : 'semester'}</small>
+                <strong className="amount-out">{money(expense)}</strong>
+              </div>
+              <div>
+                <small>Pending review</small>
+                <strong>{periodRows.filter((t) => t.status === 'Pending').length}</strong>
+              </div>
+              <label className="finance-period-select">
+                <span className="sr-only">Period</span>
+                <select
+                  aria-label="Financial period"
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                >
+                  <option value="semester">This semester</option>
+                  <option value="month">October 2026</option>
+                </select>
+              </label>
             </div>
+          </Revealed>
+          <Revealed delay={40}>
+            <FinanceAnalytics data={data} periodRows={periodRows} period={period} />
           </Revealed>
         </>
       )}
-      <Revealed delay={180}>
+      <Revealed delay={80}>
         <section className="card table-card ledger-card">
           <div className="table-toolbar">
             <div className="segmented">
@@ -235,7 +162,7 @@ export function FinancePage() {
               ))}
             </div>
             <div className="table-tools">
-              <SearchField value={search} onChange={setSearch} placeholder="Search the ledger..." />
+              <SearchField value={search} onChange={setSearch} placeholder="Search ledger…" />
               <select
                 aria-label="Transaction category"
                 value={category}
@@ -252,18 +179,11 @@ export function FinancePage() {
                   <option key={c}>{c}</option>
                 ))}
               </select>
-              <button
-                className="icon-button"
-                aria-label="Toggle table density"
-                onClick={() => setCompact(!compact)}
-              >
-                <Icon name="Rows3" size={18} />
-              </button>
             </div>
           </div>
 
           <div className="table-scroll">
-            <table className={compact ? 'compact' : ''}>
+            <table>
               <thead>
                 <tr>
                   <th>Description</th>
@@ -357,44 +277,52 @@ export function FinancePage() {
                         </Badge>
                       </td>
                       <td>
-                        {t.status === 'Pending' && can('approve_expense') && (
-                          <div className="review-actions">
-                            <Button
-                              variant="secondary"
-                              icon="Check"
-                              disabled={t.createdBy === user.id}
-                              onClick={() => {
-                                if (!can('approve_expense') || t.createdBy === user.id) {
-                                  toast('A different treasurer must review your own request.');
-                                  return;
-                                }
-                                update((d) => ({
-                                  ...d,
-                                  transactions: d.transactions.map((tx) =>
-                                    tx.id === t.id &&
-                                    tx.status === 'Pending' &&
-                                    tx.createdBy !== user.id
-                                      ? { ...tx, status: 'Completed', reviewedBy: user.id }
-                                      : tx,
-                                  ),
-                                }));
-                                toast('Expense approved and recorded in the balance.');
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              disabled={t.createdBy === user.id}
-                              onClick={() => setRejecting(t)}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        {t.status === 'Pending' && t.createdBy === user.id && (
-                          <small className="cell-subtext">Awaiting another reviewer</small>
-                        )}
+                        <div className="ledger-row-actions">
+                          <Button variant="secondary" onClick={() => setDetail(t)}>
+                            View
+                          </Button>
+                          {t.status === 'Pending' && canApprove && (
+                            <>
+                              <Button
+                                variant="secondary"
+                                icon="Check"
+                                disabled={t.createdBy === user.id}
+                                onClick={() => {
+                                  if (t.createdBy === user.id) {
+                                    toast('Another club administrator must review your own request.');
+                                    return;
+                                  }
+                                  update((d) => ({
+                                    ...d,
+                                    transactions: d.transactions.map((tx) =>
+                                      tx.id === t.id &&
+                                      tx.status === 'Pending' &&
+                                      tx.createdBy !== user.id
+                                        ? { ...tx, status: 'Completed', reviewedBy: user.id }
+                                        : tx,
+                                    ),
+                                  }));
+                                  toast('Expense approved and recorded in the balance.');
+                                }}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                disabled={t.createdBy === user.id}
+                                onClick={() => setRejecting(t)}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {t.status === 'Pending' && !canApprove && viewAll && (
+                            <small className="cell-subtext">Awaiting club admin</small>
+                          )}
+                          {t.status === 'Pending' && t.createdBy === user.id && canApprove && (
+                            <small className="cell-subtext">Awaiting another admin</small>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -402,17 +330,15 @@ export function FinancePage() {
               </table>
             </div>
           {!filtered.length && (
-            <Empty
-              title="The books are quiet here"
-              description="No transactions match these filters."
-            />
+            <Empty title="No matching transactions" description="Try another filter or search." />
           )}
           <div className="table-footer">
             <span>
-              {filtered.length} transactions · Pending expenses are excluded from the balance
+              {filtered.length} shown · Pending excluded from balance
+              {!canApprove && viewAll ? ' · Approvals: club admin only' : ''}
             </span>
             <span className="ledger-total">
-              Filtered net:{' '}
+              Net:{' '}
               <strong>
                 {money(
                   filtered
@@ -424,22 +350,14 @@ export function FinancePage() {
           </div>
         </section>
       </Revealed>
-      <Revealed delay={240}>
-        <div className="info-banner">
-          <Icon name="ShieldCheck" size={25} />
-          <div>
-            <strong>A little transparency goes a long way.</strong>
-            <p>
-              Every ticket, membership, and merchandise payment is recorded here. Reimbursements
-              affect your balance once approved.
-            </p>
-          </div>
-        </div>
-      </Revealed>
       {adding && (
         <Modal
-          title="Keep the books connected"
-          description="A little record today saves a lot of chasing later."
+          title={kind === 'expense' ? 'Request reimbursement' : 'Record income'}
+          description={
+            kind === 'expense'
+              ? 'Attach a receipt. A club administrator must approve before it hits the balance.'
+              : 'Completed income is added to the club balance immediately.'
+          }
           onClose={close}
           wide
         >
@@ -623,8 +541,8 @@ export function FinancePage() {
             )}
             <p className="form-note">
               {kind === 'expense'
-                ? 'Reimbursement requests are marked pending until approved by the treasurer.'
-                : 'Completed income is immediately included in the club balance.'}
+                ? 'Pending until a club administrator approves. Treasurers can view, not approve.'
+                : 'Income is included in the balance as soon as you save.'}
             </p>
             <div className="form-footer">
               <Button variant="secondary" onClick={close}>
@@ -650,8 +568,7 @@ export function FinancePage() {
           <form
             onSubmit={(e) => {
               const f = formValues(e);
-              if (!can('approve_expense') || rejecting.createdBy === user.id || !f.reason.trim())
-                return;
+              if (!canApprove || rejecting.createdBy === user.id || !f.reason.trim()) return;
               update((d) => ({
                 ...d,
                 transactions: d.transactions.map((t) =>
@@ -691,35 +608,137 @@ export function FinancePage() {
           </form>
         </Modal>
       )}
-      {viewAll && (
-        <section className="card audit-section">
-          <CardHeader title="Review & activity history" subtitle="Who changed what, and when." />
-          {data.audit.length ? (
-            <div className="audit-list">
-              {data.audit.slice(0, 12).map((a) => (
-                <div key={a.id}>
-                  <span className="icon-tile">
-                    <Icon name="ShieldCheck" size={17} />
-                  </span>
-                  <span>
-                    <strong>
-                      {a.action} · {a.entity}
-                    </strong>
-                    <small>{a.detail}</small>
-                    <small>
-                      {a.actor} · {new Date(a.date).toLocaleString('en-IN')}
-                    </small>
-                  </span>
-                </div>
-              ))}
+      {detail && (
+        <Modal
+          title="Transaction details"
+          description={`${detail.id} · ${date(detail.date)}`}
+          onClose={() => setDetail(null)}
+          wide
+        >
+          <div className="finance-tx-detail">
+            <div className="finance-tx-detail-hero">
+              <div>
+                <small>{detail.category}</small>
+                <h3>{detail.title}</h3>
+              </div>
+              <strong className={detail.amount < 0 ? 'amount-out' : 'amount-in'}>
+                {detail.amount > 0 ? '+' : '−'}
+                {money(Math.abs(detail.amount))}
+              </strong>
             </div>
-          ) : (
-            <Empty
-              title="History starts with your next action"
-              description="Reviews and record changes appear here."
-            />
-          )}
-        </section>
+            <dl className="finance-tx-detail-grid">
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <Badge
+                    tone={
+                      detail.status === 'Completed'
+                        ? 'green'
+                        : detail.status === 'Rejected'
+                          ? 'neutral'
+                          : 'gold'
+                    }
+                  >
+                    {detail.status}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>Date</dt>
+                <dd>{date(detail.date)}</dd>
+              </div>
+              <div>
+                <dt>Reference</dt>
+                <dd>
+                  <code>{detail.id}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Created by</dt>
+                <dd>
+                  {detail.createdBy
+                    ? data.members.find((m) => m.userId === detail.createdBy || m.id === detail.createdBy)
+                        ?.name || detail.createdBy
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Reviewed by</dt>
+                <dd>
+                  {detail.reviewedBy
+                    ? data.members.find((m) => m.userId === detail.reviewedBy || m.id === detail.reviewedBy)
+                        ?.name || detail.reviewedBy
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Linked event</dt>
+                <dd>
+                  {detail.eventId
+                    ? data.events.find((e) => e.id === detail.eventId)?.title || detail.eventId
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Receipt</dt>
+                <dd>{detail.receipt || 'None attached'}</dd>
+              </div>
+              {detail.rejectionReason && (
+                <div className="finance-tx-detail-wide">
+                  <dt>Rejection reason</dt>
+                  <dd className="rejection-note">{detail.rejectionReason}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="finance-tx-detail-actions">
+              {(detail.receipt || detail.receiptData || detail.receiptKey) && (
+                <Button
+                  variant="secondary"
+                  icon="Paperclip"
+                  onClick={() => {
+                    setPreviewReceipt(detail);
+                    setDetail(null);
+                  }}
+                >
+                  Open receipt
+                </Button>
+              )}
+              {detail.status === 'Pending' && canApprove && detail.createdBy !== user.id && (
+                <>
+                  <Button
+                    icon="Check"
+                    onClick={() => {
+                      update((d) => ({
+                        ...d,
+                        transactions: d.transactions.map((tx) =>
+                          tx.id === detail.id && tx.status === 'Pending'
+                            ? { ...tx, status: 'Completed', reviewedBy: user.id }
+                            : tx,
+                        ),
+                      }));
+                      setDetail(null);
+                      toast('Expense approved and recorded in the balance.');
+                    }}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setRejecting(detail);
+                      setDetail(null);
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </>
+              )}
+              <Button variant="secondary" onClick={() => setDetail(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
       {previewReceipt && (
         <Modal
@@ -759,7 +778,7 @@ export function FinancePage() {
               </div>
             </div>
             <div className="voucher-mock-document">
-              <Icon name="FileText" size={36} />
+              <Icon name="FileCheck2" size={36} />
               <div>
                 <strong>Digital Proof of Expenditure & Voucher</strong>
                 <p>

@@ -17,13 +17,13 @@ export const roles = [
   {
     role: 'treasurer',
     title: 'Treasurer',
-    text: 'Receipts, approvals and club finances',
+    text: 'Ledger, receipts and income — approvals stay with the club admin',
     icon: 'Wallet',
   },
   {
     role: 'admin',
     title: 'Club president',
-    text: 'People, events and the whole club',
+    text: 'People, events, expense approvals and the whole club',
     icon: 'ShieldCheck',
   },
   {
