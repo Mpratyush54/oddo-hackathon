@@ -105,6 +105,7 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
           </div>
         </section>
       )}
+      {featured && <div className="event-hero-divider" role="separator" />}
       <section className="event-discovery-tools" aria-label="Find campus events">
         <div className="event-discovery-tabs">
           {['Upcoming', 'Past events', 'All events'].map((t) => (
@@ -183,6 +184,21 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
           const href = publicView ? `/e/${event.clubId}/${event.id}` : `/app/events/${event.id}`;
           const capacity = Math.max(0, event.capacity - event.sold);
           const atCapacity = capacity === 0;
+          const isUrgent = !past && !atCapacity && capacity < 10;
+          const cat = event.category.toLowerCase();
+          const categoryTone = past
+            ? 'neutral'
+            : phase === 'ongoing'
+              ? 'green'
+              : cat.includes('meeting')
+                ? 'teal'
+                : cat.includes('workshop')
+                  ? 'gold'
+                  : cat.includes('social')
+                    ? 'green'
+                    : cat.includes('fundraiser')
+                      ? 'purple'
+                      : 'teal';
           return (
             <article
               className={`event-discovery-card ${past ? 'past-event' : ''}`}
@@ -191,13 +207,20 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
               <Link className="event-discovery-photo" to={href} aria-label={`View ${event.title}`}>
                 <img src={event.image} alt={event.title} loading="lazy" />
                 <div className="event-discovery-photo-top">
-                  <Badge tone={past ? 'gold' : phase === 'ongoing' ? 'green' : 'teal'}>
-                    {past
-                      ? 'PAST EVENT'
-                      : phase === 'ongoing'
-                        ? 'HAPPENING NOW'
-                        : event.category.toUpperCase()}
-                  </Badge>
+                  <div className="event-discovery-badges">
+                    <Badge tone={categoryTone}>
+                      {past
+                        ? 'PAST EVENT'
+                        : phase === 'ongoing'
+                          ? 'HAPPENING NOW'
+                          : event.category.toUpperCase()}
+                    </Badge>
+                    {isUrgent && (
+                      <span className="event-urgency-pill">
+                        Few spots left
+                      </span>
+                    )}
+                  </div>
                   <span className="event-discovery-date">
                     <strong>{new Date(`${event.date}T12:00:00`).getDate()}</strong>
                     <small>{date(event.date, { month: 'short' }).toUpperCase()}</small>
