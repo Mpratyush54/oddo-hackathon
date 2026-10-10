@@ -901,5 +901,122 @@ body.dark-theme {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* ==========================================================================
+   Issue #21: Finance Row Indicators & Receipt Voucher Styling
+   ========================================================================== */
+.statement-item.income-row {
+  border-left: 4px solid #10b981;
+}
+
+.statement-item.expense-row {
+  border-left: 4px solid #f59e0b;
+}
+
+table tr.income-row td:first-child {
+  border-left: 3px solid #10b981;
+}
+
+table tr.expense-row td:first-child {
+  border-left: 3px solid #f59e0b;
+}
+
+.statement-amount,
+td.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-voucher-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.voucher-header {
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 14px;
+}
+
+.voucher-stamp {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.voucher-header h3 {
+  margin: 4px 0;
+  font-size: 18px;
+}
+
+.voucher-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.voucher-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+[data-theme="dark"] .voucher-amount-row {
+  background: #0f171a;
+}
+
+.voucher-amount-row strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.voucher-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.voucher-detail-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.voucher-mock-document {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fcfdfc;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+[data-theme="dark"] .voucher-mock-document {
+  background: #141f23;
+}
+
+.voucher-mock-document strong {
+  display: block;
+  color: var(--text, #182a20);
+}
+
+[data-theme="dark"] .voucher-mock-document strong {
+  color: #f1f5f9;
+}
+
+
 
 

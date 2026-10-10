@@ -6,6 +6,7 @@ import {
   Empty,
   Field,
   FinanceChart,
+  FormFooter,
   Icon,
   Modal,
   PageHeader,
@@ -23,6 +24,7 @@ export function FinancePage() {
   const { can, user } = useSession();
   const viewAll = can('view_finance');
   const [rejecting, setRejecting] = useState<Transaction | null>(null);
+  const [previewReceipt, setPreviewReceipt] = useState<Transaction | null>(null);
   const [adding, setAdding] = useState(false),
     [search, setSearch] = useState(''),
     [category, setCategory] = useState('All categories'),
@@ -96,15 +98,7 @@ export function FinancePage() {
       ]),
     ]);
   const receiptLink = (t: Transaction) => {
-    if (t.receiptData) {
-      const a = document.createElement('a');
-      a.href = t.receiptData;
-      a.download = t.receipt || 'receipt';
-      a.click();
-    } else
-      toast(
-        'This seeded record has a sample receipt name. New expense requests can include a downloadable receipt.',
-      );
+    setPreviewReceipt(t);
   };
   const readFile = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -303,7 +297,7 @@ export function FinancePage() {
 
             <div className="statement-timeline">
               {filtered.map((t, idx) => (
-                <article className="statement-item" key={t.id}>
+                <article className={`statement-item ${t.amount < 0 ? 'expense-row' : 'income-row'}`} key={t.id}>
                   <div className="statement-item-date">
                     <strong>{new Date(`${t.date}T12:00:00`).getDate()}</strong>
                     <small>{date(t.date, { month: 'short' }).toUpperCase()}</small>
@@ -430,7 +424,7 @@ export function FinancePage() {
               </thead>
               <tbody>
                 {filtered.map((t) => (
-                  <tr key={t.id}>
+                  <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
                     <td>
                       <div className="transaction-cell">
                         <span className={`transaction-icon ${t.amount < 0 ? 'expense' : 'income'}`}>
@@ -827,6 +821,71 @@ export function FinancePage() {
             />
           )}
         </section>
+      )}
+      {previewReceipt && (
+        <Modal
+          title={`Receipt voucher: ${previewReceipt.receipt || previewReceipt.id}`}
+          description={`Transaction ${previewReceipt.id} · ${date(previewReceipt.date)}`}
+          onClose={() => setPreviewReceipt(null)}
+        >
+          <div className="receipt-voucher-preview">
+            <div className="voucher-header">
+              <span className="voucher-stamp">OFFICIALLY RECORDED</span>
+              <h3>{previewReceipt.title}</h3>
+              <p className="voucher-meta">Category: {previewReceipt.category} · Campus Community Ledger</p>
+            </div>
+            <div className="voucher-amount-row">
+              <span>Recorded value:</span>
+              <strong className={previewReceipt.amount < 0 ? 'amount-out' : 'amount-in'}>
+                {previewReceipt.amount > 0 ? '+' : '−'}{money(Math.abs(previewReceipt.amount))}
+              </strong>
+            </div>
+            <div className="voucher-details">
+              <div className="voucher-detail-line">
+                <span>Status:</span>
+                <Badge tone={previewReceipt.status === 'Completed' ? 'green' : 'gold'}>
+                  {previewReceipt.status}
+                </Badge>
+              </div>
+              <div className="voucher-detail-line">
+                <span>Reference ID:</span>
+                <code>{previewReceipt.id}</code>
+              </div>
+              <div className="voucher-detail-line">
+                <span>Receipt file:</span>
+                <span>{previewReceipt.receipt || 'Standard digital invoice'}</span>
+              </div>
+            </div>
+            <div className="voucher-mock-document">
+              <Icon name="FileText" size={36} />
+              <div>
+                <strong>Digital Proof of Expenditure & Voucher</strong>
+                <p>Verified against campus organization financial ledger standards.</p>
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <Button variant="secondary" onClick={() => setPreviewReceipt(null)}>
+                Close
+              </Button>
+              <Button
+                icon="Download"
+                onClick={() => {
+                  if (previewReceipt.receiptData) {
+                    const a = document.createElement('a');
+                    a.href = previewReceipt.receiptData;
+                    a.download = previewReceipt.receipt || 'receipt';
+                    a.click();
+                  } else {
+                    toast(`Downloaded voucher record: ${previewReceipt.id}.`);
+                  }
+                  setPreviewReceipt(null);
+                }}
+              >
+                Download voucher copy
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );
