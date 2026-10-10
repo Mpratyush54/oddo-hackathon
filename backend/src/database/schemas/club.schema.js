@@ -63,7 +63,8 @@ export const productSchema = z.strictObject({
   memberPrice: nonnegative,
   stock: z.record(z.string().min(1).max(20), count),
   color: text.optional(),
-  image: text.optional(),
+  image: z.string().max(350000).optional(),
+  gallery: z.array(z.string().max(350000)).max(3).optional(),
 });
 export const ticketSchema = z.strictObject({
   id,

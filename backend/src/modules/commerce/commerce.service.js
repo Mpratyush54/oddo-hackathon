@@ -64,7 +64,7 @@ export class CommerceService extends ClubActionService {
   adjustInventory(input) {
     input = parseRequest(inventoryRequestSchema, input);
 
-    requireRole(this.role, ['admin']);
+    requireRole(this.role, ['admin', 'treasurer']);
     const result = adjustInventory(this.data, { ...input, actor: this.actor });
     this.data = { ...this.data, ...result.patch };
 
@@ -73,7 +73,7 @@ export class CommerceService extends ClubActionService {
 
   createProduct(input) {
     input = parseRequest(createProductSchema, input);
-    requireRole(this.role, ['admin']);
+    requireRole(this.role, ['admin', 'treasurer']);
     const result = createProduct(this.data, { ...input, actor: this.actor });
     this.data = { ...this.data, ...result.patch };
     return result;
@@ -100,7 +100,7 @@ export class CommerceService extends ClubActionService {
   savePromo(input) {
     input = parseRequest(savePromoSchema, input);
 
-    requireRole(this.role, ['admin']);
+    requireRole(this.role, ['admin', 'treasurer']);
     const promo = input.promo;
 
     const prior = this.data.promos.find((p) => p.id === promo.id);

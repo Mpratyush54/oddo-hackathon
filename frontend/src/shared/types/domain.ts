@@ -70,6 +70,7 @@ export type Product = {
   type: string;
   stock: Record<string, number>;
   image?: string;
+  gallery?: string[];
 };
 
 export type PromoCode = {

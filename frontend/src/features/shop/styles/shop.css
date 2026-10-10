@@ -1193,6 +1193,132 @@
   border-radius: 16px;
   background: linear-gradient(180deg, #f7fbf8, #eef5f0);
 }
+.shop-list-stock-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.shop-list-stock-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #5f7168;
+}
+.shop-list-stock-grid input {
+  width: 100%;
+}
+.shop-list-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.shop-list-photo-thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #dce8df;
+}
+.shop-list-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shop-list-photo-thumb button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #132f18d0;
+  color: #fff;
+  cursor: pointer;
+}
+.shop-image-upload {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+  min-height: 88px;
+  padding: 12px 14px;
+  border: 1px dashed #b7d0c2;
+  border-radius: 14px;
+  background: #f7fbf8;
+  color: #1a3832;
+  cursor: pointer;
+}
+.shop-image-upload span {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.shop-image-upload small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7d72;
+}
+.shop-image-upload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.shop-image-upload:focus-within {
+  outline: 2px solid #2f6f57;
+  outline-offset: 2px;
+}
+.shop-list-again {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 4px;
+  font-size: 14px;
+  color: #3d5248;
+}
+.shop-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.shop-gallery-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.shop-gallery-thumb {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #edf3ef;
+}
+.shop-gallery-thumb.active {
+  border-color: #2f6f57;
+}
+.shop-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 640px) {
+  .shop-list-stock-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .shop-stock-board {
   margin-bottom: 28px;
 }

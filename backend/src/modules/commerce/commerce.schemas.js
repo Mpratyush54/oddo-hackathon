@@ -42,7 +42,33 @@ export const createProductSchema = z
     stock: z
       .record(z.string().trim().min(1).max(20), z.number().int().min(0).max(5000))
       .refine((value) => Object.keys(value).length > 0, 'Add at least one size.'),
-    image: z.string().trim().max(500).optional(),
+    image: z
+      .string()
+      .trim()
+      .max(350000)
+      .refine(
+        (value) =>
+          value === '' ||
+          /^https?:\/\//i.test(value) ||
+          /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(value),
+        'Use an http(s) image URL or upload a PNG, JPEG, or WebP file.',
+      )
+      .optional(),
+    gallery: z
+      .array(
+        z
+          .string()
+          .trim()
+          .max(350000)
+          .refine(
+            (value) =>
+              /^https?:\/\//i.test(value) ||
+              /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(value),
+            'Use an http(s) image URL or upload a PNG, JPEG, or WebP file.',
+          ),
+      )
+      .max(3)
+      .optional(),
   })
   .refine((value) => value.memberPrice <= value.price, {
     message: 'Member price cannot exceed the regular price.',

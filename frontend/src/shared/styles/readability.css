@@ -122,18 +122,23 @@ h3,
   color: #106b65;
   flex-shrink: 0;
 }
-/* Desktop: persistent sidebar. Phone: collapsible drawer only. */
+/* Desktop: toggleable sidebar (button only). Phone: overlay drawer + scrim. */
 .workspace-v2 {
   --sidebar-width: 234px;
   overflow-x: clip;
 }
 .workspace-v2 .main-shell {
-  margin-left: var(--sidebar-width);
-  width: auto;
+  margin-left: 0;
+  width: 100%;
   min-width: 0;
   flex: 1;
+  transition:
+    margin-left 0.26s cubic-bezier(0.2, 0.75, 0.3, 1),
+    width 0.26s cubic-bezier(0.2, 0.75, 0.3, 1);
 }
-.workspace-v2 .menu-button,
+.workspace-v2 .menu-button {
+  display: flex;
+}
 .workspace-v2 .mobile-close,
 .workspace-v2 .nav-scrim {
   display: none;
@@ -143,20 +148,31 @@ h3,
   max-width: none;
   inset: 0 auto 0 0;
   height: 100dvh;
-  transform: none;
-  visibility: visible;
-  pointer-events: auto;
+  transform: translateX(-105%);
+  visibility: hidden;
+  pointer-events: none;
   z-index: 40;
   border: 0;
   border-right: 1px solid #d4e2d7;
   border-radius: 0;
   box-shadow: none;
   background: var(--bg-sidebar, #edf3ef);
-  transition: none;
+  transition:
+    transform 0.26s cubic-bezier(0.2, 0.75, 0.3, 1),
+    visibility 0s linear 0.26s;
 }
+.workspace-v2.navigation-open .sidebar,
 .workspace-v2 .sidebar.is-open {
-  transform: none;
-  box-shadow: none;
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 0.26s cubic-bezier(0.2, 0.75, 0.3, 1),
+    visibility 0s;
+}
+.workspace-v2.navigation-open .main-shell {
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
 }
 .workspace-v2 .sidebar .brand > span:last-child,
 .workspace-v2 .sidebar .nav-item > span,
@@ -360,7 +376,7 @@ h3,
   }
 }
 
-/* Phone only: collapsible overlay drawer + bottom quick nav. */
+/* Phone: overlay drawer + scrim (outside tap closes). Desktop has no scrim. */
 @media (max-width: 768px) {
   .workspace-v2 {
     --sidebar-width: min(300px, 86vw);
@@ -371,7 +387,12 @@ h3,
     width: 100%;
     transform: none;
   }
-  .workspace-v2 .menu-button,
+  /* Drawer open: block all background UI (topbar, content, quick nav). */
+  .workspace-v2.navigation-open .main-shell {
+    pointer-events: none;
+    user-select: none;
+    touch-action: none;
+  }
   .workspace-v2 .mobile-close {
     display: flex;
   }
@@ -384,29 +405,22 @@ h3,
     margin: 0;
     background: #132f3866;
     backdrop-filter: blur(2px);
-    z-index: 95;
+    z-index: 105;
     cursor: pointer;
+    touch-action: none;
   }
   .workspace-v2 .sidebar {
-    transform: translateX(-105%);
-    visibility: hidden;
-    pointer-events: none;
     z-index: 110;
-    transition:
-      transform 0.24s ease,
-      visibility 0s linear 0.24s;
+    box-shadow: none;
   }
   .workspace-v2 .sidebar.is-open {
-    transform: translateX(0);
-    visibility: visible;
-    pointer-events: auto;
     box-shadow: 8px 0 28px #132f1820;
-    transition:
-      transform 0.24s ease,
-      visibility 0s;
   }
   .workspace-v2 .topbar {
     z-index: 100;
+  }
+  .workspace-v2.navigation-open .topbar {
+    z-index: 90;
   }
   .workspace-v2 .content {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
@@ -457,7 +471,8 @@ h3,
 
 @media (prefers-reduced-motion: reduce) {
   .workspace-v2 .sidebar,
-  .workspace-v2 .sidebar.is-open {
+  .workspace-v2 .sidebar.is-open,
+  .workspace-v2 .main-shell {
     transition: none;
   }
 }

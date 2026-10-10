@@ -745,7 +745,15 @@
           "$ref": "#/$defs/__schema8"
         },
         "image": {
-          "$ref": "#/$defs/__schema8"
+          "type": "string",
+          "maxLength": 350000
+        },
+        "gallery": {
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema13"
+          }
         }
       },
       "required": [
@@ -757,6 +765,10 @@
         "stock"
       ],
       "additionalProperties": false
+    },
+    "__schema13": {
+      "type": "string",
+      "maxLength": 350000
     },
     "ticket": {
       "type": "object",
@@ -1102,13 +1114,13 @@
           "$ref": "#/$defs/__schema0"
         },
         "channel": {
-          "$ref": "#/$defs/__schema13"
+          "$ref": "#/$defs/__schema14"
         },
         "recipient": {
           "$ref": "#/$defs/__schema8"
         },
         "status": {
-          "$ref": "#/$defs/__schema14"
+          "$ref": "#/$defs/__schema15"
         },
         "date": {
           "$ref": "#/$defs/__schema8"
@@ -1117,16 +1129,16 @@
           "$ref": "#/$defs/__schema8"
         },
         "actor": {
-          "$ref": "#/$defs/__schema15"
-        },
-        "providerStatus": {
           "$ref": "#/$defs/__schema16"
         },
-        "providerTimestamp": {
+        "providerStatus": {
           "$ref": "#/$defs/__schema17"
         },
-        "providerMessageId": {
+        "providerTimestamp": {
           "$ref": "#/$defs/__schema18"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema19"
         }
       },
       "required": [
@@ -1140,7 +1152,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema13": {
+    "__schema14": {
       "type": "string",
       "enum": [
         "Email",
@@ -1148,7 +1160,7 @@
         "In-app"
       ]
     },
-    "__schema14": {
+    "__schema15": {
       "type": "string",
       "enum": [
         "Prepared",
@@ -1157,10 +1169,10 @@
         "Unknown"
       ]
     },
-    "__schema15": {
+    "__schema16": {
       "$ref": "#/$defs/__schema0"
     },
-    "__schema16": {
+    "__schema17": {
       "type": "string",
       "enum": [
         "accepted",
@@ -1170,17 +1182,17 @@
         "failed"
       ]
     },
-    "__schema17": {
+    "__schema18": {
       "$ref": "#/$defs/__schema4"
     },
-    "__schema18": {
+    "__schema19": {
       "$ref": "#/$defs/__schema0"
     },
     "audit": {
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/$defs/__schema19"
+          "$ref": "#/$defs/__schema20"
         },
         "actor": {
           "$ref": "#/$defs/__schema0"
@@ -1189,16 +1201,16 @@
           "$ref": "#/$defs/__schema8"
         },
         "clubId": {
-          "$ref": "#/$defs/__schema20"
-        },
-        "collegeId": {
           "$ref": "#/$defs/__schema21"
         },
-        "entity": {
+        "collegeId": {
           "$ref": "#/$defs/__schema22"
         },
-        "entityId": {
+        "entity": {
           "$ref": "#/$defs/__schema23"
+        },
+        "entityId": {
+          "$ref": "#/$defs/__schema24"
         },
         "date": {
           "$ref": "#/$defs/__schema8"
@@ -1215,9 +1227,6 @@
       ],
       "additionalProperties": false
     },
-    "__schema19": {
-      "$ref": "#/$defs/__schema0"
-    },
     "__schema20": {
       "$ref": "#/$defs/__schema0"
     },
@@ -1225,9 +1234,12 @@
       "$ref": "#/$defs/__schema0"
     },
     "__schema22": {
-      "$ref": "#/$defs/__schema8"
+      "$ref": "#/$defs/__schema0"
     },
     "__schema23": {
+      "$ref": "#/$defs/__schema8"
+    },
+    "__schema24": {
       "$ref": "#/$defs/__schema0"
     },
     "waitlist": {
@@ -1458,7 +1470,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/$defs/__schema19"
+          "$ref": "#/$defs/__schema20"
         },
         "actor": {
           "$ref": "#/$defs/__schema0"
@@ -1467,16 +1479,16 @@
           "$ref": "#/$defs/__schema8"
         },
         "clubId": {
-          "$ref": "#/$defs/__schema20"
-        },
-        "collegeId": {
           "$ref": "#/$defs/__schema21"
         },
-        "entity": {
+        "collegeId": {
           "$ref": "#/$defs/__schema22"
         },
-        "entityId": {
+        "entity": {
           "$ref": "#/$defs/__schema23"
+        },
+        "entityId": {
+          "$ref": "#/$defs/__schema24"
         },
         "date": {
           "$ref": "#/$defs/__schema8"
@@ -1519,13 +1531,13 @@
           "$ref": "#/$defs/__schema0"
         },
         "channel": {
-          "$ref": "#/$defs/__schema13"
+          "$ref": "#/$defs/__schema14"
         },
         "recipient": {
           "$ref": "#/$defs/__schema8"
         },
         "status": {
-          "$ref": "#/$defs/__schema14"
+          "$ref": "#/$defs/__schema15"
         },
         "date": {
           "$ref": "#/$defs/__schema8"
@@ -1534,16 +1546,16 @@
           "$ref": "#/$defs/__schema8"
         },
         "actor": {
-          "$ref": "#/$defs/__schema15"
-        },
-        "providerStatus": {
           "$ref": "#/$defs/__schema16"
         },
-        "providerTimestamp": {
+        "providerStatus": {
           "$ref": "#/$defs/__schema17"
         },
-        "providerMessageId": {
+        "providerTimestamp": {
           "$ref": "#/$defs/__schema18"
+        },
+        "providerMessageId": {
+          "$ref": "#/$defs/__schema19"
         },
         "pk": {
           "$ref": "#/$defs/__schema7"
@@ -1594,7 +1606,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema24"
+            "$ref": "#/$defs/__schema25"
           }
         },
         "expiresAt": {
@@ -1610,7 +1622,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema24": {
+    "__schema25": {
       "anyOf": [
         {
           "type": "string"
@@ -1627,7 +1639,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema24"
+            "$ref": "#/$defs/__schema25"
           }
         },
         {
@@ -1636,7 +1648,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema24"
+            "$ref": "#/$defs/__schema25"
           }
         }
       ]

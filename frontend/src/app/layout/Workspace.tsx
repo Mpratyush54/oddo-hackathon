@@ -61,48 +61,60 @@ export default function Workspace() {
   const { role, user, clubId, clubs, can, signedIn, selectClub, switchPersona, signOut } = session;
   const location = useLocation(),
     navigate = useNavigate();
-  const [navOpen, setNavOpen] = useState(false),
+  const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
+  const [navOpen, setNavOpen] = useState(() =>
+    typeof window !== 'undefined' ? isDesktop() : true,
+  ),
+    [phoneViewport, setPhoneViewport] = useState(
+      () => (typeof window !== 'undefined' ? !isDesktop() : false),
+    ),
     [menu, setMenu] = useState<'account' | 'clubs' | 'notifications' | null>(null),
     [search, setSearch] = useState('');
   const wrapper = useRef<HTMLDivElement>(null),
     searchRef = useRef<HTMLInputElement>(null);
+  const phoneDrawerOpen = phoneViewport && navOpen;
   useEffect(() => {
     setMenu(null);
     setSearch('');
-    setNavOpen(false);
+    // Phone drawer closes on navigate; desktop collapse state is sticky.
+    if (!isDesktop()) setNavOpen(false);
     window.scrollTo(0, 0);
   }, [location.pathname, clubId, role]);
   useEffect(() => {
-    if (!navOpen) return;
+    if (!phoneDrawerOpen) return;
+    setMenu(null);
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [navOpen]);
+  }, [phoneDrawerOpen]);
   useEffect(() => {
     const onResize = () => {
-      if (window.matchMedia('(min-width: 769px)').matches) setNavOpen(false);
+      const desktop = isDesktop();
+      setPhoneViewport(!desktop);
+      setNavOpen(desktop);
     };
-    onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        if (phoneDrawerOpen) return;
         e.preventDefault();
         searchRef.current?.focus();
       }
       if (e.key === 'Escape') {
         setMenu(null);
-        setNavOpen(false);
         setSearch('');
+        // Escape dismisses the phone drawer only — desktop uses the toggle button.
+        if (phoneViewport) setNavOpen(false);
       }
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, []);
+  }, [phoneDrawerOpen, phoneViewport]);
   useEffect(() => {
     const outside = (e: MouseEvent) => {
       const el = e.target as HTMLElement;
@@ -301,7 +313,9 @@ export default function Workspace() {
         to={item.to}
         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         title={item.label}
-        onClick={() => setNavOpen(false)}
+        onClick={() => {
+          if (!isDesktop()) setNavOpen(false);
+        }}
       >
         <Icon name={item.icon} />
         <span>{item.label}</span>
@@ -321,7 +335,7 @@ export default function Workspace() {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      {navOpen && (
+      {phoneDrawerOpen && (
         <button
           type="button"
           className="nav-scrim"
@@ -329,7 +343,11 @@ export default function Workspace() {
           onClick={() => setNavOpen(false)}
         />
       )}
-      <aside id="workspace-navigation" className={`sidebar ${navOpen ? 'is-open' : ''}`}>
+      <aside
+        id="workspace-navigation"
+        className={`sidebar ${navOpen ? 'is-open' : ''}`}
+        aria-hidden={phoneViewport && !navOpen ? true : undefined}
+      >
         <div className="sidebar-fixed-top">
           <div className="sidebar-brand">
             <Logo to="/app" />
@@ -457,14 +475,17 @@ export default function Workspace() {
           </NavLink>
         ))}
       </nav>
-      <div className="main-shell">
+      <div
+        className="main-shell"
+        inert={phoneDrawerOpen ? true : undefined}
+        aria-hidden={phoneDrawerOpen ? true : undefined}
+      >
         <header className="topbar">
           <button
             className="icon-button menu-button"
             aria-label={navOpen ? 'Collapse navigation' : 'Open navigation'}
             aria-expanded={navOpen}
             aria-controls="workspace-navigation"
-
             onClick={() => setNavOpen((open) => !open)}
           >
             <Icon name="Menu" />

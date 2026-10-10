@@ -51,6 +51,7 @@ const permissions: Record<Role, string[]> = {
     'record_income',
     'audit',
     'manage_orders',
+    'manage_inventory',
   ],
   admin: [
     'request_expense',

@@ -53,20 +53,67 @@ const stockPhotos: Record<string, string> = {
   'Tote bag':
     'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85',
 };
-function ProductPhoto({ product }: { product: Product & { image?: string } }) {
+function productImages(product: Product) {
+  const gallery = (product.gallery || []).filter(Boolean);
+  const primary = product.image || gallery[0] || stockPhotos[product.type] || stockPhotos.Hoodie;
+  return [...new Set([primary, ...gallery].filter(Boolean))];
+}
+function ProductPhoto({
+  product,
+  src,
+}: {
+  product: Product;
+  src?: string;
+}) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [product.id]);
+  const image = src || productImages(product)[0];
+  useEffect(() => setFailed(false), [product.id, image]);
   return failed ? (
     <ProductArt type={product.type} color={product.color} />
   ) : (
     <img
       className="shop-product-photo"
-      src={product.image || stockPhotos[product.type] || stockPhotos.Hoodie}
-      alt={`${product.type} product photograph — illustrative catalog image`}
+      src={image}
+      alt={`${product.type} product photograph`}
       onError={() => setFailed(true)}
       loading="lazy"
     />
   );
+}
+async function readImageFile(file: File): Promise<string> {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    throw new Error('Use PNG, JPEG, or WebP images.');
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error('Keep each image under 2 MB.');
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read this image.'));
+    reader.readAsDataURL(file);
+  });
+  // Shrink large photos so club snapshots stay within demo payload limits.
+  if (dataUrl.length < 120000) return dataUrl;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 900;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = () => reject(new Error('Could not process this image.'));
+    img.src = dataUrl;
+  });
 }
 const productNotes: Record<string, string> = {
   Hoodie: 'A soft campus staple for early lectures, late projects, and everything in between.',
@@ -86,6 +133,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [size, setSize] = useState(''),
     [quantity, setQuantity] = useState(1),
     [color, setColor] = useState('teal'),
+    [activePhoto, setActivePhoto] = useState(0),
     [fit, setFit] = useState(false),
     [height, setHeight] = useState(''),
     [chest, setChest] = useState(''),
@@ -93,8 +141,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [agree, setAgree] = useState(false);
   const canManageOrders = can('manage_orders');
   const canManageInventory = can('manage_inventory');
-  const isOpsRole = !publicView && (canManageOrders || canManageInventory);
-  const [staff, setStaff] = useState(false);
+  // President / treasurer / organizers manage merch here — never the student catalog.
+  const showOps = !publicView && (canManageOrders || canManageInventory);
   const [listing, setListing] = useState(false);
   const [listName, setListName] = useState('');
   const [listType, setListType] = useState<'Hoodie' | 'T-shirt' | 'Tote bag' | 'Other'>('T-shirt');
@@ -102,7 +150,14 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   const [listPrice, setListPrice] = useState('799');
   const [listMemberPrice, setListMemberPrice] = useState('649');
   const [listStock, setListStock] = useState('12');
-  const [listImage, setListImage] = useState('');
+  const [listStockS, setListStockS] = useState('4');
+  const [listStockM, setListStockM] = useState('12');
+  const [listStockL, setListStockL] = useState('8');
+  const [listStockXl, setListStockXl] = useState('4');
+  const [listImageUrl, setListImageUrl] = useState('');
+  const [listImages, setListImages] = useState<string[]>([]);
+  const [readingImages, setReadingImages] = useState(false);
+  const [listAgain, setListAgain] = useState(true);
   const [couponCode, setCouponCode] = useState('');
   const [couponValue, setCouponValue] = useState('50');
   const [couponType, setCouponType] = useState<'fixed' | 'percent'>('fixed');
@@ -161,6 +216,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setSize(p ? Object.entries(p.stock).find(([, n]) => n > 0)?.[0] || '' : '');
     setColor(p?.color || 'teal');
     setQuantity(1);
+    setActivePhoto(0);
     setAgree(false);
     setPreview(false);
     setJoinMembership(false);
@@ -176,9 +232,16 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     const club = params.get('club');
     if (club && organizations.some((c) => c.id === club) && selectedClub !== club) selectClub(club);
     const id = params.get('product');
+    // Ops desk never opens the campus-collection product modal.
+    if (showOps) {
+      setProductId('');
+      if (id) setParams({}, { replace: true });
+      return;
+    }
     if (id) setProductId(id);
-  }, [params, organizations, selectedClub, selectClub]);
+  }, [params, organizations, selectedClub, selectClub, showOps, setParams]);
   const openProduct = (id: string) => {
+    if (showOps) return;
     setProductId(id);
     setParams({ product: id }, { replace: true });
   };
@@ -308,8 +371,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       setPending(false);
     }
   };
-  const openListing = () => {
-    setListing(true);
+  const resetListingForm = () => {
     setError('');
     setListName('');
     setListType('T-shirt');
@@ -317,7 +379,35 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setListPrice('799');
     setListMemberPrice('649');
     setListStock('12');
-    setListImage('');
+    setListStockS('4');
+    setListStockM('12');
+    setListStockL('8');
+    setListStockXl('4');
+    setListImageUrl('');
+    setListImages([]);
+  };
+  const openListing = () => {
+    setListing(true);
+    resetListingForm();
+  };
+  const addListingImages = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const remaining = 3 - listImages.length;
+    if (remaining <= 0) {
+      setError('You can attach up to three photos per piece.');
+      return;
+    }
+    setReadingImages(true);
+    setError('');
+    try {
+      const chosen = Array.from(files).slice(0, remaining);
+      const urls = await Promise.all(chosen.map((file) => readImageFile(file)));
+      setListImages((current) => [...current, ...urls].slice(0, 3));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read this image.');
+    } finally {
+      setReadingImages(false);
+    }
   };
   const createListing = async () => {
     if (!canManageInventory) return;
@@ -325,38 +415,55 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     setError('');
     const price = Number(listPrice);
     const memberPrice = Number(listMemberPrice);
-    const stockUnits = Math.max(0, Number(listStock) || 0);
     const stock =
       listType === 'Tote bag'
-        ? { 'One size': stockUnits }
-        : { S: Math.max(0, Math.floor(stockUnits * 0.2)), M: stockUnits, L: Math.max(0, Math.floor(stockUnits * 0.5)), XL: Math.max(0, Math.floor(stockUnits * 0.2)) };
+        ? { 'One size': Math.max(0, Number(listStock) || 0) }
+        : {
+            S: Math.max(0, Number(listStockS) || 0),
+            M: Math.max(0, Number(listStockM) || 0),
+            L: Math.max(0, Number(listStockL) || 0),
+            XL: Math.max(0, Number(listStockXl) || 0),
+          };
+    if (Object.values(stock).every((n) => n <= 0)) {
+      setError('Add stock for at least one size.');
+      setPending(false);
+      return;
+    }
+    const url = listImageUrl.trim();
+    const gallery = [...listImages, ...(url ? [url] : [])].slice(0, 3);
     try {
-      const reply = await clubRequest<ServerReply & { product?: Product }>(selectedClub, '/products', {
-        method: 'POST',
-        snapshot: data,
-        actor: user,
-        body: {
-          name: listName.trim(),
-          type: listType,
-          color: listColor.trim() || 'teal',
-          price,
-          memberPrice,
-          stock,
-          image: listImage.trim(),
+      const reply = await clubRequest<ServerReply & { product?: Product }>(
+        selectedClub,
+        '/products',
+        {
+          method: 'POST',
+          snapshot: data,
+          actor: user,
+          body: {
+            name: listName.trim(),
+            type: listType,
+            color: listColor.trim() || 'teal',
+            price,
+            memberPrice,
+            stock,
+            image: gallery[0] || '',
+            gallery,
+          },
         },
-      });
+      );
       applyServerPatch(selectedClub, reply.patch);
-      setListing(false);
-      setStaff(false);
-      if (reply.product?.id) openProduct(reply.product.id);
-      toast('New piece listed in the campus collection.');
+      toast(`${listName.trim()} is live in the collection.`);
+      if (listAgain) {
+        resetListingForm();
+      } else {
+        setListing(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not list this piece.');
     } finally {
       setPending(false);
     }
   };
-  const showOps = staff && isOpsRole;
   const content = (
     <div className={`sky-shop ${showOps ? 'sky-shop-ops' : ''}`}>
       <div className="shop-breadcrumb">
@@ -365,21 +472,51 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         <span>{showOps ? 'Stock & orders' : 'The campus collection'}</span>
       </div>
       <>
-        <header className="sky-shop-heading">
-          <div>
-            <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
-            <h1>
-              A little more
+        {showOps ? (
+          <header className="sky-shop-heading shop-ops-heading">
+            <div>
+              <span className="shop-overline">
+                {organization?.name?.toUpperCase() || 'CLUB'} · MERCHANDISE DESK
+              </span>
+              <h1>
+                {canManageInventory ? (
+                  <>
+                    Stock, listings
+                    <br />
+                    <em>&amp; pickups.</em>
+                  </>
+                ) : (
+                  <>
+                    Club orders
+                    <br />
+                    <em>&amp; pickups.</em>
+                  </>
+                )}
+              </h1>
+            </div>
+            <p>
+              {canManageInventory
+                ? 'List pieces, manage inventory, and fulfil campus pickups.'
+                : 'Track merchandise orders and update pickup status.'}
+            </p>
+          </header>
+        ) : (
+          <header className="sky-shop-heading">
+            <div>
+              <span className="shop-overline">THE CAMPUS COLLECTION / 2026</span>
+              <h1>
+                A little more
+                <br />
+                <em>you. A little more us.</em>
+              </h1>
+            </div>
+            <p>
+              Thoughtful pieces for everyday campus life.
               <br />
-              <em>you. A little more us.</em>
-            </h1>
-          </div>
-          <p>
-            Thoughtful pieces for everyday campus life.
-            <br />
-            Wear your community. Support what comes next.
-          </p>
-        </header>
+              Wear your community. Support what comes next.
+            </p>
+          </header>
+        )}
         {!showOps && (
           <>
             <section className="sky-shop-hero">
@@ -441,20 +578,16 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
           </>
         )}
       </>
-      {isOpsRole && (
+      {showOps && (
         <div className="shop-seller-bar">
           {canManageInventory && (
             <Button icon="Plus" onClick={openListing}>
               List something new
             </Button>
           )}
-          <Button
-            variant="secondary"
-            icon={staff ? 'ShoppingBag' : 'Package'}
-            onClick={() => setStaff(!staff)}
-          >
-            {staff ? 'Back to shop' : canManageInventory ? 'Stock & orders' : 'Club orders'}
-          </Button>
+          <LinkButton to="/shop" variant="secondary" icon="ShoppingBag">
+            Preview public shop
+          </LinkButton>
         </div>
       )}
       {showOps ? (
@@ -506,38 +639,50 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   List something new
                 </Button>
               </div>
-              <div className="shop-stock-grid">
-                {data.products.map((p) => {
-                  const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
-                  return (
-                    <button
-                      type="button"
-                      key={p.id}
-                      className="shop-stock-card"
-                      onClick={() => {
-                        setInventory(true);
-                        setError('');
-                        setInventoryProduct(p.id);
-                        setInventorySize(Object.keys(p.stock)[0] || '');
-                      }}
-                    >
-                      <ProductPhoto product={p} />
-                      <div>
-                        <strong>{p.name}</strong>
-                        <small>
-                          {p.type} · {money(p.price)}
-                        </small>
-                        <span className="shop-stock-sizes">
-                          {Object.entries(p.stock)
-                            .map(([s, n]) => `${s} ${n}`)
-                            .join(' · ') || 'No sizes'}
-                        </span>
-                        <Badge tone={total < 10 ? 'gold' : 'green'}>{total} in stock</Badge>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              {data.products.length ? (
+                <div className="shop-stock-grid">
+                  {data.products.map((p) => {
+                    const total = Object.values(p.stock).reduce((s, n) => s + n, 0);
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        className="shop-stock-card"
+                        onClick={() => {
+                          setInventory(true);
+                          setError('');
+                          setInventoryProduct(p.id);
+                          setInventorySize(Object.keys(p.stock)[0] || '');
+                        }}
+                      >
+                        <ProductPhoto product={p} />
+                        <div>
+                          <strong>{p.name}</strong>
+                          <small>
+                            {p.type} · {money(p.price)}
+                          </small>
+                          <span className="shop-stock-sizes">
+                            {Object.entries(p.stock)
+                              .map(([s, n]) => `${s} ${n}`)
+                              .join(' · ') || 'No sizes'}
+                          </span>
+                          <Badge tone={total < 10 ? 'gold' : 'green'}>{total} in stock</Badge>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Empty
+                  title="No pieces listed yet"
+                  description="Club admin and treasurer can publish as many items as you need."
+                  action={
+                    <Button icon="Plus" onClick={openListing}>
+                      List something new
+                    </Button>
+                  }
+                />
+              )}
             </section>
           )}
 
@@ -811,7 +956,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       ) : (
         content
       )}
-      {product && !fit && (
+      {product && !fit && !showOps && (
         <Modal
           title="Your next everyday favourite"
           description={`${organization?.name} · Campus collection`}
@@ -844,9 +989,28 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 {preview ? (
                   <GarmentPreview kind={product.type} color={color} onColorChange={setColor} />
                 ) : (
-                  <ProductPhoto product={product} />
+                  <ProductPhoto
+                    product={product}
+                    src={productImages(product)[activePhoto] || productImages(product)[0]}
+                  />
                 )}
               </div>
+              {!preview && productImages(product).length > 1 && (
+                <div className="shop-gallery-thumbs" role="list">
+                  {productImages(product).map((src, index) => (
+                    <button
+                      type="button"
+                      key={`${product.id}-g-${index}`}
+                      className={`shop-gallery-thumb${activePhoto === index ? ' active' : ''}`}
+                      aria-label={`Show photo ${index + 1}`}
+                      aria-pressed={activePhoto === index}
+                      onClick={() => setActivePhoto(index)}
+                    >
+                      <img src={src} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
               <p>
                 Catalog photography and preview colours are illustrative. Stocked colour:{' '}
                 {product.color}.
@@ -1197,38 +1361,115 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 />
               </Field>
             </div>
+            {listType === 'Tote bag' ? (
+              <Field label="Starting stock (one size)" hint="One-size tote inventory.">
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  value={listStock}
+                  onChange={(e) => setListStock(e.target.value)}
+                />
+              </Field>
+            ) : (
+              <Field label="Starting stock by size" hint="List as many sizes as you have on hand.">
+                <div className="shop-list-stock-grid">
+                  {(
+                    [
+                      ['S', listStockS, setListStockS],
+                      ['M', listStockM, setListStockM],
+                      ['L', listStockL, setListStockL],
+                      ['XL', listStockXl, setListStockXl],
+                    ] as const
+                  ).map(([label, value, setValue]) => (
+                    <label key={label}>
+                      <span>{label}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Field>
+            )}
             <Field
-              label={listType === 'Tote bag' ? 'Starting stock (one size)' : 'Starting stock (M base)'}
-              hint={
-                listType === 'Tote bag'
-                  ? 'One-size tote inventory.'
-                  : 'We seed nearby sizes from this count so the piece is ready to sell.'
-              }
+              label="Photos"
+              hint="Upload up to three images, or paste a URL. First photo is the catalog cover."
             >
-              <input
-                type="number"
-                required
-                min={0}
-                value={listStock}
-                onChange={(e) => setListStock(e.target.value)}
-              />
-            </Field>
-            <Field label="Image URL (optional)">
+              <div className="shop-list-photos">
+                {listImages.map((src, index) => (
+                  <div className="shop-list-photo-thumb" key={`${src.slice(0, 24)}-${index}`}>
+                    <img src={src} alt={`Upload preview ${index + 1}`} />
+                    <button
+                      type="button"
+                      aria-label={`Remove photo ${index + 1}`}
+                      onClick={() =>
+                        setListImages((current) => current.filter((_, i) => i !== index))
+                      }
+                    >
+                      <Icon name="X" size={14} />
+                    </button>
+                  </div>
+                ))}
+                {listImages.length < 3 && (
+                  <label className="shop-image-upload">
+                    <Icon name="CloudUpload" size={22} />
+                    <span>
+                      Upload photo
+                      <small>PNG, JPEG, or WebP · under 2 MB</small>
+                    </span>
+                    <input
+                      aria-label="Upload product photos"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      multiple
+                      disabled={readingImages || pending}
+                      onChange={(e) => {
+                        void addListingImages(e.target.files);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
               <input
                 type="url"
-                value={listImage}
-                onChange={(e) => setListImage(e.target.value)}
-                placeholder="https://…"
+                value={listImageUrl}
+                onChange={(e) => setListImageUrl(e.target.value)}
+                placeholder="Or paste an image URL (optional)"
+                style={{ marginTop: 10 }}
               />
             </Field>
+            <label className="shop-list-again">
+              <input
+                type="checkbox"
+                checked={listAgain}
+                onChange={(e) => setListAgain(e.target.checked)}
+              />
+              <span>Keep this form open to list another item after publish</span>
+            </label>
             {error && (
               <p className="inline-error" role="alert">
                 {error}
               </p>
             )}
-            <Button type="submit" disabled={pending || !listName.trim()} icon="Plus">
-              {pending ? 'Listing…' : 'Publish to shop'}
-            </Button>
+            <div className="shop-list-actions">
+              <Button type="submit" disabled={pending || readingImages || !listName.trim()} icon="Plus">
+                {pending ? 'Listing…' : listAgain ? 'Publish & list another' : 'Publish to shop'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => setListing(false)}
+              >
+                Done
+              </Button>
+            </div>
           </form>
         </Modal>
       )}

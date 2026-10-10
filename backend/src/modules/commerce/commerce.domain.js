@@ -399,10 +399,15 @@ export function createProduct(store, input) {
   const club = ensureCommerceFields(store);
   if (!input?.actor?.name) throw new CommerceError(400, 'Staff actor required.');
   const typeLabel = parsed.type === 'Other' ? 'Merchandise' : parsed.type;
-  const imageUrl =
-    parsed.image && /^https?:\/\//i.test(parsed.image)
-      ? parsed.image
-      : PRODUCT_IMAGES[parsed.type] || PRODUCT_IMAGES.Hoodie;
+  const isUsableImage = (value) =>
+    typeof value === 'string' &&
+    (/^https?:\/\//i.test(value) || /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(value));
+  const gallery = [...new Set((parsed.gallery || []).filter(isUsableImage))].slice(0, 3);
+  const primary =
+    (isUsableImage(parsed.image) && parsed.image) ||
+    gallery[0] ||
+    PRODUCT_IMAGES[parsed.type] ||
+    PRODUCT_IMAGES.Hoodie;
   const product = {
     id: uid('P'),
     name: parsed.name,
@@ -411,7 +416,8 @@ export function createProduct(store, input) {
     price: parsed.price,
     memberPrice: parsed.memberPrice,
     stock: parsed.stock,
-    image: imageUrl,
+    image: primary,
+    ...(gallery.length ? { gallery } : {}),
   };
   const units = Object.values(product.stock).reduce((sum, n) => sum + n, 0);
   const auditEntry = {
