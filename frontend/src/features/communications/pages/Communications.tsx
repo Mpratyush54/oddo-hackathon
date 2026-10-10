@@ -54,8 +54,8 @@ export function CommunicationsPage() {
   const [title, setTitle] = useState(''),
     [body, setBody] = useState(''),
     [audience, setAudience] = useState('All members');
-  const [email, setEmail] = useState(true),
-    [whatsapp, setWhatsapp] = useState(false);
+  const email = true;
+  const whatsapp = true;
   const [notes, setNotes] = useState(''),
     [draft, setDraft] = useState<Draft | null>(null),
     [draftSource, setDraftSource] = useState(''),
@@ -665,32 +665,24 @@ export function CommunicationsPage() {
                 </div>
                 <Badge>Included</Badge>
               </div>
-              <label className="comms-channel">
+              <div className="comms-channel">
                 <Icon name="Mail" />
                 <div>
                   <strong>Email</strong>
                   <p>
-                    {recipients.filter((m) => m.email).length} addresses · prepared for delivery
+                    {recipients.filter((m) => m.email).length} addresses · delivered automatically
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={email}
-                  onChange={(e) => setEmail(e.target.checked)}
-                />
-              </label>
-              <label className="comms-channel">
+                <Badge>Included</Badge>
+              </div>
+              <div className="comms-channel">
                 <Icon name="Bell" />
                 <div>
                   <strong>WhatsApp</strong>
-                  <p>{whatsappRecipients.length} opted-in numbers · prepared for delivery</p>
+                  <p>{whatsappRecipients.length} opted-in numbers · posted to respective groups</p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.checked)}
-                />
-              </label>
+                <Badge>Included</Badge>
+              </div>
 
               <div className="comms-publish-actions">
                 <Button type="submit" icon="Megaphone" disabled={!recipients.length}>

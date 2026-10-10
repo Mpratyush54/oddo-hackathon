@@ -40,8 +40,8 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  border: 1px solid var(--border, #dfe6e2);
-  background: white;
+  border: none;
+  background: #f7f9f6;
   padding: 0 16px;
   border-radius: 12px;
   margin-bottom: 18px;
