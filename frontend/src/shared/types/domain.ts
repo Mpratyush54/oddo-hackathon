@@ -1,5 +1,6 @@
 export type Member = {
   id: string;
+  userId?: string;
   name: string;
   email: string;
   course: string;
