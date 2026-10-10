@@ -36,15 +36,38 @@ export function PublicNav({ className = '' }: { className?: string }) {
       aria-label="Public navigation"
     >
       <Logo />
-      <div className="public-nav-actions">
+      <div className="public-nav-right">
+        <div className={open ? 'public-links is-open' : 'public-links'}>
+          <Link to="/events" onClick={() => setOpen(false)}>
+            Events
+          </Link>
+          <Link to="/clubs" onClick={() => setOpen(false)}>
+            Clubs
+          </Link>
+          <Link to="/shop" onClick={() => setOpen(false)}>
+            Shop
+          </Link>
+          <Link to="/login" onClick={() => setOpen(false)}>
+            Login
+          </Link>
+          <button
+            type="button"
+            className="mobile-public-theme-row"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={16} />
+            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+        </div>
         <button
           type="button"
-          className={`public-theme-toggle-btn ${theme === 'dark' ? 'shift-to-light' : 'shift-to-dark'}`}
+          className={`public-theme-toggle public-theme-toggle-btn ${theme === 'dark' ? 'shift-to-light' : 'shift-to-dark'}`}
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
-          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
+          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={17} />
         </button>
         <button
           className="public-menu-toggle icon-button"
@@ -53,28 +76,6 @@ export function PublicNav({ className = '' }: { className?: string }) {
           onClick={() => setOpen(!open)}
         >
           <Icon name={open ? 'X' : 'Menu'} />
-        </button>
-      </div>
-      <div className={open ? 'public-links is-open' : 'public-links'}>
-        <Link to="/events" onClick={() => setOpen(false)}>
-          Events
-        </Link>
-        <Link to="/clubs" onClick={() => setOpen(false)}>
-          Clubs
-        </Link>
-        <Link to="/shop" onClick={() => setOpen(false)}>
-          Shop
-        </Link>
-        <Link to="/login" onClick={() => setOpen(false)}>
-          Login
-        </Link>
-        <button
-          type="button"
-          className="mobile-public-theme-toggle button secondary"
-          onClick={toggleTheme}
-        >
-          <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={17} />
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
       </div>
     </nav>
