@@ -140,14 +140,30 @@ export default function Workspace() {
   }, [searchInput]);
   useEffect(() => {
     if (!searchOpen) return;
-    const focusTimer = window.setTimeout(() => searchRef.current?.focus(), 20);
+    // Phone: don't autofocus — keyboard would cover the sheet. Desktop: focus the field.
+    const focusTimer = phoneViewport
+      ? undefined
+      : window.setTimeout(() => searchRef.current?.focus(), 20);
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      window.clearTimeout(focusTimer);
-      document.body.style.overflow = previous;
+    const vv = window.visualViewport;
+    const syncViewport = () => {
+      if (!vv) return;
+      document.documentElement.style.setProperty('--search-vv-top', `${vv.offsetTop}px`);
+      document.documentElement.style.setProperty('--search-vv-height', `${vv.height}px`);
     };
-  }, [searchOpen]);
+    syncViewport();
+    vv?.addEventListener('resize', syncViewport);
+    vv?.addEventListener('scroll', syncViewport);
+    return () => {
+      if (focusTimer) window.clearTimeout(focusTimer);
+      document.body.style.overflow = previous;
+      vv?.removeEventListener('resize', syncViewport);
+      vv?.removeEventListener('scroll', syncViewport);
+      document.documentElement.style.removeProperty('--search-vv-top');
+      document.documentElement.style.removeProperty('--search-vv-height');
+    };
+  }, [searchOpen, phoneViewport]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -951,10 +967,11 @@ export default function Workspace() {
       {searchOpen &&
         createPortal(
           <div
-            className="workspace-search-backdrop"
+            className={`workspace-search-backdrop${phoneViewport ? ' is-phone' : ''}`}
             role="presentation"
             onMouseDown={(e) => {
-              if (e.target === e.currentTarget) closeSearch();
+              // Desktop only: click outside closes. Phone uses the X button.
+              if (!phoneViewport && e.target === e.currentTarget) closeSearch();
             }}
           >
             <div
@@ -962,38 +979,48 @@ export default function Workspace() {
               role="dialog"
               aria-modal="true"
               aria-label="Search workspace"
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              <div className="workspace-search-field">
-                <Icon name="Search" size={20} />
-                <input
-                  ref={searchRef}
-                  aria-label="Search people, events, orders, pages"
-                  placeholder="Search people, events, orders, pages…"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && results[0] && !searching) {
-                      navigate(results[0].to);
-                      closeSearch();
-                    }
-                  }}
-                />
-                {searchInput ? (
-                  <button
-                    type="button"
-                    className="workspace-search-clear"
-                    aria-label="Clear search"
-                    onClick={() => {
-                      setSearchInput('');
-                      setDebouncedQuery('');
-                      searchRef.current?.focus();
+              <div className="workspace-search-toolbar">
+                <div className="workspace-search-field">
+                  <Icon name="Search" size={20} />
+                  <input
+                    ref={searchRef}
+                    aria-label="Search people, events, orders, pages"
+                    placeholder="Search people, events, orders, pages…"
+                    value={searchInput}
+                    enterKeyHint="search"
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && results[0] && !searching) {
+                        navigate(results[0].to);
+                        closeSearch();
+                      }
                     }}
-                  >
-                    <Icon name="X" size={16} />
-                  </button>
-                ) : (
-                  <kbd>Esc</kbd>
-                )}
+                  />
+                  {searchInput ? (
+                    <button
+                      type="button"
+                      className="workspace-search-clear"
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setSearchInput('');
+                        setDebouncedQuery('');
+                        searchRef.current?.focus();
+                      }}
+                    >
+                      <Icon name="CircleX" size={18} />
+                    </button>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="workspace-search-close"
+                  aria-label="Close search"
+                  onClick={closeSearch}
+                >
+                  <Icon name="X" size={20} />
+                </button>
               </div>
               <div className="workspace-search-filters" role="tablist" aria-label="Search category">
                 {searchFilters.map((filter) => (
@@ -1024,12 +1051,7 @@ export default function Workspace() {
                 )}
                 {!searching && results.length ? (
                   results.map((r) => (
-                    <Link
-                      to={r.to}
-                      key={r.id}
-                      role="option"
-                      onClick={closeSearch}
-                    >
+                    <Link to={r.to} key={r.id} role="option" onClick={closeSearch}>
                       <span className="workspace-search-icon">
                         <Icon name={r.icon} size={18} />
                       </span>
