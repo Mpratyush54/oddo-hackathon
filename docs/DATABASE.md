@@ -25,6 +25,8 @@ Roles are `member`, `organizer`, `treasurer`, `admin`, or `college`. ACCESS reco
 
 ## Club aggregate entities
 
+Browser device subscriptions use `USER#<userId>` / `PUSH#<endpointHash>` with an active flag, version, timestamps and a validated endpoint/key pair. `PUSH#<endpointHash>` / `OWNER` conditionally binds that device to one account. Automatic reminder markers use the club partition / `REMINDER#<notificationId>` with userId, timestamp and 90-day TTL. They prevent duplicates even if old aggregate notifications are later archived. Delivery ledgers also support Browser, queue content, reminder references and conditional versions. Meta STATUS rows carry an optional version for safe concurrent webhook reconciliation. Private push endpoint keys never appear in member-facing club delivery logs.
+
 | Collection    | Schema and relationships                                                                                                                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | members       | Unique id; optional userId links PROFILE; name/email/course, status Active/Pending/Expiring/Expired, joined/expires dates, member role, consent, preferences, points and optional complimentary enrollment metadata |

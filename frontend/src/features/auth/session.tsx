@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useStore } from '../../app/state/StoreProvider';
 import { backendPost, backendRequest, cloudMode, setCsrf } from '../../shared/api/client';
+import { disableBrowserNotifications } from '../account/api/browser-notifications';
 export type Role = 'member' | 'organizer' | 'treasurer' | 'admin' | 'college';
 export const roleLabels: Record<Role, string> = {
   member: 'Student & volunteer',
@@ -166,7 +167,9 @@ function CloudSessionProvider({ children }: { children: ReactNode }) {
         selectClub: store.selectClub,
         switchPersona: () => store.toast('Roles are assigned by the campus administrator.'),
         signOut: () => {
-          void backendPost('/auth/logout', {})
+          void disableBrowserNotifications()
+            .catch(() => {})
+            .then(() => backendPost('/auth/logout', {}))
             .then(() => {
               setCsrf('');
               setAccount(null);

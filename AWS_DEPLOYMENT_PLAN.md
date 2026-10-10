@@ -66,7 +66,7 @@ Signed webhook handling is implemented, but META_APP_SECRET was absent. Add the 
 
 Webhook URL: https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com/api/webhooks/whatsapp
 
-No WhatsApp messages or AI generations were sent as part of deployment verification. Email and reminder delivery remain Prepared until an email provider/scheduler is connected. OpenRouter and Meta are external services; hosting in Mumbai does not imply all provider-processed content stays in India.
+Email and WhatsApp deliveries are now processed by the notification worker, with an EventBridge schedule every minute and staff dispatch/retry controls. Brevo SMTP supplies email; WhatsApp requires a valid token and approved template. Profile includes opt-in Web Push notifications backed by server-side VAPID credentials. Provider acceptance is separate from confirmed WhatsApp delivery. See [notification setup and schedules](docs/NOTIFICATIONS.md). OpenRouter and Meta are external services; hosting in Mumbai does not imply all provider-processed content stays in India.
 
 ## Deployment and administrator setup
 

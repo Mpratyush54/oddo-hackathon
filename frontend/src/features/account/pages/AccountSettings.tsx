@@ -90,6 +90,7 @@ export function AccountSettings({ embedded = false }: { embedded?: boolean } = {
               [
                 ['email', 'Community announcements', 'Email updates from your community.'],
                 ['renewals', 'Membership reminders', 'A nudge before membership runs out.'],
+                ['events', 'Event reminders', 'A reminder before your booked event starts.'],
                 ['weekly', 'Weekly roundup', 'Events and community projects in one digest.'],
               ] as const
             ).map(([key, title, description]) => (
@@ -100,13 +101,16 @@ export function AccountSettings({ embedded = false }: { embedded?: boolean } = {
                 </div>
                 <button
                   role="switch"
-                  aria-checked={data.preferences[key]}
+                  aria-checked={data.preferences[key] ?? key === 'events'}
                   aria-label={title}
-                  className={`switch ${data.preferences[key] ? 'on' : ''}`}
+                  className={`switch ${(data.preferences[key] ?? key === 'events') ? 'on' : ''}`}
                   onClick={() => {
                     update((d) => ({
                       ...d,
-                      preferences: { ...d.preferences, [key]: !d.preferences[key] },
+                      preferences: {
+                        ...d.preferences,
+                        [key]: !(d.preferences[key] ?? key === 'events'),
+                      },
                     }));
                     toast('Preference saved for this club.');
                   }}
@@ -301,7 +305,11 @@ export function AccountSettings({ embedded = false }: { embedded?: boolean } = {
   if (embedded) {
     return (
       <div className="settings-sheet">
-        <div className="segmented settings-sheet-tabs" role="tablist" aria-label="Settings sections">
+        <div
+          className="segmented settings-sheet-tabs"
+          role="tablist"
+          aria-label="Settings sections"
+        >
           {TABS.map(([icon, title]) => (
             <button
               key={title}

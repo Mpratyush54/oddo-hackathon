@@ -6,7 +6,12 @@ export const preferencesRequestSchema = z.object({
   phone: optionalPhoneSchema.optional(),
   whatsappOptIn: z.boolean().optional(),
   preferences: z
-    .object({ email: z.boolean(), renewals: z.boolean(), weekly: z.boolean() })
+    .object({
+      email: z.boolean(),
+      renewals: z.boolean(),
+      weekly: z.boolean(),
+      events: z.boolean().optional(),
+    })
     .optional(),
 });
 export const readNotificationsSchema = z.object({ ids: z.array(entityId).max(100) });

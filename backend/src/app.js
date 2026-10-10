@@ -7,6 +7,7 @@ import { registerCommunicationsRoutes } from './modules/communications/communica
 import { registerFinanceRoutes } from './modules/finance/finance.routes.js';
 import { registerWebhooksRoutes } from './modules/webhooks/webhooks.routes.js';
 import express from 'express';
+import { registerNotificationRoutes } from './modules/notifications/notifications.routes.js';
 import { registerPaymentsRoutes } from './modules/payments/payments.routes.js';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createAuth } from './modules/auth/index.js';
@@ -32,6 +33,7 @@ export function createApp({
   clubs,
   fetchImpl = fetch,
   s3 = new S3Client({}),
+  notificationOptions = {},
 }) {
   const app = express(),
     auth = createAuth({ repo, env, fetchImpl }),
@@ -67,6 +69,7 @@ export function createApp({
   auth.routes(app);
   app.use('/api', createAuthenticate({ auth, repo }));
   registerPaymentsRoutes(app, { repo, domain, env, fetchImpl });
+  registerNotificationRoutes(app, { repo, domain, env, clubs, fetchImpl, ...notificationOptions });
   registerClubsRoutes(app, clubsController);
   registerUsersRoutes(app, { repo, domain });
   registerCollegeRoutes(app, collegeController);
@@ -79,6 +82,12 @@ export function createApp({
   registerWebhooksRoutes(app, webhooksController);
 
   const staticPath = fileURLToPath(new URL('./static/', import.meta.url));
+  app.get('/notifications-sw.js', (req, res, next) => {
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile('notifications-sw.js', { root: staticPath }, (error) => {
+      if (error) next();
+    });
+  });
   app.use(express.static(staticPath, { index: false, maxAge: '1y', immutable: true }));
   app.get('/{*path}', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.split('/').pop().includes('.')) return next();

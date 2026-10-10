@@ -11,6 +11,10 @@ const exec = promisify(execFile);
 const region = process.env.AWS_REGION || 'ap-south-1';
 const secretName = (process.env.AWS_STACK_NAME || 'skyline-campus-api') + '/backend';
 const fields = [
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
+  'META_TEMPLATE_FIELDS',
   'RAZORPAY_KEY_ID',
   'RAZORPAY_KEY_SECRET',
   'RAZORPAY_WEBHOOK_SECRET',

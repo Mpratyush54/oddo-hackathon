@@ -21,13 +21,17 @@ export const publishAnnouncementSchema = z.object({
   email: z.boolean().default(false),
   whatsapp: z.boolean().default(false),
 });
-export const prepareRemindersSchema = z.object({ status: z.enum(['Pending', 'Expiring']) });
+export const prepareRemindersSchema = z.object({
+  status: z.enum(['Pending', 'Expiring']),
+  memberIds: z.array(entityId).min(1).max(100).optional(),
+});
 export const metaConfigurationSchema = z.object({
   META_WHATSAPP_TOKEN: z.string().min(1),
   META_PHONE_NUMBER_ID: digitsSchema,
   META_GRAPH_VERSION: graphVersionSchema,
 });
 export const sendWhatsAppSchema = z.object({
+  retry: z.boolean().default(false),
   announcementId: entityId,
   channel: z.literal('WhatsApp'),
   recipients: z

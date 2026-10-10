@@ -1,3 +1,4 @@
+import { renewingSoon } from '../../../../../shared/reminders.js';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Avatar } from '../../../shared/ui/Avatar';
@@ -16,10 +17,10 @@ import { Revealed } from '../../../shared/components/PageMotion';
 import { date, exportCSV, money, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { Member } from '../../../shared/types/domain';
-import { cloudMode } from '../../../shared/api/client';
+import { backendPost, cloudMode } from '../../../shared/api/client';
 
 export function MembersPage() {
-  const { data, update, toast } = useStore();
+  const { data, update, toast, applyServerPatch, selectedClub } = useStore();
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') || ''),
     [status, setStatus] = useState(params.get('status') || 'All'),
@@ -72,8 +73,25 @@ export function MembersPage() {
     toast(`${member.name}'s membership is active. ${money(500)} added to the ledger.`);
     setDetail(null);
   };
-  const expiringMembers = data.members.filter((m) => m.status === 'Expiring');
-  const sendRenewalReminders = (targets?: Member[]) => {
+  const expiringMembers = data.members.filter((m) => renewingSoon(m, today));
+  const sendRenewalReminders = async (targets?: Member[]) => {
+    if (cloudMode) {
+      try {
+        const result = await backendPost<{
+          state: import('../../../shared/types/domain').Store;
+          prepared: number;
+        }>(`/clubs/${encodeURIComponent(selectedClub)}/actions`, {
+          type: 'reminders.prepare',
+          args: { status: 'Expiring', ...(targets ? { memberIds: targets.map((m) => m.id) } : {}) },
+          idempotencyKey: crypto.randomUUID(),
+        });
+        applyServerPatch(selectedClub, result.state);
+        toast(`Queued ${result.prepared} renewal reminders for delivery.`);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Reminder scheduling failed.');
+      }
+      return;
+    }
     const list = targets || expiringMembers;
     if (!list.length) {
       toast('No expiring members found to remind.');

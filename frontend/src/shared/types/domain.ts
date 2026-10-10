@@ -188,6 +188,7 @@ export type WaitlistEntry = {
 
 export type Notification = {
   id: string;
+  userId?: string;
   title: string;
   body: string;
   date: string;
@@ -199,11 +200,13 @@ export type Notification = {
 export type Delivery = {
   id: string;
   announcementId: string;
-  channel: 'Email' | 'WhatsApp' | 'In-app';
+  channel: 'Email' | 'WhatsApp' | 'In-app' | 'Browser';
   recipient: string;
   status: 'Prepared' | 'Sent' | 'Failed' | 'Unknown';
   date: string;
   detail: string;
+  title?: string;
+  providerStatus?: 'accepted' | 'sent' | 'delivered' | 'read' | 'failed';
 };
 
 export type EventReview = {
@@ -226,7 +229,7 @@ export type Store = {
   tickets: Ticket[];
   orders: Order[];
   profile: { name: string; email: string; role: string };
-  preferences: { email: boolean; renewals: boolean; weekly: boolean };
+  preferences: { email: boolean; renewals: boolean; weekly: boolean; events?: boolean };
   waitlist: WaitlistEntry[];
   audit: AuditEntry[];
   notifications: Notification[];

@@ -1,10 +1,11 @@
 import { parseRequest } from '../../shared/request-validation.js';
 import { publishAnnouncementSchema, prepareRemindersSchema } from './communications.schemas.js';
-import { HttpError, recordId } from '../../shared/records.js';
+import { HttpError, recordId, timestamp } from '../../shared/records.js';
 import { staff, requireRole } from '../../shared/authorization.js';
 
 import { matchesAudience } from './audience.js';
 import { ClubActionService } from '../clubs/club-action.service.js';
+import { membershipReminder, queueReminder } from '../notifications/reminder-planner.js';
 
 export class AnnouncementService extends ClubActionService {
   publish(input) {
@@ -31,14 +32,14 @@ export class AnnouncementService extends ClubActionService {
       id: recordId('NOT'),
       title: announcement.title,
       body: announcement.body,
-      date: this.now,
+      date: timestamp(),
       read: false,
       to: '/app/announcements',
       audience,
     });
     for (const member of this.data.members.filter((m) => m.userId && matchesAudience(m, audience)))
       for (const channel of [
-        ...(announcement.email ? ['Email'] : []),
+        ...(announcement.email && member.preferences?.email !== false ? ['Email'] : []),
         ...(announcement.whatsapp && member.whatsappOptIn && member.phone ? ['WhatsApp'] : []),
       ])
         this.data.deliveries.unshift({
@@ -49,6 +50,11 @@ export class AnnouncementService extends ClubActionService {
           status: 'Prepared',
           date: this.now,
           detail: 'Prepared only. No external message sent.',
+          userId: member.userId,
+          title: announcement.title,
+          body: announcement.body,
+          url: '/app/announcements',
+          kind: 'announcement',
         });
     const result = { announcement };
 
@@ -60,24 +66,17 @@ export class AnnouncementService extends ClubActionService {
 
     requireRole(this.role, staff);
 
-    const announcementId = `REM-${input.status}-${this.now}`;
-    if (this.data.deliveries.some((d) => d.announcementId === announcementId))
-      throw new HttpError(409, 'Reminders have already been prepared today.');
-    for (const member of this.data.members.filter((m) => m.userId && m.status === input.status))
-      for (const channel of [
-        'Email',
-        ...(member.whatsappOptIn && member.phone ? ['WhatsApp'] : []),
-      ])
-        this.data.deliveries.unshift({
-          id: recordId('DEL'),
-          announcementId,
-          channel,
-          recipient: channel === 'WhatsApp' ? member.phone : member.email,
-          status: 'Prepared',
-          date: this.now,
-          detail: 'Reminder prepared. No external message sent.',
-        });
-
-    return {};
+    let prepared = 0;
+    for (const member of this.data.members) {
+      if (input.memberIds && !input.memberIds.includes(member.id)) continue;
+      const reminder = membershipReminder(member, this.now, input.status);
+      if (reminder && queueReminder(this.data, reminder, timestamp())) prepared++;
+    }
+    if (!prepared)
+      throw new HttpError(
+        409,
+        'No eligible reminders, or these reminders were already queued today.',
+      );
+    return { prepared };
   }
 }

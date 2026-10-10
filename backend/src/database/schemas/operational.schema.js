@@ -33,4 +33,13 @@ export const messageStatusSchema = z.strictObject({
   sk: z.literal('STATUS'),
   providerStatus: z.enum(['sent', 'delivered', 'read', 'failed']),
   providerTimestamp: count,
+  version: count.optional(),
+});
+export const reminderRecordSchema = z.strictObject({
+  ...recordKeys,
+  pk: clubPartition,
+  sk: prefixedKey('REMINDER#'),
+  userId: id,
+  createdAt: z.iso.datetime(),
+  expiresAt: ttl,
 });

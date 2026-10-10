@@ -15,6 +15,7 @@ import '../../landing/styles/landing.css';
 import { roles } from '../../auth/config/roles';
 import { usePersonal } from '../hooks/usePersonal';
 import { NotificationPreferences } from '../components/NotificationPreferences';
+import { BrowserNotifications } from '../components/BrowserNotifications';
 import { AccountSettings } from './AccountSettings';
 
 export function PersonalProfile() {
@@ -115,6 +116,7 @@ export function PersonalProfile() {
         </section>
       </div>
       <NotificationPreferences />
+      <BrowserNotifications />
       {settingsOpen && (
         <Modal title="Account settings" onClose={closeSettings} wide>
           <AccountSettings embedded />

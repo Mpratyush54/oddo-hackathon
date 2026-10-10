@@ -14,6 +14,7 @@ export const count = z.number().int().nonnegative();
 export const role = z.enum(['member', 'organizer', 'treasurer', 'admin', 'college']);
 export const ttl = z.number().int().positive();
 export const preferences = z.object({
+  events: z.boolean().optional(),
   email: z.boolean(),
   renewals: z.boolean(),
   weekly: z.boolean(),

@@ -3,8 +3,11 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { readFile } from 'node:fs/promises';
 import { createApp } from '../app.js';
 import { DynamoRepository } from '../database/repositories/index.js';
+import { createDomain } from '../modules/clubs/club.service.js';
+import { DeliveryWorker } from '../modules/notifications/delivery-worker.service.js';
 
 let adapter;
+let worker;
 export async function handler(event, context) {
   if (!adapter) {
     const secret = await new SecretsManagerClient({}).send(
@@ -14,9 +17,19 @@ export async function handler(event, context) {
     const { organizations } = JSON.parse(
       await readFile(new URL('./seed.json', import.meta.url), 'utf8'),
     );
-    adapter = serverlessExpress({
-      app: createApp({ env, repo: new DynamoRepository(env.DATA_TABLE), clubs: organizations }),
+    const repo = new DynamoRepository(env.DATA_TABLE);
+    worker = new DeliveryWorker({
+      env,
+      repo,
+      clubs: organizations,
+      domain: createDomain({ repo, clubs: organizations, paymentsRequired: true }),
     });
+    adapter = serverlessExpress({ app: createApp({ env, repo, clubs: organizations }) });
   }
+  if (event.source === 'skyline.notifications' && !event.requestContext)
+    return worker.run({
+      deadline:
+        Date.now() + Math.min(18000, (context.getRemainingTimeInMillis?.() || 28000) - 5000),
+    });
   return adapter(event, context);
 }

@@ -7,6 +7,7 @@ import { useStore } from '../../../app/state/StoreProvider';
 import '../../../shared/styles/portal.css';
 import '../../landing/styles/landing.css';
 import { usePersonal } from '../hooks/usePersonal';
+import { cloudMode } from '../../../shared/api/client';
 
 export function NotificationPreferences() {
   const { member } = usePersonal();
@@ -36,7 +37,7 @@ export function NotificationPreferences() {
                 m.id === member.id ? { ...m, phone: phone.trim(), whatsappOptIn: optIn } : m,
               ),
             }));
-            toast('Preferences saved. WhatsApp sending requires a configured provider.');
+            if (!cloudMode) toast('Demo preferences saved.');
           }}
         >
           <div className="portal-consent-fields">
@@ -65,7 +66,9 @@ export function NotificationPreferences() {
             Save preferences
           </Button>
           <p className="portal-muted portal-consent-hint">
-            Consent is saved locally for this demo. No WhatsApp message is sent from this form.
+            {cloudMode
+              ? 'Consent is saved to your account. WhatsApp test delivery requires a verified recipient and a valid sender token.'
+              : 'Consent is saved locally for this demo. No WhatsApp message is sent from this form.'}
           </p>
         </form>
       ) : (

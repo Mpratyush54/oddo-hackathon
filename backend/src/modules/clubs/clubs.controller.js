@@ -21,9 +21,14 @@ export function createClubsController({ repo, domain, checkReceipt }) {
             (row) =>
               !actual.some(
                 (sent) =>
-                  sent.announcementId === row.announcementId &&
-                  sent.channel === row.channel &&
-                  sent.recipient === normalizePhone(row.recipient),
+                  !sent.testOnly &&
+                  (sent.id === row.id ||
+                    (sent.announcementId === row.announcementId &&
+                      sent.channel === row.channel &&
+                      sent.recipient ===
+                        (row.channel === 'WhatsApp'
+                          ? normalizePhone(row.recipient)
+                          : row.recipient))),
               ),
           ),
         ];

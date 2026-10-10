@@ -143,9 +143,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
     void refresh();
     window.addEventListener('skyline-data-changed', refresh);
+    const timer = authenticated
+      ? window.setInterval(() => {
+          if (document.visibilityState === 'visible') void refresh();
+        }, 30000)
+      : undefined;
+    const onVisible = () => {
+      if (authenticated && document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       active = false;
       window.removeEventListener('skyline-data-changed', refresh);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [scope, authenticated]);
   const localUpdate = (fn: (current: Store) => Store) =>

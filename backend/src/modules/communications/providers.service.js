@@ -59,16 +59,13 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
         403,
         'Select up to five opted-in members who are approved Meta test recipients.',
       );
-    const template = env.META_WHATSAPP_TEMPLATE || 'hello_world';
-    if (template !== 'hello_world' || Number(env.META_TEMPLATE_PARAMETER_COUNT || 0) !== 0)
-      throw new HttpError(503, 'This endpoint supports the hello_world connectivity test only.');
     await repo.limit(`WHATSAPP#${clubId}`, 10, 3600);
     const deliveries = await Promise.all(
       requested.map(async (recipient) => {
         const pk = clubKey(clubId),
           sk = `DELIVERY#${createHash('sha256').update(`${announcement.id}:hello_world:${recipient}`).digest('hex')}`;
         const existing = await repo.get(pk, sk);
-        if (existing) return existing;
+        if (existing && !(body.retry && existing.status === 'Failed')) return existing;
         let ledger = {
           pk,
           sk,
@@ -80,8 +77,18 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
           date: timestamp(),
           detail: 'Request is in progress or unconfirmed. Do not resend automatically.',
           actor: user.id,
+          version: (existing?.version ?? -1) + 1,
+          testOnly: true,
         };
-        if (!(await repo.put(ledger, true))) return repo.get(pk, sk);
+        const claim = existing
+          ? {
+              item: ledger,
+              condition: '#status = :status',
+              names: { '#status': 'status' },
+              values: { ':status': 'Failed' },
+            }
+          : { item: ledger, condition: 'attribute_not_exists(pk)' };
+        if (!(await repo.atomic([claim]))) return repo.get(pk, sk);
         // Recheck the authoritative consent immediately before making a provider request.
         const fresh = (await domain.load(clubId)).data.members.find(
           (m) =>
@@ -147,7 +154,16 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
             };
           }
         }
-        await repo.put(ledger);
+        const oldVersion = ledger.version;
+        ledger.version++;
+        await repo.atomic([
+          {
+            item: ledger,
+            condition: '#version = :version',
+            names: { '#version': 'version' },
+            values: { ':version': oldVersion },
+          },
+        ]);
         await repo.put({
           pk,
           sk: `AUDIT#${timestamp()}#${recordId('AUD')}`,
@@ -190,15 +206,45 @@ export function createProviders({ env, repo, domain, fetchImpl = fetch }) {
               providerStatus: status.status,
               providerTimestamp: Number(status.timestamp) || 0,
             };
-          const prior = await repo.get(pk, 'STATUS');
-          if (prior && !newerStatus(prior, update)) continue;
-          await repo.put(update);
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const prior = await repo.get(pk, 'STATUS');
+            if (prior && !newerStatus(prior, update)) break;
+            if (await saveVersioned({ ...update, version: (prior?.version ?? -1) + 1 }, prior))
+              break;
+            if (attempt === 4)
+              throw new HttpError(409, 'Webhook update conflicted; retry delivery.');
+          }
           const mapping = await repo.get(pk, 'DELIVERY');
           if (mapping) {
-            const row = await repo.get(mapping.deliveryPk, mapping.deliverySk);
-            if (row && newerStatus(row, update)) await repo.put(applyProviderStatus(row, update));
+            for (let attempt = 0; attempt < 5; attempt++) {
+              const row = await repo.get(mapping.deliveryPk, mapping.deliverySk);
+              const latestStatus = await repo.get(pk, 'STATUS');
+              if (!row || !newerStatus(row, latestStatus)) break;
+              const next = {
+                ...applyProviderStatus(row, latestStatus),
+                version: (row.version ?? -1) + 1,
+              };
+              if (await saveVersioned(next, row)) break;
+              if (attempt === 4)
+                throw new HttpError(409, 'Webhook ledger update conflicted; retry delivery.');
+            }
           }
         }
+  }
+  function saveVersioned(item, prior) {
+    const condition = !prior
+      ? 'attribute_not_exists(pk)'
+      : prior.version === undefined
+        ? 'attribute_not_exists(#version)'
+        : '#version = :version';
+    return repo.atomic([
+      {
+        item,
+        condition,
+        ...(prior ? { names: { '#version': 'version' } } : {}),
+        ...(prior?.version !== undefined ? { values: { ':version': prior.version } } : {}),
+      },
+    ]);
   }
   return { draft, send, verifyWebhook, webhook };
 }
@@ -215,6 +261,6 @@ function applyProviderStatus(row, status) {
     providerStatus: status.providerStatus,
     providerTimestamp: status.providerTimestamp,
     status: status.providerStatus === 'failed' ? 'Failed' : 'Sent',
-    detail: `hello_world connectivity test only; announcement content not sent. Meta webhook reports: ${status.providerStatus}.`,
+    detail: `${row.testOnly ? 'hello_world connectivity test only; announcement content not sent. ' : ''}Meta webhook reports: ${status.providerStatus}.`,
   };
 }

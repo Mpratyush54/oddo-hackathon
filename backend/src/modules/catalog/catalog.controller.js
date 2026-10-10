@@ -21,8 +21,12 @@ export function createCatalogController({ env, clubs, domain }) {
             env.META_PHONE_NUMBER_ID &&
             env.META_TEST_RECIPIENTS
           ),
-          template: 'hello_world',
+          template: env.META_WHATSAPP_TEMPLATE || 'hello_world',
           webhookConfigured: !!env.META_APP_SECRET,
+          contentParameters: Number(env.META_TEMPLATE_PARAMETER_COUNT || 0),
+        },
+        browserNotifications: {
+          configured: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
         },
         payments: {
           provider: 'Razorpay',

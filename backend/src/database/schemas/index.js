@@ -1,3 +1,4 @@
+import { pushRecordSchema, pushOwnerSchema } from './push.schema.js';
 import { z } from 'zod';
 import { refundRecordSchema } from './refund.schema.js';
 import { paymentRecordSchema, paymentMappingSchema } from './payment.schema.js';
@@ -15,9 +16,13 @@ import {
   counterSchema,
   messageMappingSchema,
   messageStatusSchema,
+  reminderRecordSchema,
 } from './operational.schema.js';
 
 export const recordSchemas = {
+  pushSubscription: pushRecordSchema,
+  pushOwner: pushOwnerSchema,
+  reminder: reminderRecordSchema,
   refund: refundRecordSchema,
   payment: paymentRecordSchema,
   paymentMapping: paymentMappingSchema,
@@ -49,39 +54,32 @@ export class DatabaseValidationError extends Error {
 }
 export function parseDatabaseRecord(item) {
   item = omitUndefined(item);
-  const schema = item?.sk?.startsWith('REFUND#')
-    ? refundRecordSchema
-    : item?.sk?.startsWith('PAYMENT#')
-      ? paymentRecordSchema
-      : item?.sk === 'PAYMENT_REF'
-        ? paymentMappingSchema
-        : item?.sk === 'EMAIL_VERIFICATION'
-          ? emailVerificationSchema
-          : item?.sk === 'STATE'
-            ? stateSchema
-            : item?.sk === 'ACCOUNT'
-              ? accountSchema
-              : item?.sk === 'PROFILE'
-                ? profileSchema
-                : item?.sk === 'SESSION'
-                  ? sessionSchema
-                  : item?.sk === 'REFRESH'
-                    ? refreshSchema
-                    : item?.sk === 'COUNT'
-                      ? counterSchema
-                      : item?.pk?.startsWith('MESSAGE#')
-                        ? item.sk === 'STATUS'
-                          ? messageStatusSchema
-                          : messageMappingSchema
-                        : item?.sk?.startsWith('ACCESS#')
-                          ? accessSchema
-                          : item?.sk?.startsWith('AUDIT#')
-                            ? auditRecordSchema
-                            : item?.sk?.startsWith('REQUEST#')
-                              ? requestSchema
-                              : item?.sk?.startsWith('DELIVERY#')
-                                ? deliveryRecordSchema
-                                : null;
+  const exact = {
+    ACCOUNT: accountSchema,
+    PROFILE: profileSchema,
+    STATE: stateSchema,
+    SESSION: sessionSchema,
+    REFRESH: refreshSchema,
+    COUNT: counterSchema,
+    PAYMENT_REF: paymentMappingSchema,
+    EMAIL_VERIFICATION: emailVerificationSchema,
+    OWNER: pushOwnerSchema,
+  };
+  const prefixes = [
+    ['REFUND#', refundRecordSchema],
+    ['PAYMENT#', paymentRecordSchema],
+    ['PUSH#', pushRecordSchema],
+    ['REMINDER#', reminderRecordSchema],
+    ['ACCESS#', accessSchema],
+    ['AUDIT#', auditRecordSchema],
+    ['REQUEST#', requestSchema],
+    ['DELIVERY#', deliveryRecordSchema],
+  ];
+  const schema = item?.pk?.startsWith('MESSAGE#')
+    ? item.sk === 'STATUS'
+      ? messageStatusSchema
+      : messageMappingSchema
+    : exact[item?.sk] || prefixes.find(([prefix]) => item?.sk?.startsWith(prefix))?.[1];
   if (!schema)
     throw new DatabaseValidationError([{ path: ['sk'], message: 'Unknown record kind.' }]);
   const parsed = schema.safeParse(item);

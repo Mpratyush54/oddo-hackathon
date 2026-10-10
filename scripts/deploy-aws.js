@@ -74,6 +74,10 @@ const secrets = {
   META_WEBHOOK_VERIFY_TOKEN: prior.META_WEBHOOK_VERIFY_TOKEN || randomBytes(32).toString('hex'),
 };
 for (const name of [
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
+  'META_TEMPLATE_FIELDS',
   'SMTP_HOST',
   'SMTP_PORT',
   'SMTP_USER',

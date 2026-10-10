@@ -25,10 +25,13 @@ export class MemoryRepository {
     for (const { item, condition, values } of items) {
       const existing = this.items.get(`${item.pk}|${item.sk}`);
       if (condition === 'attribute_not_exists(pk)' && existing) return false;
+      if (condition === 'attribute_not_exists(#version)' && existing?.version !== undefined)
+        return false;
       if (condition === '#version = :version' && existing?.version !== values[':version'])
         return false;
       if (condition === 'revoked = :false' && existing?.revoked !== false) return false;
       if (condition === '#role = :role' && existing?.role !== values[':role']) return false;
+      if (condition === '#status = :status' && existing?.status !== values[':status']) return false;
       if (
         condition === 'sessionVersion = :version' &&
         existing?.sessionVersion !== values[':version']

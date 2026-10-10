@@ -1,3 +1,6 @@
+import { renewingSoon } from '../../../../shared/reminders.js';
+import { today } from '../../shared/utils/format';
+import { hasActiveMembership } from '../../../../shared/membership.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -85,6 +88,14 @@ export default function Workspace() {
   const { role, user, clubId, clubs, can, signedIn, selectClub, switchPersona, signOut } = session;
   const location = useLocation(),
     navigate = useNavigate();
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const notificationClub = query.get('notificationClub');
+    if (!notificationClub || !clubs.some((club) => club.id === notificationClub)) return;
+    selectClub(notificationClub);
+    query.delete('notificationClub');
+    navigate({ pathname: location.pathname, search: query.toString() }, { replace: true });
+  }, [location.pathname, location.search, clubs, selectClub, navigate]);
   const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
   const [navOpen, setNavOpen] = useState(() =>
       typeof window !== 'undefined' ? isDesktop() : true,
@@ -281,6 +292,7 @@ export default function Workspace() {
             : []),
         ];
   const visibleNotifications = data.notifications.filter((n) => {
+    if (n.userId && n.userId !== user.id) return false;
     if (n.to.includes('@')) return n.to.toLowerCase() === user.email.toLowerCase();
     if (!n.audience || can('publish_announcement')) return true;
     const m = data.members.find((m) => m.email === user.email);
@@ -288,9 +300,9 @@ export default function Workspace() {
       !!m &&
       (n.audience === 'All members' ||
         (n.audience === 'Volunteers' && m.role === 'Volunteer') ||
-        (n.audience === 'Active members' && m.status === 'Active') ||
+        (n.audience === 'Active members' && hasActiveMembership(m, today)) ||
         (n.audience === 'Pending dues' && m.status === 'Pending') ||
-        (n.audience === 'Renewing soon' && m.status === 'Expiring'))
+        (n.audience === 'Renewing soon' && renewingSoon(m, today)))
     );
   });
   const unread = visibleNotifications.filter((n) => !n.read).length;

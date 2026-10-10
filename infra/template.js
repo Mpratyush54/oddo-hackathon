@@ -24,6 +24,31 @@ export const template = {
     AppOrigin: { Type: 'String', Default: 'https://deployment-pending.invalid' },
   },
   Resources: {
+    NotificationSchedule: {
+      Type: 'AWS::Events::Rule',
+      Properties: {
+        Name: sub('${AWS::StackName}-notifications'),
+        ScheduleExpression: 'rate(1 minute)',
+        State: 'ENABLED',
+        Targets: [
+          {
+            Id: 'Notifications',
+            Arn: attr('Backend', 'Arn'),
+            Input: '{"source":"skyline.notifications"}',
+            RetryPolicy: { MaximumRetryAttempts: 0, MaximumEventAgeInSeconds: 60 },
+          },
+        ],
+      },
+    },
+    NotificationInvoke: {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: ref('Backend'),
+        Principal: 'events.amazonaws.com',
+        SourceArn: attr('NotificationSchedule', 'Arn'),
+      },
+    },
     Data: {
       Type: 'AWS::DynamoDB::Table',
       DeletionPolicy: 'Retain',

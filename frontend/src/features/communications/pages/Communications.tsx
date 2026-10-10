@@ -1,3 +1,5 @@
+import { hasActiveMembership } from '../../../../../shared/membership.js';
+import { renewingSoon } from '../../../../../shared/reminders.js';
 import { useEffect, useRef, useState } from 'react';
 import { normalizePhone, removeTrailingSlash } from '../../../../../shared/schemas.js';
 import type { FormEvent } from 'react';
@@ -15,10 +17,10 @@ import { Revealed } from '../../../shared/components/PageMotion';
 import { date, exportCSV, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
-import { backendHeaders, backendRequest, cloudMode } from '../../../shared/api/client';
+import { backendHeaders, backendPost, backendRequest, cloudMode } from '../../../shared/api/client';
 import '../styles/communications.css';
 
-type Channel = 'Email' | 'WhatsApp' | 'In-app';
+type Channel = 'Email' | 'WhatsApp' | 'In-app' | 'Browser';
 type Draft = { title: string; body: string };
 type ProviderHealth = { ai: { configured: boolean }; whatsapp: { configured: boolean } };
 const apiURL =
@@ -46,7 +48,7 @@ async function integrationRequest(path: string, body: unknown, timeout: number):
 }
 
 export function CommunicationsPage() {
-  const { data, update, toast } = useStore();
+  const { data, update, toast, applyServerPatch } = useStore();
   const { user, can, clubId } = useSession();
   const currentClub = useRef(clubId);
   currentClub.current = clubId;
@@ -78,6 +80,25 @@ export function CommunicationsPage() {
   const [query, setQuery] = useState('');
   const [compose, setCompose] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
+  async function dispatchQueue(retryFailed = false) {
+    if (dispatching) return;
+    setDispatching(true);
+    try {
+      const result = await backendPost<{ deliveries: { status: string }[] }>(
+        `/clubs/${encodeURIComponent(clubId)}/notifications/dispatch`,
+        { retryFailed },
+      );
+      toast(
+        `Processed ${result.deliveries.length} queued deliveries. Check Delivery log for provider results.`,
+      );
+      window.dispatchEvent(new Event('skyline-data-changed'));
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Delivery processing failed.');
+    } finally {
+      setDispatching(false);
+    }
+  }
   const [health, setHealth] = useState<ProviderHealth | null>(null);
 
   const toggleReaction = (annId: string, emoji: string, base: Record<string, number>) => {
@@ -143,10 +164,10 @@ export function CommunicationsPage() {
   }, []);
   const matches = (member: (typeof data.members)[number], group = audience) =>
     group === 'All members' ||
-    (group === 'Active members' && member.status === 'Active') ||
+    (group === 'Active members' && hasActiveMembership(member, today)) ||
     (group === 'Volunteers' && member.role === 'Volunteer') ||
     (group === 'Pending dues' && member.status === 'Pending') ||
-    (group === 'Renewing soon' && member.status === 'Expiring');
+    (group === 'Renewing soon' && renewingSoon(member, today));
   const recipients = data.members.filter((m) => matches(m));
   const whatsappRecipients = recipients.filter((m) => m.whatsappOptIn && m.phone);
   const member = data.members.find((m) => m.email.toLowerCase() === user.email.toLowerCase());
@@ -156,9 +177,29 @@ export function CommunicationsPage() {
       `${a.title} ${a.body}`.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const publish = (event: FormEvent) => {
+  const publish = async (event: FormEvent) => {
     event.preventDefault();
     if (!allowed || !title.trim() || !body.trim() || !recipients.length) return;
+    if (cloudMode) {
+      try {
+        const result = await backendPost<{ state: import('../../../shared/types/domain').Store }>(
+          `/clubs/${encodeURIComponent(clubId)}/actions`,
+          {
+            type: 'announcements.publish',
+            args: { title: title.trim(), body: body.trim(), audience, email, whatsapp },
+            idempotencyKey: crypto.randomUUID(),
+          },
+        );
+        applyServerPatch(clubId, result.state);
+        toast('Published. Email and WhatsApp are queued for automatic delivery.');
+        setTitle('');
+        setBody('');
+        setCompose(false);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Publishing failed.');
+      }
+      return;
+    }
     const id = uid('ANN');
     const announcement = {
       id,
@@ -268,7 +309,26 @@ export function CommunicationsPage() {
     setDraftSource(`AI Assistant (${aiTone} tone) · Ready to edit`);
     setBusy(false);
   };
-  const prepareReminder = (status: 'Pending' | 'Expiring') => {
+  const prepareReminder = async (status: 'Pending' | 'Expiring') => {
+    if (cloudMode) {
+      try {
+        const result = await backendPost<{
+          state: import('../../../shared/types/domain').Store;
+          prepared: number;
+        }>(`/clubs/${encodeURIComponent(clubId)}/actions`, {
+          type: 'reminders.prepare',
+          args: { status },
+          idempotencyKey: crypto.randomUUID(),
+        });
+        applyServerPatch(clubId, result.state);
+        toast(
+          `Queued ${result.prepared} reminders for in-app, email and opted-in WhatsApp delivery.`,
+        );
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Reminder scheduling failed.');
+      }
+      return;
+    }
     const group = data.members.filter((m) => m.status === status);
     const id = `REM-${status}-${today}`;
     if (data.deliveries?.some((d) => d.announcementId === id)) {
@@ -330,6 +390,7 @@ export function CommunicationsPage() {
           channel: 'WhatsApp',
           recipients: phones,
           template: 'hello_world',
+          retry: true,
         },
         20000,
       );
@@ -463,12 +524,12 @@ export function CommunicationsPage() {
         <Revealed delay={40}>
           <div className="comms-layout">
             <section className="comms-feed bulletin-feed">
-                <div className="bulletin-feed-header">
-                  <div>
-                    <span className="bulletin-overline">OFFICIAL DISPATCH WALL</span>
-                    <h2>Campus Bulletin</h2>
-                  </div>
+              <div className="bulletin-feed-header">
+                <div>
+                  <span className="bulletin-overline">OFFICIAL DISPATCH WALL</span>
+                  <h2>Campus Bulletin</h2>
                 </div>
+              </div>
 
               <label className="comms-search">
                 <Icon name="Search" size={18} />
@@ -518,9 +579,7 @@ export function CommunicationsPage() {
                               aria-pressed={hasReacted}
                               onClick={() => toggleReaction(a.id, emoji, postReactions)}
                               title={
-                                hasReacted
-                                  ? `Remove your ${emoji} reaction`
-                                  : `React with ${emoji}`
+                                hasReacted ? `Remove your ${emoji} reaction` : `React with ${emoji}`
                               }
                             >
                               <span>{emoji}</span>
@@ -588,18 +647,18 @@ export function CommunicationsPage() {
               {allowed ? (
                 <>
                   <div className="comms-fast-actions">
-                    <Button
-                      icon="Sparkles"
-                      className="full-width"
-                      onClick={() => setCompose(true)}
-                    >
+                    <Button icon="Sparkles" className="full-width" onClick={() => setCompose(true)}>
                       AI Announcement Studio
                     </Button>
                   </div>
                   {(['Pending', 'Expiring'] as const).map((s) => (
                     <div className="comms-reminder" key={s}>
                       <strong>
-                        {data.members.filter((m) => m.status === s).length}{' '}
+                        {
+                          data.members.filter((m) =>
+                            s === 'Pending' ? m.status === s : renewingSoon(m, today),
+                          ).length
+                        }{' '}
                         {s === 'Pending' ? 'members awaiting dues' : 'members renewing soon'}
                       </strong>
                       <p>
@@ -610,10 +669,14 @@ export function CommunicationsPage() {
                       <Button
                         variant="secondary"
                         icon="Bell"
-                        disabled={!data.members.some((m) => m.status === s)}
+                        disabled={
+                          !data.members.some((m) =>
+                            s === 'Pending' ? m.status === s : renewingSoon(m, today),
+                          )
+                        }
                         onClick={() => prepareReminder(s)}
                       >
-                        Prepare reminder
+                        Send reminder
                       </Button>
                     </div>
                   ))}
@@ -636,11 +699,30 @@ export function CommunicationsPage() {
                   </summary>
                   <div className="provider-collapsed-body">
                     <p>
-                      Email stays prepared. WhatsApp uses your Meta test account through the server.
+                      Queued deliveries are processed automatically. WhatsApp requires a valid
+                      token, approved template and verified test recipient.
                     </p>
                     <Badge tone={health?.whatsapp.configured ? 'green' : 'gold'}>
-                      {health?.whatsapp.configured ? 'Meta test ready' : 'Setup required'}
+                      {health?.whatsapp.configured ? 'Sender settings saved' : 'Setup required'}
                     </Badge>
+                    {cloudMode && (
+                      <div className="success-actions">
+                        <Button
+                          variant="secondary"
+                          disabled={dispatching}
+                          onClick={() => dispatchQueue()}
+                        >
+                          Process delivery queue
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={dispatching}
+                          onClick={() => dispatchQueue(true)}
+                        >
+                          Retry rejected deliveries
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </details>
               )}
@@ -866,7 +948,8 @@ export function CommunicationsPage() {
                       <td>
                         <strong>
                           {data.announcements.find((a) => a.id === d.announcementId)?.title ||
-                            'Membership reminder'}
+                            d.title ||
+                            'Reminder'}
                         </strong>
                         <small>{date(d.date)}</small>
                       </td>
@@ -878,7 +961,11 @@ export function CommunicationsPage() {
                             d.status === 'Sent' ? 'green' : d.status === 'Failed' ? 'red' : 'gold'
                           }
                         >
-                          {d.status === 'Sent' && d.channel === 'In-app' ? 'Published' : d.status}
+                          {d.status === 'Sent' && d.channel === 'In-app'
+                            ? 'Published'
+                            : d.providerStatus === 'accepted'
+                              ? 'Accepted'
+                              : d.providerStatus || (d.status === 'Prepared' ? 'Queued' : d.status)}
                         </Badge>
                       </td>
                       <td>{d.detail}</td>
