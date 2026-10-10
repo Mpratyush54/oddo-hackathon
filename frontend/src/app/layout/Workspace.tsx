@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
@@ -40,6 +41,28 @@ import { actionLabels, AuditPage } from '../../features/audit/pages/AuditPage';
 import { CollegeRegistry } from '../../features/college/pages/Registry';
 import { ClubSummary } from '../../features/college/pages/ClubSummary';
 
+type SearchKind =
+  | 'pages'
+  | 'people'
+  | 'events'
+  | 'orders'
+  | 'products'
+  | 'announcements'
+  | 'tickets'
+  | 'tasks'
+  | 'finance'
+  | 'audit';
+
+type SearchHit = {
+  id: string;
+  title: string;
+  to: string;
+  icon: string;
+  meta: string;
+  kind: SearchKind;
+  hint?: string;
+};
+
 export function NotFound() {
   return (
     <Empty
@@ -69,13 +92,26 @@ export default function Workspace() {
       () => (typeof window !== 'undefined' ? !isDesktop() : false),
     ),
     [menu, setMenu] = useState<'account' | 'clubs' | 'notifications' | null>(null),
-    [search, setSearch] = useState('');
+    [searchOpen, setSearchOpen] = useState(false),
+    [searchInput, setSearchInput] = useState(''),
+    [debouncedQuery, setDebouncedQuery] = useState(''),
+    [searchFilter, setSearchFilter] = useState<'all' | SearchKind>('all');
   const wrapper = useRef<HTMLDivElement>(null),
     searchRef = useRef<HTMLInputElement>(null);
   const phoneDrawerOpen = phoneViewport && navOpen;
+  const openSearch = () => {
+    setMenu(null);
+    setSearchOpen(true);
+  };
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchInput('');
+    setDebouncedQuery('');
+    setSearchFilter('all');
+  };
   useEffect(() => {
     setMenu(null);
-    setSearch('');
+    closeSearch();
     // Phone drawer closes on navigate; desktop collapse state is sticky.
     if (!isDesktop()) setNavOpen(false);
     window.scrollTo(0, 0);
@@ -99,27 +135,44 @@ export default function Workspace() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedQuery(searchInput.trim().toLowerCase()), 280);
+    return () => window.clearTimeout(handle);
+  }, [searchInput]);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const focusTimer = window.setTimeout(() => searchRef.current?.focus(), 20);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previous;
+    };
+  }, [searchOpen]);
+  useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         if (phoneDrawerOpen) return;
         e.preventDefault();
-        searchRef.current?.focus();
+        openSearch();
       }
       if (e.key === 'Escape') {
+        if (searchOpen) {
+          e.preventDefault();
+          closeSearch();
+          return;
+        }
         setMenu(null);
-        setSearch('');
         // Escape dismisses the phone drawer only — desktop uses the toggle button.
         if (phoneViewport) setNavOpen(false);
       }
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [phoneDrawerOpen, phoneViewport]);
+  }, [phoneDrawerOpen, phoneViewport, searchOpen]);
   useEffect(() => {
     const outside = (e: MouseEvent) => {
       const el = e.target as HTMLElement;
       if (!el.closest('[data-popover]')) setMenu(null);
-      if (!el.closest('.global-search')) setSearch('');
     };
     document.addEventListener('mousedown', outside);
     return () => document.removeEventListener('mousedown', outside);
@@ -190,17 +243,18 @@ export default function Workspace() {
     );
   });
   const unread = visibleNotifications.filter((n) => !n.read).length;
-  const searchQuery = search.trim().toLowerCase();
-  type SearchHit = { id: string; title: string; to: string; icon: string; meta: string; hint?: string };
-  const results: SearchHit[] = (() => {
-    if (!searchQuery) return [];
+  const searchCatalog: SearchHit[] = (() => {
     const hits: SearchHit[] = [];
-    const push = (hit: SearchHit) => {
-      const hay = `${hit.title} ${hit.meta} ${hit.hint || ''}`.toLowerCase();
-      if (hay.includes(searchQuery)) hits.push(hit);
-    };
+    const push = (hit: SearchHit) => hits.push(hit);
     [...mainNav, ...myNav, ...tools].forEach((n) =>
-      push({ id: `page-${n.to}`, title: n.label, to: n.to, icon: n.icon, meta: 'Page' }),
+      push({
+        id: `page-${n.to}`,
+        title: n.label,
+        to: n.to,
+        icon: n.icon,
+        meta: 'Page',
+        kind: 'pages',
+      }),
     );
     if (role !== 'college') {
       data.events.forEach((e) =>
@@ -210,6 +264,7 @@ export default function Workspace() {
           to: `/app/events/${e.id}`,
           icon: 'CalendarDays',
           meta: 'Event',
+          kind: 'events',
           hint: `${e.venue} ${e.category} ${e.date}`,
         }),
       );
@@ -220,6 +275,7 @@ export default function Workspace() {
           to: '/app/merchandise',
           icon: 'ShoppingBag',
           meta: 'Product',
+          kind: 'products',
           hint: p.type,
         }),
       );
@@ -230,6 +286,7 @@ export default function Workspace() {
           to: '/app/announcements',
           icon: 'Megaphone',
           meta: 'Announcement',
+          kind: 'announcements',
           hint: a.body?.slice(0, 80),
         }),
       );
@@ -243,6 +300,7 @@ export default function Workspace() {
             to: '/app/my-tickets',
             icon: 'Ticket',
             meta: 'My ticket',
+            kind: 'tickets',
             hint: t.id,
           });
         });
@@ -258,9 +316,13 @@ export default function Workspace() {
           push({
             id: `order-${o.id}`,
             title: o.id,
-            to: can('manage_orders') || can('manage_inventory') ? '/app/merchandise' : '/app/my-orders',
+            to:
+              can('manage_orders') || can('manage_inventory')
+                ? '/app/merchandise'
+                : '/app/my-orders',
             icon: 'Package',
             meta: 'Order',
+            kind: 'orders',
             hint: `${o.name} ${o.email || ''} ${o.size || ''}`,
           }),
         );
@@ -273,6 +335,7 @@ export default function Workspace() {
             to: can('manage_tasks') ? '/app/tasks' : '/app/my-tasks',
             icon: 'ListTodo',
             meta: 'Task',
+            kind: 'tasks',
             hint: `${t.assignee} ${t.status}`,
           }),
         );
@@ -285,6 +348,7 @@ export default function Workspace() {
           to: `/app/members?q=${encodeURIComponent(m.name)}`,
           icon: 'UserRound',
           meta: 'Member',
+          kind: 'people',
           hint: `${m.email} ${m.course} ${m.status}`,
         }),
       );
@@ -297,6 +361,7 @@ export default function Workspace() {
           to: '/app/finance',
           icon: 'Wallet',
           meta: 'Finance',
+          kind: 'finance',
           hint: `${t.category} ${t.status} ${t.id}`,
         }),
       );
@@ -309,12 +374,52 @@ export default function Workspace() {
           to: `/app/audit?q=${encodeURIComponent(a.actor || a.detail || a.action)}`,
           icon: 'ShieldCheck',
           meta: 'Audit',
+          kind: 'audit',
           hint: `${a.actor} ${a.detail} ${a.entity}`,
         }),
       );
     }
-    return hits.slice(0, 12);
+    return hits;
   })();
+  const searchFilters = (() => {
+    const present = new Set(searchCatalog.map((hit) => hit.kind));
+    const options: { id: 'all' | SearchKind; label: string }[] = [{ id: 'all', label: 'All' }];
+    (
+      [
+        ['pages', 'Pages'],
+        ['people', 'People'],
+        ['events', 'Events'],
+        ['orders', 'Orders'],
+        ['products', 'Products'],
+        ['announcements', 'Comms'],
+        ['tickets', 'Tickets'],
+        ['tasks', 'Tasks'],
+        ['finance', 'Finance'],
+        ['audit', 'Audit'],
+      ] as const
+    ).forEach(([id, label]) => {
+      if (present.has(id)) options.push({ id, label });
+    });
+    return options;
+  })();
+  const results = (() => {
+    const scoped =
+      searchFilter === 'all'
+        ? searchCatalog
+        : searchCatalog.filter((hit) => hit.kind === searchFilter);
+    if (!debouncedQuery) {
+      return (searchFilter === 'all' ? scoped.filter((hit) => hit.kind === 'pages') : scoped).slice(
+        0,
+        16,
+      );
+    }
+    return scoped
+      .filter((hit) =>
+        `${hit.title} ${hit.meta} ${hit.hint || ''}`.toLowerCase().includes(debouncedQuery),
+      )
+      .slice(0, searchFilter === 'all' ? 28 : 40);
+  })();
+  const searching = searchInput.trim().toLowerCase() !== debouncedQuery;
   const renderNav = (items: NavItem[]) =>
     items.map((item) => (
       <NavLink
@@ -503,44 +608,18 @@ export default function Workspace() {
           <Link to="/app" className="workspace-home">
             skyline<span className="brand-dot">.</span>
           </Link>
-          <div className="global-search">
+          <button
+            type="button"
+            className="global-search global-search-trigger"
+            aria-label="Search your workspace"
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            onClick={openSearch}
+          >
             <Icon name="Search" size={19} />
-            <input
-              ref={searchRef}
-              aria-label="Search your workspace"
-              placeholder="Search people, events, orders, pages…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && results[0]) {
-                  navigate(results[0].to);
-                  setSearch('');
-                }
-              }}
-            />
+            <span>Search people, events, orders, pages…</span>
             <kbd>Ctrl K</kbd>
-            {searchQuery && (
-              <div className="search-results">
-                {results.length ? (
-                  results.map((r) => (
-                    <Link to={r.to} key={r.id} onClick={() => setSearch('')}>
-                      <Icon name={r.icon} size={18} />
-                      <span>
-                        {r.title}
-                        <small>
-                          {r.meta}
-                          {r.hint ? ` · ${r.hint}` : ''}
-                        </small>
-                      </span>
-                      <Icon name="ArrowUpRight" size={15} />
-                    </Link>
-                  ))
-                ) : (
-                  <p>No matching records across the workspace.</p>
-                )}
-              </div>
-            )}
-          </div>
+          </button>
           <div className="topbar-right">
             <span className="demo-role-pill">
               <span className="live-dot" />
@@ -869,6 +948,112 @@ export default function Workspace() {
           </footer>
         </main>
       </div>
+      {searchOpen &&
+        createPortal(
+          <div
+            className="workspace-search-backdrop"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) closeSearch();
+            }}
+          >
+            <div
+              className="workspace-search-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Search workspace"
+            >
+              <div className="workspace-search-field">
+                <Icon name="Search" size={20} />
+                <input
+                  ref={searchRef}
+                  aria-label="Search people, events, orders, pages"
+                  placeholder="Search people, events, orders, pages…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && results[0] && !searching) {
+                      navigate(results[0].to);
+                      closeSearch();
+                    }
+                  }}
+                />
+                {searchInput ? (
+                  <button
+                    type="button"
+                    className="workspace-search-clear"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearchInput('');
+                      setDebouncedQuery('');
+                      searchRef.current?.focus();
+                    }}
+                  >
+                    <Icon name="X" size={16} />
+                  </button>
+                ) : (
+                  <kbd>Esc</kbd>
+                )}
+              </div>
+              <div className="workspace-search-filters" role="tablist" aria-label="Search category">
+                {searchFilters.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={searchFilter === filter.id}
+                    className={searchFilter === filter.id ? 'active' : ''}
+                    onClick={() => setSearchFilter(filter.id)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              <div className="workspace-search-results" role="listbox" aria-label="Search results">
+                {!debouncedQuery && (
+                  <p className="workspace-search-hint">
+                    {searchFilter === 'all'
+                      ? 'Quick pages below. Type to search people, events, orders, and more.'
+                      : `Browsing ${searchFilters.find((f) => f.id === searchFilter)?.label || 'results'}. Type to narrow the list.`}
+                  </p>
+                )}
+                {searching && (
+                  <p className="workspace-search-hint" role="status">
+                    Searching…
+                  </p>
+                )}
+                {!searching && results.length ? (
+                  results.map((r) => (
+                    <Link
+                      to={r.to}
+                      key={r.id}
+                      role="option"
+                      onClick={closeSearch}
+                    >
+                      <span className="workspace-search-icon">
+                        <Icon name={r.icon} size={18} />
+                      </span>
+                      <span>
+                        {r.title}
+                        <small>
+                          {r.meta}
+                          {r.hint ? ` · ${r.hint}` : ''}
+                        </small>
+                      </span>
+                      <Icon name="ArrowUpRight" size={15} />
+                    </Link>
+                  ))
+                ) : (
+                  !searching &&
+                  !!debouncedQuery && (
+                    <p className="workspace-search-empty">No matches in this workspace.</p>
+                  )
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
       {toastMessage && (
         <div className="toast" role="status">
           <Icon name="CircleCheck" />
