@@ -6,6 +6,7 @@ import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { date, money } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
+import { seed } from '../../../demo/data/clubs';
 import '../../../shared/styles/portal.css';
 import '../styles/landing.css';
 import { LandingEvents } from '../../events/components/LandingEvents';
@@ -65,9 +66,27 @@ const defaultMosaicImages = [
   'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1000&q=80',
 ];
 
+const defaultProductFallbackImages = [
+  'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1000&q=85',
+  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85',
+  'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85',
+];
+
 export function LandingPage() {
   const { allClubs, organizations } = useStore();
   const afterRef = useRef<HTMLDivElement>(null);
+
+  const merchandiseItems = (
+    allClubs.skyline?.products?.length
+      ? allClubs.skyline.products
+      : (seed.products || [])
+  ).slice(0, 3);
+
+  const announcementItems = (
+    allClubs.skyline?.announcements?.length
+      ? allClubs.skyline.announcements
+      : (seed.announcements || [])
+  ).slice(0, 3);
   const mosaic = [
     ...organizations.flatMap((org) =>
       (allClubs[org.id]?.events || []).map((event) => ({
@@ -89,7 +108,10 @@ export function LandingPage() {
     .slice(0, 14)
     .map((card, i) => ({
       ...card,
-      image: card.image || defaultMosaicImages[i % defaultMosaicImages.length],
+      image:
+        card.image && card.image.startsWith('http')
+          ? card.image
+          : defaultMosaicImages[i % defaultMosaicImages.length],
     }));
 
   return (
@@ -219,36 +241,53 @@ export function LandingPage() {
             </header>
           </Revealed>
           <div className="landing-merch-grid">
-            {(allClubs.skyline?.products || []).slice(0, 3).map((prod, i) => (
-              <Revealed key={prod.id} delay={i * 70} pop>
-                <Link
-                  className="landing-event"
-                  to="/app/merchandise"
-                  aria-label={`View ${prod.name}`}
-                >
-                  <div className="landing-event-image">
-                    {prod.image && <img src={prod.image} alt={prod.name} loading="lazy" />}
-                    <span>{prod.type}</span>
-                    <span
-                      className="landing-event-arrow"
-                      role="img"
-                      aria-label={`View ${prod.name}`}
-                    >
-                      <Icon name="ArrowUpRight" />
-                    </span>
-                  </div>
-                  <small>Skyline Collection · {prod.color}</small>
-                  <h3>{prod.name}</h3>
-                  <p>In stock in campus shop</p>
-                  <footer>
-                    <strong>
-                      {money(prod.memberPrice)} (Members) · {money(prod.price)}
-                    </strong>
-                    <span>Member discount</span>
-                  </footer>
-                </Link>
-              </Revealed>
-            ))}
+            {merchandiseItems.map((prod, i) => {
+              const prodImg =
+                prod.image && prod.image.startsWith('http')
+                  ? prod.image
+                  : defaultProductFallbackImages[i % defaultProductFallbackImages.length];
+              return (
+                <Revealed key={prod.id} delay={i * 70} pop>
+                  <Link
+                    className="landing-event"
+                    to="/app/merchandise"
+                    aria-label={`View ${prod.name}`}
+                  >
+                    <div className="landing-event-image">
+                      <img
+                        src={prodImg}
+                        alt={prod.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          const fallback =
+                            defaultProductFallbackImages[i % defaultProductFallbackImages.length];
+                          if (e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
+                          }
+                        }}
+                      />
+                      <span>{prod.type}</span>
+                      <span
+                        className="landing-event-arrow"
+                        role="img"
+                        aria-label={`View ${prod.name}`}
+                      >
+                        <Icon name="ArrowUpRight" />
+                      </span>
+                    </div>
+                    <small>Skyline Collection · {prod.color}</small>
+                    <h3>{prod.name}</h3>
+                    <p>In stock in campus shop</p>
+                    <footer>
+                      <strong>
+                        {money(prod.memberPrice)} (Members) · {money(prod.price)}
+                      </strong>
+                      <span>Member discount</span>
+                    </footer>
+                  </Link>
+                </Revealed>
+              );
+            })}
           </div>
         </section>
 
@@ -270,7 +309,7 @@ export function LandingPage() {
             </header>
           </Revealed>
           <div className="landing-announcements-grid">
-            {(allClubs.skyline?.announcements || []).slice(0, 3).map((ann, i) => (
+            {announcementItems.map((ann, i) => (
               <Revealed key={ann.id} delay={i * 70} pop>
                 <article className="landing-announcement-card">
                   <div className="landing-announcement-meta">

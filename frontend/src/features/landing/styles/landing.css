@@ -373,8 +373,14 @@
   bottom: 28px;
   z-index: 4;
   transform: translateX(-50%);
-  display: grid;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: max-content;
+  margin: 0;
+  padding: 0;
   gap: 8px;
   color: rgb(247 241 230 / 72%);
   font-family: 'Outfit', system-ui, sans-serif;
@@ -384,11 +390,22 @@
   background: none;
   border: 0;
   cursor: pointer;
-  animation: stage-rise 900ms cubic-bezier(0.16, 0.84, 0.28, 1) 280ms both;
+  animation: stage-scroll-rise 900ms cubic-bezier(0.16, 0.84, 0.28, 1) 280ms both;
 }
 
 .landing-stage-scroll svg {
   animation: scroll-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes stage-scroll-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .landing-after-stage {
