@@ -1,0 +1,45 @@
+.refunds-section {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.refunds-section h2 {
+  margin: 0 0 16px;
+}
+.refund-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border, #dce6e0);
+}
+.refund-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  align-items: center;
+}
+.refund-details p,
+.refund-details small {
+  width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.refund-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .refund-row {
+    flex-direction: column;
+  }
+  .refunds-section {
+    padding: 16px;
+  }
+  .refund-actions {
+    width: 100%;
+  }
+}

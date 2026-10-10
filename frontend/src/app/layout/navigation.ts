@@ -24,6 +24,7 @@ export const personal: NavItem[] = [
   { to: '/app/my-card', label: 'Membership card', icon: 'BadgeCheck' },
   { to: '/app/my-tickets', label: 'My tickets', icon: 'Ticket' },
   { to: '/app/my-orders', label: 'My orders', icon: 'Package' },
+  { to: '/app/refunds', label: 'Refunds', icon: 'Receipt' },
   { to: '/app/my-tasks', label: 'My tasks', icon: 'ListTodo' },
   { to: '/app/expenses', label: 'My expenses', icon: 'Receipt', permission: 'request_expense' },
 ];

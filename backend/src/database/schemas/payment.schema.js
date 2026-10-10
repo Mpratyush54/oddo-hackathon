@@ -27,6 +27,15 @@ export const paymentRecordSchema = z.strictObject({
   orderId: id.optional(),
   paymentId: id.optional(),
   refundId: id.optional(),
+  membershipBefore: z
+    .object({
+      status: z.enum(['Active', 'Pending', 'Expiring', 'Expired']),
+      expires: z.iso.date(),
+      duesWaived: z.boolean().optional(),
+      membershipPaymentId: id.optional(),
+    })
+    .nullable()
+    .optional(),
   result: z.record(z.string(), z.json()).optional(),
 });
 export const paymentMappingSchema = z.strictObject({

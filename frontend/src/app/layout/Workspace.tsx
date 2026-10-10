@@ -32,6 +32,7 @@ import { PersonalProfile } from '../../features/account/pages/Profile';
 import { MemberCard } from '../../features/membership/pages/MemberCard';
 import { MyTickets } from '../../features/tickets/pages/MyTickets';
 import { MyOrders } from '../../features/commerce/pages/MyOrders';
+import { RefundsPage } from '../../features/payments/pages/RefundsPage';
 import './workspace.css';
 import type { NavItem } from './navigation';
 import { operational, personal } from './navigation';
@@ -86,10 +87,10 @@ export default function Workspace() {
     navigate = useNavigate();
   const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
   const [navOpen, setNavOpen] = useState(() =>
-    typeof window !== 'undefined' ? isDesktop() : true,
-  ),
-    [phoneViewport, setPhoneViewport] = useState(
-      () => (typeof window !== 'undefined' ? !isDesktop() : false),
+      typeof window !== 'undefined' ? isDesktop() : true,
+    ),
+    [phoneViewport, setPhoneViewport] = useState(() =>
+      typeof window !== 'undefined' ? !isDesktop() : false,
     ),
     [menu, setMenu] = useState<'account' | 'clubs' | 'notifications' | null>(null),
     [searchOpen, setSearchOpen] = useState(false),
@@ -166,7 +167,10 @@ export default function Workspace() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   useEffect(() => {
-    const handle = window.setTimeout(() => setDebouncedQuery(searchInput.trim().toLowerCase()), 280);
+    const handle = window.setTimeout(
+      () => setDebouncedQuery(searchInput.trim().toLowerCase()),
+      280,
+    );
     return () => window.clearTimeout(handle);
   }, [searchInput]);
   useEffect(() => {
@@ -241,15 +245,15 @@ export default function Workspace() {
   const mainNav =
     role === 'college'
       ? [
-        { to: '/app', label: 'Campus overview', icon: 'LayoutDashboard' },
-        { to: '/app/college-clubs', label: 'Club registry', icon: 'UsersRound' },
-        { to: '/app/club-summary', label: 'Selected club', icon: 'PanelsTopLeft' },
-      ]
+          { to: '/app', label: 'Campus overview', icon: 'LayoutDashboard' },
+          { to: '/app/college-clubs', label: 'Club registry', icon: 'UsersRound' },
+          { to: '/app/club-summary', label: 'Selected club', icon: 'PanelsTopLeft' },
+        ]
       : operational
-        .filter((n) => !n.permission || can(n.permission))
-        .map((n) =>
-          n.to === '/app/merchandise' ? { ...n, label: merchNavLabel, icon: merchNavIcon } : n,
-        );
+          .filter((n) => !n.permission || can(n.permission))
+          .map((n) =>
+            n.to === '/app/merchandise' ? { ...n, label: merchNavLabel, icon: merchNavIcon } : n,
+          );
   const managementNav = mainNav.filter(
     (item) => !['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
   );
@@ -257,12 +261,12 @@ export default function Workspace() {
     role === 'college'
       ? mainNav
       : [
-        ...mainNav.filter((item) =>
-          ['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
-        ),
-        { to: '/app/my-tickets', label: 'My tickets', icon: 'Ticket' },
-        { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
-      ];
+          ...mainNav.filter((item) =>
+            ['/app', '/app/events', '/app/announcements', '/app/merchandise'].includes(item.to),
+          ),
+          { to: '/app/my-tickets', label: 'My tickets', icon: 'Ticket' },
+          { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
+        ];
   const myNav =
     role === 'college'
       ? [{ to: '/app/profile', label: 'My profile', icon: 'UserRound' }]
@@ -271,11 +275,11 @@ export default function Workspace() {
     role === 'college'
       ? []
       : [
-        { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
-        ...(can('check_in')
-          ? [{ to: '/app/check-in', label: 'Check-in scanner', icon: 'ScanLine' }]
-          : []),
-      ];
+          { to: '/app/calendar', label: 'Calendar', icon: 'CalendarRange' },
+          ...(can('check_in')
+            ? [{ to: '/app/check-in', label: 'Check-in scanner', icon: 'ScanLine' }]
+            : []),
+        ];
   const visibleNotifications = data.notifications.filter((n) => {
     if (n.to.includes('@')) return n.to.toLowerCase() === user.email.toLowerCase();
     if (!n.audience || can('publish_announcement')) return true;
@@ -626,16 +630,16 @@ export default function Workspace() {
       <nav className="mobile-quick-nav" aria-label="Quick navigation">
         {(role === 'college'
           ? [
-            { to: '/app/college', label: 'Campus', icon: 'LayoutDashboard' },
-            { to: '/app/college-clubs', label: 'Clubs', icon: 'UsersRound' },
-            { to: '/app/profile', label: 'You', icon: 'UserRound' },
-          ]
+              { to: '/app/college', label: 'Campus', icon: 'LayoutDashboard' },
+              { to: '/app/college-clubs', label: 'Clubs', icon: 'UsersRound' },
+              { to: '/app/profile', label: 'You', icon: 'UserRound' },
+            ]
           : [
-            { to: '/app', label: 'Home', icon: 'LayoutDashboard' },
-            { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
-            { to: '/app/my-tickets', label: 'Tickets', icon: 'Ticket' },
-            { to: '/app/profile', label: 'You', icon: 'UserRound' },
-          ]
+              { to: '/app', label: 'Home', icon: 'LayoutDashboard' },
+              { to: '/app/events', label: 'Events', icon: 'CalendarDays' },
+              { to: '/app/my-tickets', label: 'Tickets', icon: 'Ticket' },
+              { to: '/app/profile', label: 'You', icon: 'UserRound' },
+            ]
         ).map((item) => (
           <NavLink key={item.to} to={item.to} end>
             <Icon name={item.icon} size={20} />
@@ -768,9 +772,9 @@ export default function Workspace() {
                     ...(role === 'college'
                       ? []
                       : [
-                        ['BadgeCheck', 'Membership card', '/app/my-card'],
-                        ['Ticket', 'Tickets & orders', '/app/my-tickets'],
-                      ]),
+                          ['BadgeCheck', 'Membership card', '/app/my-card'],
+                          ['Ticket', 'Tickets & orders', '/app/my-tickets'],
+                        ]),
                   ].map(([icon, label, to]) => (
                     <Link key={to} to={to}>
                       <Icon name={icon} size={17} />
@@ -858,10 +862,7 @@ export default function Workspace() {
           )}
           <EmailVerificationNotice />
           <Routes>
-            <Route
-              path="users"
-              element={<Navigate to="/app/members?view=access" replace />}
-            />
+            <Route path="users" element={<Navigate to="/app/members?view=access" replace />} />
             <Route
               index
               element={
@@ -967,6 +968,7 @@ export default function Workspace() {
             <Route path="my-card" element={<MemberCard />} />
             <Route path="my-tickets" element={<MyTickets />} />
             <Route path="my-orders" element={<MyOrders />} />
+            <Route path="refunds" element={<RefundsPage />} />
             <Route
               path="college"
               element={
@@ -1086,28 +1088,26 @@ export default function Workspace() {
                     Searching…
                   </p>
                 )}
-                {!searching && results.length ? (
-                  results.map((r) => (
-                    <Link to={r.to} key={r.id} role="option" onClick={closeSearch}>
-                      <span className="workspace-search-icon">
-                        <Icon name={r.icon} size={18} />
-                      </span>
-                      <span>
-                        {r.title}
-                        <small>
-                          {r.meta}
-                          {r.hint ? ` · ${r.hint}` : ''}
-                        </small>
-                      </span>
-                      <Icon name="ArrowUpRight" size={15} />
-                    </Link>
-                  ))
-                ) : (
-                  !searching &&
-                  !!debouncedQuery && (
-                    <p className="workspace-search-empty">No matches in this workspace.</p>
-                  )
-                )}
+                {!searching && results.length
+                  ? results.map((r) => (
+                      <Link to={r.to} key={r.id} role="option" onClick={closeSearch}>
+                        <span className="workspace-search-icon">
+                          <Icon name={r.icon} size={18} />
+                        </span>
+                        <span>
+                          {r.title}
+                          <small>
+                            {r.meta}
+                            {r.hint ? ` · ${r.hint}` : ''}
+                          </small>
+                        </span>
+                        <Icon name="ArrowUpRight" size={15} />
+                      </Link>
+                    ))
+                  : !searching &&
+                    !!debouncedQuery && (
+                      <p className="workspace-search-empty">No matches in this workspace.</p>
+                    )}
               </div>
             </div>
           </div>,

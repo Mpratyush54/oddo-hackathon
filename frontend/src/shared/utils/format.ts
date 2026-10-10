@@ -1,4 +1,8 @@
-export const today = '2026-10-10';
+import { cloudMode } from '../api/client';
+
+export const today = cloudMode
+  ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())
+  : '2026-10-10';
 
 export const money = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -90,7 +94,10 @@ export function exportInvoicePdf(
       invoice.lines.map((line) => [line.label.toLowerCase(), line.value]),
     );
     const description = byLabel.item || byLabel.description || 'Order item';
-    const detail = [byLabel.size && `Size: ${byLabel.size}`, byLabel.quantity && `Qty: ${byLabel.quantity}`]
+    const detail = [
+      byLabel.size && `Size: ${byLabel.size}`,
+      byLabel.quantity && `Qty: ${byLabel.quantity}`,
+    ]
       .filter(Boolean)
       .join('  |  ');
     items = [
@@ -107,7 +114,10 @@ export function exportInvoicePdf(
   }
 
   const meta = (invoice.lines || []).filter(
-    (line) => !['item', 'description', 'size', 'quantity', 'qty', 'payment'].includes(line.label.toLowerCase()),
+    (line) =>
+      !['item', 'description', 'size', 'quantity', 'qty', 'payment'].includes(
+        line.label.toLowerCase(),
+      ),
   );
 
   const ops: string[] = [];

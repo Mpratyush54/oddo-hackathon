@@ -8,6 +8,7 @@ import { requireRole } from '../../shared/authorization.js';
 import { visibleState } from './club.views.js';
 
 import { applyAction } from './actions.js';
+import { assertRefundUnlocked } from '../payments/refund-locks.js';
 export function paymentAmount(action, result) {
   const rupees =
     action.type === 'tickets.book'
@@ -52,6 +53,7 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
         return { ...cached.result, state: visibleState((await load(clubId)).data, user, role) };
       }
       const current = await load(clubId);
+      assertRefundUnlocked(current.data, action, user);
       if (
         paymentsRequired &&
         action.type === 'members.add' &&
@@ -67,7 +69,7 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
       if (cancelled?.paymentId)
         throw new HttpError(
           409,
-          'Paid cancellations require a refund through the Razorpay test dashboard.',
+          'Request a refund from the Refunds page before cancelling a paid purchase.',
         );
       const { data, result } = applyAction(
         current.data,
@@ -91,6 +93,27 @@ export function createDomain({ repo, clubs, paymentsRequired = false }) {
         )
           throw new HttpError(409, 'Checkout price or payment state changed.');
         if (payment) {
+          const activatedMembership =
+            action.type === 'membership.demo-dues' || (result.membershipFee || 0) > 0;
+          if (activatedMembership) {
+            const previousMember = current.data.members.find((m) => m.userId === user.id);
+            payment = {
+              ...payment,
+              membershipBefore: previousMember
+                ? {
+                    status: previousMember.status,
+                    expires: previousMember.expires,
+                    duesWaived: !!previousMember.duesWaived,
+                    membershipPaymentId: previousMember.membershipPaymentId,
+                  }
+                : null,
+            };
+            const member = data.members.find((m) => m.userId === user.id);
+            if (member) {
+              member.membershipPaymentId = payment.paymentId;
+              member.duesWaived = false;
+            }
+          }
           for (const field of ['tickets', 'orders', 'transactions']) {
             const previous = new Set(current.data[field].map((row) => row.id));
             for (const row of data[field])

@@ -8,6 +8,7 @@ import { date, exportInvoicePdf, money, moneyPdf } from '../../../shared/utils/f
 import '../../../shared/styles/portal.css';
 import '../../landing/styles/landing.css';
 import { usePersonal } from '../../account/hooks/usePersonal';
+import { cloudMode } from '../../../shared/api/client';
 
 const statusTone = (status?: string) =>
   status === 'Picked up'
@@ -34,8 +35,7 @@ export function MyOrders() {
       />
       <section className="portal-panel">
         {orders.map((o) => {
-          const productName =
-            data.products.find((p) => p.id === o.productId)?.name || o.productId;
+          const productName = data.products.find((p) => p.id === o.productId)?.name || o.productId;
           const status = o.status || 'Placed';
           return (
             <div className="portal-row" key={o.id}>
@@ -48,11 +48,21 @@ export function MyOrders() {
                   {o.id} · Size {o.size} · {date(o.date)}
                 </small>
                 <div style={{ marginTop: 6 }}>
-                  <Badge tone={statusTone(status)}>{status}</Badge>
+                  <Badge tone={statusTone(status)}>
+                    {o.refundPending ? 'Refund processing' : status}
+                  </Badge>
                 </div>
               </div>
               <div className="my-order-actions">
                 <strong>{money(o.amount)}</strong>
+                {cloudMode && o.paymentId && !['Picked up', 'Cancelled'].includes(status) && (
+                  <LinkButton
+                    to={`/app/refunds${o.refundPending ? '' : '?payment=' + encodeURIComponent(o.paymentId)}`}
+                    variant="secondary"
+                  >
+                    {o.refundPending ? 'View refund' : 'Request refund'}
+                  </LinkButton>
+                )}
                 <Button
                   variant="secondary"
                   icon="Download"

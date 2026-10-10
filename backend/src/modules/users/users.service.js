@@ -73,6 +73,8 @@ export class UsersService {
       const current = await this.domain.load(clubId);
       const data = structuredClone(current.data);
       const index = data.members.findIndex((m) => m.userId === target.id);
+      if (data.members[index]?.refundPending)
+        throw new HttpError(409, 'Resolve the pending membership refund before editing this user.');
       if (remove && index < 0) throw new HttpError(404, 'This user is not in the club.');
       if (remove) data.members.splice(index, 1);
       else {

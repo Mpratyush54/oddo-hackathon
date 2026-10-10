@@ -51,6 +51,8 @@ AWS references: [Lambda runtimes](https://docs.aws.amazon.com/lambda/latest/dg/l
 - The low-volume pilot uses a club aggregate with a 300 KB ceiling. Audit events persist separately; the state contains only a recent audit view. Move entity families to individual DynamoDB records before large-scale use.
 - Receipt uploads last five minutes, allow PDF/JPEG/PNG and 1 byte–5 MB, and use user/club-scoped keys. Submission checks S3 metadata. Downloads require authorization and expire after two minutes.
 - Razorpay TEST mode connects tickets, merchandise and annual membership. Server signatures and captured payment checks guard fulfillment. Live keys are rejected. See [payment setup and limits](docs/PAYMENTS.md).
+- In-app Refunds supports member requests, administrator/treasurer reviews, provider-status tracking and full test-payment reconciliation. Approved refunds hold entitlements until provider confirmation; processed refunds reverse stock, points, membership and ledger entries atomically. Add the three refund webhook events in Razorpay Test mode; manual status checks also reconcile them.
+- Active or administrator-approved membership applies member pricing to every later club ticket and merchandise purchase without another joining fee. Browser and server use one eligibility rule, including expiry and refund suspension.
 
 Application audit history is append-only through the application API; it does not claim cryptographic tamper-proofing against cloud administrators.
 

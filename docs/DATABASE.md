@@ -53,6 +53,8 @@ The current pilot stores business entities inside one aggregate per club and cap
 
 ## Inspect and validate
 
+Refund requests use the club partition and `REFUND#<providerPaymentId>` sort key. The strict Zod record includes the payment owner and record keys, server-owned INR amount, test mode, reason, version, reviewer, provider reference, status and optional membership lock snapshot. Records have no TTL. Approval and provider reconciliation atomically update STATE, PAYMENT, REFUND and an immutable AUDIT row; approval also conditionally checks the current reviewer's club role. Tickets/orders carry `refundPending`; memberships also retain the payment that activated them. Point refunds retain the original entry and append a negative reversal for an auditable net total.
+
 ```sh
 npm run db:schema                # Generate the JSON contract from runtime schemas
 npm run db:schema:check          # Detect a stale generated schema

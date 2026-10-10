@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { hasActiveMembership } from '../../../../../shared/membership.js';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Badge } from '../../../shared/ui/Badge';
 import { CardHeader } from '../../../shared/ui/CardHeader';
@@ -20,7 +21,7 @@ export function RoleDashboard() {
   const { role, user } = useSession();
   const { data } = useStore();
   const personal = usePersonal();
-  const membershipActive = personal.member?.status === 'Active' && personal.member.expires >= today;
+  const membershipActive = hasActiveMembership(personal.member, today);
   if (role === 'college') return <CollegeDashboard />;
   const completed = data.transactions.filter((t) => t.status === 'Completed');
   const balance = completed.reduce((n, t) => n + t.amount, 0);
