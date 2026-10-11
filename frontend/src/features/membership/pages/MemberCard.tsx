@@ -30,7 +30,13 @@ export function MemberCard() {
   const [previewBusy, setPreviewBusy] = useState(false);
   const clubName = clubs.find((c) => c.id === clubId)?.name || 'Skyline';
   const valid = hasActiveMembership(member, today);
-  const needsDues = !!member && (!valid || member.status === 'Expiring');
+  const expiryTime = member?.expires ? new Date(`${member.expires}T23:59:59+05:30`).getTime() : 0;
+  const nowTime = new Date(`${today}T00:00:00+05:30`).getTime();
+  const daysUntilExpiry = member?.expires
+    ? Math.ceil((expiryTime - nowTime) / (1000 * 60 * 60 * 24))
+    : 0;
+  const canRenew = !!member && valid && daysUntilExpiry <= 7;
+  const needsDues = !!member && !valid;
   const featuredProduct = data.products.find((p) => Object.values(p.stock).some((n) => n > 0));
   const qrPayload = member ? `SKYLINE:MEMBER:${clubId}:${member.id}` : '';
 
@@ -104,6 +110,8 @@ export function MemberCard() {
       )
     )
       return;
+    const targetYear = Number(today.slice(0, 4)) + 1;
+    const newExpiry = `${targetYear}-07-31`;
     update((d) => ({
       ...d,
       members: d.members.map((m) =>
@@ -111,7 +119,7 @@ export function MemberCard() {
           ? {
               ...m,
               status: 'Active' as const,
-              expires: '2027-07-31',
+              expires: newExpiry,
               role: m.role === 'Member' ? 'Volunteer' : m.role,
             }
           : m,
@@ -130,6 +138,67 @@ export function MemberCard() {
       ],
     }));
     toast(cloudMode ? 'Membership is now active.' : 'Demo dues recorded. Membership card updated.');
+  };
+
+  const renewMembership = async () => {
+    if (!member) return;
+    if (valid && !canRenew) {
+      toast(`Renewal opens 1 week before expiry (${date(member.expires)}).`);
+      return;
+    }
+    if (cloudMode) {
+      if (paying) return;
+      setPaying(true);
+      try {
+        const reply = await razorpayCheckout(
+          clubId,
+          { type: 'membership.demo-dues', args: {} },
+          user,
+        );
+        applyServerPatch(clubId, reply.state);
+        toast('Razorpay test payment confirmed. Membership renewed.');
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Membership renewal failed.');
+      } finally {
+        setPaying(false);
+      }
+      return;
+    }
+    if (
+      !window.confirm(
+        'Renew annual membership for ₹500? Demo checkout — no real payment is taken.',
+      )
+    )
+      return;
+    const currentYear = Number((member.expires || today).slice(0, 4));
+    const targetYear = Math.max(Number(today.slice(0, 4)), currentYear) + 1;
+    const newExpiry = `${targetYear}-07-31`;
+    update((d) => ({
+      ...d,
+      members: d.members.map((m) =>
+        m.id === member.id
+          ? {
+              ...m,
+              status: 'Active' as const,
+              expires: newExpiry,
+              role: m.role === 'Member' ? 'Volunteer' : m.role,
+            }
+          : m,
+      ),
+      transactions: [
+        {
+          id: uid('TX'),
+          title: `Membership renewal · ${user.name} (demo payment)`,
+          category: 'Membership',
+          amount: 500,
+          date: today,
+          status: 'Completed' as const,
+          createdBy: user.id,
+        },
+        ...d.transactions,
+      ],
+    }));
+    toast(`Membership renewed until ${date(newExpiry)}.`);
   };
 
   const saveCard = async () => {
@@ -207,14 +276,6 @@ export function MemberCard() {
               phone and laptop.
             </p>
             <div className="member-card-actions">
-              {cloudMode && (
-                <LinkButton
-                  to={`/app/refunds${member?.membershipPaymentId && !member.refundPending ? '?payment=' + encodeURIComponent(member.membershipPaymentId) : ''}`}
-                  variant="secondary"
-                >
-                  {member?.refundPending ? 'View membership refund' : 'Payments & refunds'}
-                </LinkButton>
-              )}
               <Button icon="Download" disabled={!member || saving} onClick={() => void saveCard()}>
                 {saving ? 'Saving…' : 'Save card PNG'}
               </Button>
@@ -232,20 +293,38 @@ export function MemberCard() {
           <section className="member-card-panel member-card-buy">
             <h3>Buy & activate</h3>
             <p>
-              {needsDues
-                ? 'Activate dues for member prices on events and merchandise.'
+              {!member
+                ? 'Join the club first, then activate dues or shop with membership.'
                 : valid
-                  ? 'Your membership is active. Pick up club merch anytime.'
-                  : 'Join the club first, then activate dues or shop with membership.'}
+                  ? canRenew
+                    ? `Your membership expires in ${daysUntilExpiry} ${daysUntilExpiry === 1 ? 'day' : 'days'} (${member?.expires ? date(member.expires) : ''}). You can renew now.`
+                    : `Your membership is active until ${member?.expires ? date(member.expires) : ''}. Renewal opens 1 week before expiry.`
+                  : member.status === 'Expired'
+                    ? `Your membership expired on ${member?.expires ? date(member.expires) : ''}. Renew now to restore member prices and perks.`
+                    : 'Activate dues for member prices on events and merchandise.'}
             </p>
             <div className="member-card-actions">
               {needsDues && (
                 <Button
-                  icon="BadgeCheck"
+                  icon={member?.status === 'Expired' ? 'RefreshCw' : 'BadgeCheck'}
                   disabled={paying || member?.refundPending}
-                  onClick={activateMembership}
+                  onClick={member?.status === 'Expired' ? renewMembership : activateMembership}
                 >
-                  Buy membership · ₹500
+                  {member?.status === 'Expired' ? 'Renew membership · ₹500' : 'Buy membership · ₹500'}
+                </Button>
+              )}
+              {valid && (
+                <Button
+                  icon="RefreshCw"
+                  disabled={!canRenew || paying || member?.refundPending}
+                  onClick={renewMembership}
+                  title={
+                    canRenew
+                      ? 'Renew membership for another year'
+                      : `Renewal opens 1 week before expiry (${member?.expires ? date(member.expires) : ''})`
+                  }
+                >
+                  Renew membership · ₹500
                 </Button>
               )}
               {can('shop') && (

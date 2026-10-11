@@ -82,13 +82,23 @@ export class MembershipService extends ClubActionService {
       : ownMember(this.data, this.user);
     if (!member) throw new HttpError(409, 'Join the club first.');
     if (member.userId !== this.user.id) requireRole(this.role, ['admin']);
-    if (member.status === 'Active' && member.expires >= this.now)
-      throw new HttpError(409, 'This membership is already active.');
+    const expiryTime = member.expires ? new Date(`${member.expires}T23:59:59+05:30`).getTime() : 0;
+    const nowTime = new Date(`${this.now}T00:00:00+05:30`).getTime();
+    const daysUntilExpiry = member.expires
+      ? Math.ceil((expiryTime - nowTime) / (24 * 60 * 60 * 1000))
+      : 0;
+
+    if (member.status === 'Active' && daysUntilExpiry > 7)
+      throw new HttpError(409, 'Membership renewal is only available within 1 week of expiry.');
+
+    const isRenewal = member.status === 'Active';
+    const currentYear = Number((member.expires || this.now).slice(0, 4));
+    const targetYear = Math.max(Number(this.now.slice(0, 4)), currentYear) + 1;
     member.status = 'Active';
-    member.expires = `${Number(this.now.slice(0, 4)) + 1}-07-31`;
+    member.expires = `${targetYear}-07-31`;
     this.data.transactions.unshift({
       id: recordId('TX'),
-      title: `Membership dues · ${this.user.name} (simulated payment)`,
+      title: `${isRenewal ? 'Membership renewal' : 'Membership dues'} · ${member.name || this.user.name} (simulated payment)`,
       category: 'Membership',
       amount: 500,
       date: this.now,

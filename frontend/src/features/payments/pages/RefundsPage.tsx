@@ -156,7 +156,7 @@ export function RefundsPage() {
   return (
     <>
       <PageHeader
-        title="Refunds"
+        title="Payments & refunds"
         description={
           listing.canReview
             ? 'Review requests and track Razorpay test refunds. Only processed refunds update the ledger.'
