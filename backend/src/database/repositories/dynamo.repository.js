@@ -7,7 +7,7 @@ import {
   TransactWriteCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { HttpError } from '../../shared/records.js';
+import { HttpError, MAX_CLUB_DATA_BYTES } from '../../shared/records.js';
 import { parseDatabaseRecord } from '../schemas/index.js';
 
 export class DynamoRepository {
@@ -120,7 +120,7 @@ export class DynamoRepository {
     }
   }
   async commit(pk, version, data, audit, request, extraOperations = []) {
-    if (Buffer.byteLength(JSON.stringify(data)) > 300_000)
+    if (Buffer.byteLength(JSON.stringify(data)) > MAX_CLUB_DATA_BYTES)
       throw new HttpError(
         409,
         'This club has reached its pilot data limit. Archive records before adding more.',

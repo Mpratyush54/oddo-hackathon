@@ -83,7 +83,7 @@ export function NotFound() {
 
 export default function Workspace() {
   const store = useStore();
-  const { data, update, toastMessage, clearToast, toast } = store;
+  const { data, update, toastMessage, clearToast, toast, applyServerPatch } = store;
   const session = useSession();
   const { role, user, clubId, clubs, can, signedIn, selectClub, switchPersona, signOut } = session;
   const location = useLocation(),
@@ -891,10 +891,10 @@ export default function Workspace() {
             <div className="info-banner">
               <Icon name="UsersRound" />
               <div>
-                <strong>Join as a student member</strong>
+                <strong>Request to join this club</strong>
                 <p>
-                  Get your membership card, member prices, and club updates. You can activate dues
-                  later from your card.
+                  Send a join request. An administrator must approve you before you can pay ₹500
+                  dues and unlock member prices.
                 </p>
               </div>
               <Button
@@ -904,14 +904,17 @@ export default function Workspace() {
                     args: {},
                     idempotencyKey: crypto.randomUUID(),
                   })
-                    .then(() => {
-                      toast('You joined the club. Open My card to see your membership.');
+                    .then((result) => {
+                      if (result.state) applyServerPatch(clubId, result.state);
+                      toast(
+                        'Join request sent. Wait for an administrator to approve you, then pay dues on My card.',
+                      );
                       window.dispatchEvent(new Event('skyline-data-changed'));
                     })
                     .catch((error) => toast(error.message));
                 }}
               >
-                Join club
+                Request to join
               </Button>
             </div>
           )}
@@ -966,16 +969,12 @@ export default function Workspace() {
               path="contributions"
               element={role === 'college' ? <Unauthorized /> : <ContributionsPage />}
             />
-            <Route
-              path="tasks"
-              element={
-                <Permission permission="manage_tasks">
-                  <TasksPage />
-                </Permission>
-              }
-            />
+            <Route path="tasks" element={role === 'college' ? <Unauthorized /> : <TasksPage />} />
             <Route path="projects" element={<Navigate to="/app/tasks" replace />} />
-            <Route path="my-tasks" element={<PersonalTasks />} />
+            <Route
+              path="my-tasks"
+              element={role === 'college' ? <Unauthorized /> : <PersonalTasks />}
+            />
             <Route
               path="finance"
               element={

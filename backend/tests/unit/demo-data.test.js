@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildDemoData, demoCollections, mergeDemoData } from '../../../scripts/lib/demo-data.js';
+import {
+  buildDemoData,
+  demoCollections,
+  mergeDemoData,
+  topUpDemoData,
+} from '../../../scripts/lib/demo-data.js';
 import { seedDemoData, demoReceiptPdf } from '../../../scripts/seed-demo-data.js';
 import { MemoryRepository } from '../../src/database/repositories/memory.repository.js';
 import { clubKey } from '../../src/shared/records.js';
@@ -63,6 +68,38 @@ test('seeding preserves existing records and repeated runs neither duplicate nor
   assert.equal(after.data.members[0].course, 'Edited course');
   assert.equal(after.data.members.length, 67);
   assert.deepEqual(after.data.events[0], base.clubs.skyline.events[0]);
+});
+
+test('populated-workspace top-up fills missing collections and preserves existing rows and point balances', () => {
+  const source = makeDemo();
+  const current = structuredClone(source.clubs);
+  for (const data of Object.values(current)) {
+    for (const collection of demoCollections)
+      for (const row of data[collection]) row.id = 'LEGACY-' + row.id;
+    data.events = [];
+    data.products = [];
+    data.projects = [];
+  }
+  const plan = topUpDemoData(current, source);
+  for (const collection of ['tickets', 'transactions', 'orders', 'pointLedger'])
+    assert.equal(Object.values(plan.clubs).flatMap((data) => data[collection]).length, 0);
+  for (const [clubId, data] of Object.entries(plan.clubs)) {
+    assert.ok(
+      data.members.every(
+        (member) =>
+          member.participationPoints + member.volunteerPoints + member.contributionPoints === 0,
+      ),
+    );
+    const merged = mergeDemoData(current[clubId], data);
+    for (const collection of demoCollections)
+      assert.ok(merged[collection].length >= current[clubId][collection].length);
+    assert.deepEqual(merged.tickets, current[clubId].tickets);
+    const second = mergeDemoData(
+      merged,
+      topUpDemoData({ ...current, [clubId]: merged }, source).clubs[clubId],
+    );
+    assert.deepEqual(second, merged);
+  }
 });
 test('invalid or oversized seed plans make no database writes', async () => {
   const repo = new MemoryRepository();

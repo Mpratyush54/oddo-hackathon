@@ -4,13 +4,37 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { buildDemoData, mergeDemoData, demoCollections } from './lib/demo-data.js';
+import { buildDemoData, mergeDemoData, demoCollections, topUpDemoData } from './lib/demo-data.js';
 import { ownerAws, ownerRepository, ownerCredentials } from './lib/aws-owner.js';
 import { hashPassword } from '../backend/src/modules/auth/password.js';
-import { clubKey, timestamp, recordId, dateToday } from '../backend/src/shared/records.js';
+import {
+  clubKey,
+  timestamp,
+  recordId,
+  dateToday,
+  MAX_CLUB_DATA_BYTES,
+} from '../backend/src/shared/records.js';
 import { parseDatabaseRecord } from '../backend/src/database/schemas/index.js';
 
-export async function seedDemoData({ repo, base, demo, apply = false, receiptUploader }) {
+export async function seedDemoData({
+  repo,
+  base,
+  demo,
+  apply = false,
+  receiptUploader,
+  topUp = false,
+}) {
+  if (topUp) {
+    const current = Object.fromEntries(
+      await Promise.all(
+        base.organizations.map(async (club) => [
+          club.id,
+          (await repo.get(clubKey(club.id), 'STATE')).data,
+        ]),
+      ),
+    );
+    demo = topUpDemoData(current, demo);
+  }
   for (const row of demo.records) {
     if (!(
       row.id?.startsWith('DEMO-') ||
@@ -30,8 +54,10 @@ export async function seedDemoData({ repo, base, demo, apply = false, receiptUpl
     const data = mergeDemoData(current.data, demo.clubs[club.id]);
     parseDatabaseRecord({ ...current, data });
     sizes[club.id] = Buffer.byteLength(JSON.stringify(data));
-    if (sizes[club.id] > 280000)
-      throw new Error(`Club ${club.id} would exceed the safe seed size. No writes have been made.`);
+    if (sizes[club.id] > MAX_CLUB_DATA_BYTES - 20000)
+      throw new Error(
+        `Club ${club.id} would exceed the safe seed size (${sizes[club.id]} bytes). No writes have been made.`,
+      );
     for (const c of demoCollections) counts[c] += demo.clubs[club.id][c].length;
   }
   if (!apply) return { apply: false, sizes, counts, databaseRecords: demo.records.length };
@@ -55,7 +81,7 @@ export async function seedDemoData({ repo, base, demo, apply = false, receiptUpl
     for (let attempt = 0; attempt < 5; attempt++) {
       const current = await repo.get(clubKey(club.id), 'STATE');
       const data = mergeDemoData(current.data, demo.clubs[club.id]);
-      if (Buffer.byteLength(JSON.stringify(data)) > 280000)
+      if (Buffer.byteLength(JSON.stringify(data)) > MAX_CLUB_DATA_BYTES - 20000)
         throw new Error('Club grew during seeding; rerun after archiving old records.');
       if (demoCollections.every((c) => (data[c]?.length || 0) === (current.data[c]?.length || 0))) {
         committed = true;
@@ -154,6 +180,7 @@ async function main() {
     base,
     demo,
     apply: process.argv.includes('--apply'),
+    topUp: process.argv.includes('--top-up'),
     receiptUploader,
   });
   console.log(JSON.stringify(result));

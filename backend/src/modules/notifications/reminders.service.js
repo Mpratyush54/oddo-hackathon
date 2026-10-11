@@ -1,4 +1,10 @@
-import { clubKey, timestamp, recordId, HttpError } from '../../shared/records.js';
+import {
+  clubKey,
+  timestamp,
+  recordId,
+  HttpError,
+  MAX_CLUB_DATA_BYTES,
+} from '../../shared/records.js';
 import {
   membershipReminder,
   eventReminders,
@@ -39,7 +45,7 @@ export class RemindersService {
         });
       }
       if (!markers.length) return { prepared: 0 };
-      if (Buffer.byteLength(JSON.stringify(data)) > 300000)
+      if (Buffer.byteLength(JSON.stringify(data)) > MAX_CLUB_DATA_BYTES)
         throw new HttpError(409, 'Club data limit reached; archive old notifications.');
       const audit = {
         id: recordId('AUD'),

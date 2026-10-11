@@ -7,11 +7,13 @@ import { Icon } from '../../../shared/ui/Icon';
 import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { SearchField } from '../../../shared/ui/SearchField';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { formValues } from '../../../shared/ui/formValues';
 import { date, exportCSV, money, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
 import { backendPost, backendRequest, cloudMode } from '../../../shared/api/client';
+import { useServerTable } from '../../../shared/hooks/useServerTable';
 import { Revealed } from '../../../shared/components/PageMotion';
 import { FinanceAnalytics } from '../components/FinanceAnalytics';
 import { ReceiptCheckPanel, type ReceiptCheck } from '../components/ReceiptCheckPanel';
@@ -71,6 +73,15 @@ export function FinancePage() {
           (status === 'Pending review' ? t.status === 'Pending' : t.status === status)),
     )
     .sort((a, b) => (descending ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)));
+  const ledger = useServerTable<Transaction>({
+    clubId,
+    table: 'transactions',
+    localRows: filtered,
+    query: search,
+    status: status === 'All transactions' ? '' : status === 'Pending review' ? 'Pending' : status,
+    category: category === 'All categories' ? '' : category,
+    limit: 5,
+  });
   const exportLedger = () =>
     exportCSV('skyline-ledger.csv', [
       ['ID', 'Description', 'Category', 'Amount (INR)', 'Date', 'Status', 'Receipt'],
@@ -268,7 +279,7 @@ export function FinancePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => (
+                {ledger.rows.map((t) => (
                   <tr key={t.id} className={t.amount < 0 ? 'expense-row' : 'income-row'}>
                     <td>
                       <div className="transaction-cell">
@@ -384,12 +395,21 @@ export function FinancePage() {
               </tbody>
             </table>
           </div>
-          {!filtered.length && (
+          {!ledger.rows.length && (
             <Empty title="No matching transactions" description="Try another filter or search." />
           )}
+          <TablePager
+            page={ledger.page}
+            pages={ledger.pages}
+            total={ledger.total}
+            limit={ledger.limit}
+            label="transactions"
+            loading={ledger.loading}
+            onPageChange={ledger.setPage}
+          />
           <div className="table-footer">
             <span>
-              {filtered.length} shown · Pending excluded from balance
+              Pending excluded from balance
               {!canApprove && viewAll ? ' · Approvals: club admin only' : ''}
             </span>
             <span className="ledger-total">
@@ -865,6 +885,12 @@ export function FinancePage() {
                 icon="Download"
                 onClick={() => {
                   if (cloudMode) {
+                    if (!previewReceipt.receiptKey) {
+                      toast(
+                        'This ledger entry has no uploaded receipt file — only a label from seed or older data.',
+                      );
+                      return;
+                    }
                     void backendRequest<{ url: string }>(
                       `/clubs/${clubId}/receipts/${previewReceipt.id}`,
                     )

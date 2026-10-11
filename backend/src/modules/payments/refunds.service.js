@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { HttpError, clubKey, timestamp, recordId } from '../../shared/records.js';
-import { parseRequest } from '../../shared/request-validation.js';
+import {
+  HttpError,
+  clubKey,
+  timestamp,
+  recordId,
+  MAX_CLUB_DATA_BYTES,
+} from '../../shared/records.js';
+import { pageQuerySchema, paginate, parseRequest } from '../../shared/request-validation.js';
 import { requireRole } from '../../shared/authorization.js';
 import { visibleState } from '../clubs/club.views.js';
 import { requestRefundSchema, reviewRefundSchema } from './refunds.schemas.js';
@@ -41,46 +47,95 @@ export class RefundsService {
     if (record?.userId !== user.id) requireRole(role, ['admin', 'treasurer']);
     return role;
   }
-  async list(clubId, user) {
+  async list(clubId, user, query = {}) {
     const role = await this.domain.roleFor(user, clubId),
       current = await this.domain.load(clubId);
     const reviewer = ['admin', 'treasurer'].includes(role);
+    const parsed = parseRequest(
+      pageQuerySchema.extend({
+        q: z.string().trim().max(120).optional().default(''),
+        status: z.string().trim().max(40).optional().default(''),
+        requestsPage: z.coerce.number().int().min(1).max(10000).optional(),
+        paymentsPage: z.coerce.number().int().min(1).max(10000).optional(),
+        paymentId: z.string().trim().max(120).optional().default(''),
+      }),
+      query,
+    );
+    const { limit, q, status, paymentId } = parsed;
+    const requestsPage = parsed.requestsPage || parsed.page;
+    const paymentsPage = parsed.paymentsPage || parsed.page;
     const [records, payments] = await Promise.all([
       this.repo.list(clubKey(clubId), 'REFUND#'),
       this.repo.list('USER#' + user.id, 'PAYMENT#'),
     ]);
-    const requests = records
+    const needle = (q || '').toLowerCase();
+    let requests = records
       .filter((r) => reviewer || r.userId === user.id)
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .map((r) => this.publicRecord(r));
+    if (status && status !== 'All') requests = requests.filter((r) => r.status === status);
+    if (needle)
+      requests = requests.filter((r) =>
+        `${r.requesterName} ${r.reason} ${r.paymentId} ${r.status} ${r.detail || ''} ${r.rejectionReason || ''}`
+          .toLowerCase()
+          .includes(needle),
+      );
+    const requestSlice = paginate(requests, { page: requestsPage, limit });
+
+    let paymentRows = payments
+      .filter(
+        (p) =>
+          p.clubId === clubId &&
+          p.paymentId &&
+          ['Fulfilled', 'RefundPending', 'Refunded'].includes(p.status),
+      )
+      .map((p) => {
+        let eligibilityIssue = '';
+        if (p.status === 'Fulfilled')
+          try {
+            this.effects.eligible(current.data, p);
+          } catch (error) {
+            eligibilityIssue = error.message;
+          }
+        return {
+          paymentId: p.paymentId,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          type: p.action.type,
+          createdAt: p.createdAt,
+          membershipIncluded: (p.result?.membershipFee || 0) > 0,
+          eligibilityIssue,
+        };
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (status && status !== 'All') paymentRows = paymentRows.filter((p) => p.status === status);
+    if (needle)
+      paymentRows = paymentRows.filter((p) =>
+        `${p.paymentId} ${p.type} ${p.status} ${p.eligibilityIssue || ''}`
+          .toLowerCase()
+          .includes(needle),
+      );
+    const paymentSlice = paginate(paymentRows, { page: paymentsPage, limit });
+    // Deep-link: keep a specific payment visible even if it is off the current page.
+    if (paymentId && !paymentSlice.items.some((p) => p.paymentId === paymentId)) {
+      const pinned = paymentRows.find((p) => p.paymentId === paymentId);
+      if (pinned) paymentSlice.items = [pinned, ...paymentSlice.items].slice(0, limit);
+    }
+
     return {
       canReview: reviewer,
-      requests: requests.map((r) => this.publicRecord(r)),
-      payments: payments
-        .filter(
-          (p) =>
-            p.clubId === clubId &&
-            p.paymentId &&
-            ['Fulfilled', 'RefundPending', 'Refunded'].includes(p.status),
-        )
-        .map((p) => {
-          let eligibilityIssue = '';
-          if (p.status === 'Fulfilled')
-            try {
-              this.effects.eligible(current.data, p);
-            } catch (error) {
-              eligibilityIssue = error.message;
-            }
-          return {
-            paymentId: p.paymentId,
-            amount: p.amount,
-            currency: p.currency,
-            status: p.status,
-            type: p.action.type,
-            createdAt: p.createdAt,
-            membershipIncluded: (p.result?.membershipFee || 0) > 0,
-            eligibilityIssue,
-          };
-        }),
+      requests: requestSlice.items,
+      payments: paymentSlice.items,
+      limit: requestSlice.limit,
+      requestsPage: requestSlice.page,
+      requestsTotal: requestSlice.total,
+      requestsPages: requestSlice.pages,
+      paymentsPage: paymentSlice.page,
+      paymentsTotal: paymentSlice.total,
+      paymentsPages: paymentSlice.pages,
+      q: q || '',
+      status: status || '',
     };
   }
   async response(record, user) {
@@ -91,7 +146,7 @@ export class RefundsService {
     };
   }
   async write(current, data, record, oldRecord, payment, oldPayment, actor, action, access) {
-    if (Buffer.byteLength(JSON.stringify(data)) > 300000)
+    if (Buffer.byteLength(JSON.stringify(data)) > MAX_CLUB_DATA_BYTES)
       throw new HttpError(409, 'Club data limit reached.');
     const audit = {
       id: recordId('AUD'),

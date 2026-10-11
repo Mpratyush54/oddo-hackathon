@@ -15,7 +15,7 @@ export function visibleState(data, user, role) {
     copy.tickets = copy.tickets.filter((t) => t.userId === user.id);
     copy.orders = copy.orders.filter((o) => o.userId === user.id);
     copy.waitlist = copy.waitlist.filter((w) => w.email === user.email);
-    copy.tasks = copy.tasks.filter((t) => t.assigneeId === user.id || t.assignee === user.name);
+    // Project boards stay visible (like events). Claim/edit rights are enforced in TaskService.
     copy.pointLedger = copy.pointLedger.filter((p) =>
       copy.members.some((m) => m.id === p.memberId),
     );

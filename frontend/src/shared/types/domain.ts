@@ -15,6 +15,9 @@ export type Member = {
   participationPoints?: number;
   volunteerPoints?: number;
   contributionPoints?: number;
+  duesWaived?: boolean;
+  /** false = awaiting admin approval; omitted/true = can pay dues. */
+  joinApproved?: boolean;
 };
 
 export type ClubEvent = {
@@ -60,9 +63,22 @@ export type Task = {
   title: string;
   description: string;
   assignee: string;
+  assigneeId?: string;
+  /** Club ops board, custom project, or mirrors an event id. */
+  projectId?: string;
+  eventId?: string;
   due: string;
   priority: string;
   status: 'To do' | 'In progress' | 'Done';
+};
+
+/** Staff-created project boards (separate from event-linked boards). */
+export type Project = {
+  id: string;
+  title: string;
+  description: string;
+  date?: string;
+  icon?: string;
 };
 
 export type Product = {
@@ -229,6 +245,7 @@ export type Store = {
   events: ClubEvent[];
   transactions: Transaction[];
   tasks: Task[];
+  projects?: Project[];
   products: Product[];
   announcements: Announcement[];
   tickets: Ticket[];

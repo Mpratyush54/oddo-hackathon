@@ -66,6 +66,7 @@ export function AdminDashboard() {
                     ['CalendarPlus', 'Event', '/app/events?create=true'],
                     ['UserRoundPlus', 'Member', '/app/members?create=true'],
                     ['Megaphone', 'Announcement', '/app/announcements?create=true'],
+                    ['PanelsTopLeft', 'Project', '/app/tasks?createProject=true'],
                     ['ListPlus', 'Task', '/app/tasks?create=true'],
                   ].map(([icon, label, to]) => (
                     <Link key={to} to={to}>
@@ -231,20 +232,20 @@ export function AdminDashboard() {
         <div className="brief-stream-grid">
           {/* Finance Overview */}
           <section className="card finance-overview dark-card brief-finance-card">
-            <CardHeader
-              title="Every rupee, accounted for"
-              subtitle="A little clarity for your club’s finances."
-              action={
-                <select
-                  aria-label="Finance chart period"
-                  value={range}
-                  onChange={(e) => setRange(e.target.value)}
-                >
-                  <option value="semester">This semester</option>
-                  <option value="month">This month</option>
-                </select>
-              }
-            />
+            <div className="finance-overview-head">
+              <div>
+                <h2>Every rupee, accounted for</h2>
+                <p>A little clarity for your club’s finances.</p>
+              </div>
+              <select
+                aria-label="Finance chart period"
+                value={range}
+                onChange={(e) => setRange(e.target.value)}
+              >
+                <option value="semester">This semester</option>
+                <option value="month">This month</option>
+              </select>
+            </div>
             <div className="chart-summary">
               <span>
                 <small>Total income</small>

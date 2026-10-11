@@ -23,7 +23,7 @@ export function createFinanceController({ env, repo, domain, s3, fetchImpl, ocr 
     receiptCheckStatus: async (req, res) =>
       res.json(await receipts.status(req.params.clubId, req.params.receiptId, req.auth.user)),
     receiptReviewQueue: async (req, res) =>
-      res.json(await receipts.list(req.params.clubId, req.auth.user)),
+      res.json(await receipts.list(req.params.clubId, req.auth.user, req.query)),
     clearReceipt: async (req, res) =>
       res.json(
         await receipts.clear(req.params.clubId, req.params.receiptId, req.body, req.auth.user),
@@ -67,7 +67,12 @@ export function createFinanceController({ env, repo, domain, s3, fetchImpl, ocr 
       const tx = (await domain.load(req.params.clubId)).data.transactions.find(
         (t) => t.id === req.params.transactionId,
       );
-      if (!tx?.receiptKey) throw new HttpError(404, 'Receipt not found.');
+      if (!tx) throw new HttpError(404, 'Transaction not found.');
+      if (!tx.receiptKey)
+        throw new HttpError(
+          404,
+          'This ledger entry has no uploaded receipt file. Only expenses submitted with a checked upload can be downloaded.',
+        );
       if (tx.createdBy !== req.auth.user.id)
         requireRole(await domain.roleFor(req.auth.user, req.params.clubId), ['admin', 'treasurer']);
       const url = await getSignedUrl(

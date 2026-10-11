@@ -9,6 +9,8 @@ import { Badge } from '../../../shared/ui/Badge';
 import { Empty } from '../../../shared/ui/Empty';
 import { Modal } from '../../../shared/ui/Modal';
 import { Field } from '../../../shared/ui/Field';
+import { SearchField } from '../../../shared/ui/SearchField';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { money, date } from '../../../shared/utils/format';
 import type { Store } from '../../../shared/types/domain';
 import '../styles/refunds.css';
@@ -36,7 +38,20 @@ type Payment = {
   membershipIncluded: boolean;
   eligibilityIssue: string;
 };
-type Listing = { canReview: boolean; requests: Refund[]; payments: Payment[] };
+type Listing = {
+  canReview: boolean;
+  requests: Refund[];
+  payments: Payment[];
+  limit: number;
+  requestsPage: number;
+  requestsTotal: number;
+  requestsPages: number;
+  paymentsPage: number;
+  paymentsTotal: number;
+  paymentsPages: number;
+};
+
+const PAGE_SIZE = 5;
 const labels: Record<string, string> = {
   Requested: 'Awaiting review',
   Processing: 'Processing',
@@ -63,40 +78,90 @@ const tone = (status: string) =>
       ? ('neutral' as const)
       : ('gold' as const);
 
+const emptyListing = (): Listing => ({
+  canReview: false,
+  requests: [],
+  payments: [],
+  limit: PAGE_SIZE,
+  requestsPage: 1,
+  requestsTotal: 0,
+  requestsPages: 1,
+  paymentsPage: 1,
+  paymentsTotal: 0,
+  paymentsPages: 1,
+});
+
 export function RefundsPage() {
   const { clubId } = useSession();
   const activeClub = useRef(clubId);
   activeClub.current = clubId;
   const { applyServerPatch, toast } = useStore();
   const [params, setParams] = useSearchParams();
-  const [listing, setListing] = useState<Listing>({ canReview: false, requests: [], payments: [] });
+  const [listing, setListing] = useState<Listing>(emptyListing);
   const [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('All');
+  const [requestsPage, setRequestsPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
   const [requestPayment, setRequestPayment] = useState<Payment | null>(null),
     [rejectRefund, setRejectRefund] = useState<Refund | null>(null),
     [reason, setReason] = useState('');
-  const reload = useCallback(async () => {
-    if (!cloudMode) {
-      setLoading(false);
-      return;
-    }
-    const result = await backendRequest<Listing>(`/clubs/${encodeURIComponent(clubId)}/refunds`);
-    if (activeClub.current === clubId) setListing(result);
-  }, [clubId]);
+
+  const load = useCallback(
+    async (nextRequestsPage = requestsPage, nextPaymentsPage = paymentsPage) => {
+      if (!cloudMode) {
+        setLoading(false);
+        return;
+      }
+      const query = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        requestsPage: String(nextRequestsPage),
+        paymentsPage: String(nextPaymentsPage),
+      });
+      if (search.trim()) query.set('q', search.trim());
+      if (status && status !== 'All') query.set('status', status);
+      const paymentId = params.get('payment');
+      if (paymentId) query.set('paymentId', paymentId);
+      const result = await backendRequest<Listing>(
+        `/clubs/${encodeURIComponent(clubId)}/refunds?${query}`,
+      );
+      if (activeClub.current !== clubId) return;
+      setListing({ ...emptyListing(), ...result });
+      setRequestsPage(result.requestsPage || 1);
+      setPaymentsPage(result.paymentsPage || 1);
+    },
+    [clubId, requestsPage, paymentsPage, search, status, params],
+  );
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
     setRequestPayment(null);
     setRejectRefund(null);
+    setRequestsPage(1);
+    setPaymentsPage(1);
     if (!cloudMode) {
       setLoading(false);
       return;
     }
-    backendRequest<Listing>(`/clubs/${encodeURIComponent(clubId)}/refunds`)
+    const query = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      requestsPage: '1',
+      paymentsPage: '1',
+    });
+    if (search.trim()) query.set('q', search.trim());
+    if (status && status !== 'All') query.set('status', status);
+    const paymentId = params.get('payment');
+    if (paymentId) query.set('paymentId', paymentId);
+    backendRequest<Listing>(`/clubs/${encodeURIComponent(clubId)}/refunds?${query}`)
       .then((result) => {
-        if (!cancelled) setListing(result);
+        if (cancelled) return;
+        setListing({ ...emptyListing(), ...result });
+        setRequestsPage(result.requestsPage || 1);
+        setPaymentsPage(result.paymentsPage || 1);
       })
       .catch((error) => {
         if (!cancelled) setError(error.message);
@@ -107,7 +172,8 @@ export function RefundsPage() {
     return () => {
       cancelled = true;
     };
-  }, [clubId]);
+  }, [clubId, search, status]);
+
   useEffect(() => {
     const paymentId = params.get('payment');
     if (!paymentId || loading) return;
@@ -121,6 +187,7 @@ export function RefundsPage() {
     }
     setParams({}, { replace: true });
   }, [params, loading, listing, setParams]);
+
   async function mutate(path: string, body: object, message: string) {
     if (busy) return;
     setBusy(true);
@@ -131,7 +198,7 @@ export function RefundsPage() {
       applyServerPatch(clubId, reply.state);
       setRequestPayment(null);
       setRejectRefund(null);
-      await reload();
+      await load(requestsPage, paymentsPage);
       toast(
         reply.refund.status === 'Processed'
           ? 'Razorpay confirmed the test refund.'
@@ -172,13 +239,54 @@ export function RefundsPage() {
           {error}
         </p>
       )}
+      <section className="card refunds-section">
+        <div className="table-toolbar">
+          <div className="segmented">
+            {[
+              'All',
+              'Requested',
+              'Processing',
+              'NeedsReview',
+              'Processed',
+              'Rejected',
+              'Failed',
+              'Fulfilled',
+            ].map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={status === s ? 'selected' : ''}
+                onClick={() => setStatus(s)}
+              >
+                {labels[s] || s}
+              </button>
+            ))}
+          </div>
+          <div className="table-tools">
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder="Search name, payment id, reason…"
+            />
+            <Button
+              variant="secondary"
+              disabled={loading || busy}
+              onClick={() => void load(requestsPage, paymentsPage)}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </section>
       {loading ? (
         <p role="status">Loading refunds…</p>
       ) : (
         <>
           <section className="card refunds-section">
-            <h2>{listing.canReview ? 'Refund requests' : 'Your requests'}</h2>
-            {!listing.requests.length && <p>No refund requests yet.</p>}
+            <h2>
+              {listing.canReview ? 'Refund requests' : 'Your requests'} ({listing.requestsTotal})
+            </h2>
+            {!listing.requests.length && <p>No refund requests match these filters.</p>}
             {listing.requests.map((refund) => (
               <article className="refund-row" key={refund.id}>
                 <div className="refund-details">
@@ -242,10 +350,22 @@ export function RefundsPage() {
                 </div>
               </article>
             ))}
+            <TablePager
+              page={listing.requestsPage}
+              pages={listing.requestsPages}
+              total={listing.requestsTotal}
+              limit={listing.limit || PAGE_SIZE}
+              label="requests"
+              loading={loading || busy}
+              onPageChange={(next) => {
+                setRequestsPage(next);
+                void load(next, paymentsPage);
+              }}
+            />
           </section>
           <section className="card refunds-section">
-            <h2>Your payments</h2>
-            {!listing.payments.length && <p>No Razorpay purchases in this club yet.</p>}
+            <h2>Your payments ({listing.paymentsTotal})</h2>
+            {!listing.payments.length && <p>No Razorpay purchases match these filters.</p>}
             {listing.payments.map((payment) => {
               const request = listing.requests.find((r) => r.paymentId === payment.paymentId);
               return (
@@ -299,6 +419,18 @@ export function RefundsPage() {
                 </article>
               );
             })}
+            <TablePager
+              page={listing.paymentsPage}
+              pages={listing.paymentsPages}
+              total={listing.paymentsTotal}
+              limit={listing.limit || PAGE_SIZE}
+              label="payments"
+              loading={loading || busy}
+              onPageChange={(next) => {
+                setPaymentsPage(next);
+                void load(requestsPage, next);
+              }}
+            />
           </section>
         </>
       )}

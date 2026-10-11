@@ -467,6 +467,7 @@ export const seed: Store = {
     },
   ],
   pointLedger: [],
+  projects: [],
   announcements: [
     {
       id: 'ANN-001',
@@ -572,17 +573,76 @@ export function makeClub(id: string): Store {
   const extraNeeded = targetMembers - club.members.length;
   if (extraNeeded > 0) {
     const firstNames = [
-      'Aarav', 'Aditi', 'Aisha', 'Amit', 'Ananya', 'Anika', 'Arjun', 'Aryan',
-      'Devika', 'Farhan', 'Gautam', 'Isha', 'Ishita', 'Kabir', 'Kavya', 'Krishna',
-      'Lakshya', 'Maya', 'Meera', 'Mira', 'Nadia', 'Neel', 'Nikhil', 'Nisha',
-      'Om', 'Pallavi', 'Pranav', 'Priya', 'Rahul', 'Raj', 'Riya', 'Rohan',
-      'Sahil', 'Sana', 'Sara', 'Shruti', 'Siddharth', 'Simran', 'Tanvi', 'Tara',
-      'Uday', 'Vaani', 'Veer', 'Vikram', 'Vihaan', 'Yash', 'Zara', 'Zoya',
+      'Aarav',
+      'Aditi',
+      'Aisha',
+      'Amit',
+      'Ananya',
+      'Anika',
+      'Arjun',
+      'Aryan',
+      'Devika',
+      'Farhan',
+      'Gautam',
+      'Isha',
+      'Ishita',
+      'Kabir',
+      'Kavya',
+      'Krishna',
+      'Lakshya',
+      'Maya',
+      'Meera',
+      'Mira',
+      'Nadia',
+      'Neel',
+      'Nikhil',
+      'Nisha',
+      'Om',
+      'Pallavi',
+      'Pranav',
+      'Priya',
+      'Rahul',
+      'Raj',
+      'Riya',
+      'Rohan',
+      'Sahil',
+      'Sana',
+      'Sara',
+      'Shruti',
+      'Siddharth',
+      'Simran',
+      'Tanvi',
+      'Tara',
+      'Uday',
+      'Vaani',
+      'Veer',
+      'Vikram',
+      'Vihaan',
+      'Yash',
+      'Zara',
+      'Zoya',
     ];
     const lastNames = [
-      'Sharma', 'Patel', 'Kumar', 'Singh', 'Gupta', 'Iyer', 'Nair', 'Das',
-      'Bose', 'Jain', 'Mehta', 'Rao', 'Shah', 'Verma', 'Chopra', 'Malhotra',
-      'Kapoor', 'Desai', 'Ganesh', 'Pillai',
+      'Sharma',
+      'Patel',
+      'Kumar',
+      'Singh',
+      'Gupta',
+      'Iyer',
+      'Nair',
+      'Das',
+      'Bose',
+      'Jain',
+      'Mehta',
+      'Rao',
+      'Shah',
+      'Verma',
+      'Chopra',
+      'Malhotra',
+      'Kapoor',
+      'Desai',
+      'Ganesh',
+      'Pillai',
     ];
     const courses = [
       'Computer Science',
@@ -594,7 +654,8 @@ export function makeClub(id: string): Store {
       'Business Administration',
       'Visual Communication',
     ];
-    const domain = id === 'codecraft' ? 'codecraft.edu' : id === 'canvas' ? 'canvas.edu' : 'skyline.edu';
+    const domain =
+      id === 'codecraft' ? 'codecraft.edu' : id === 'canvas' ? 'canvas.edu' : 'skyline.edu';
     const offset = id === 'codecraft' ? 17 : id === 'canvas' ? 34 : 0;
     club.members.push(
       ...Array.from({ length: extraNeeded }, (_, i): Member => {
@@ -618,8 +679,7 @@ export function makeClub(id: string): Store {
   }
   const counts =
     id === 'skyline' ? [26, 18, 12, 18] : id === 'codecraft' ? [8, 6, 9, 12] : [7, 9, 6, 12];
-  const budgets =
-    id === 'skyline' ? [18000, 2000, 1200, 1500] : [5000, 2000, 1200, 1500];
+  const budgets = id === 'skyline' ? [18000, 2000, 1200, 1500] : [5000, 2000, 1200, 1500];
   club.events = club.events.map((e, i) => ({
     ...e,
     capacity: [60, 80, 40, counts[3]][i],
@@ -663,17 +723,24 @@ export function makeClub(id: string): Store {
     let title = t.title;
 
     if (t.id === 'TX-001') {
-      amount = club.members.filter((m) => m.status !== 'Pending' && m.status !== 'Expired').length * 500;
+      amount =
+        club.members.filter((m) => m.status !== 'Pending' && m.status !== 'Expired').length * 500;
     } else if (t.id === 'TX-003') {
-      amount = club.orders.filter((o) => o.productId === 'PROD-002').reduce((s, o) => s + o.amount, 0);
+      amount = club.orders
+        .filter((o) => o.productId === 'PROD-002')
+        .reduce((s, o) => s + o.amount, 0);
     } else if (t.id === 'TX-006') {
-      amount = club.tickets.filter((ticket) => ticket.eventId === 'EVT-001').reduce((s, ticket) => s + ticket.amount, 0);
+      amount = club.tickets
+        .filter((ticket) => ticket.eventId === 'EVT-001')
+        .reduce((s, ticket) => s + ticket.amount, 0);
       title = `${club.events[0].title} · ticket sales`;
     } else if (t.id === 'TX-007') {
       amount = id === 'skyline' ? -15000 : id === 'codecraft' ? -3800 : -3500;
       title = `${club.events[0].title} · venue deposit`;
     } else if (t.id === 'TX-008') {
-      amount = club.orders.filter((o) => o.productId === 'PROD-001').reduce((s, o) => s + o.amount, 0);
+      amount = club.orders
+        .filter((o) => o.productId === 'PROD-001')
+        .reduce((s, o) => s + o.amount, 0);
     } else if (t.id === 'TX-010') {
       amount = id === 'skyline' ? -850 : id === 'codecraft' ? -650 : -600;
       title = `${club.events[0].title} · promotional posters & banners`;
@@ -862,9 +929,27 @@ export function enrichEventHistory(club: Store, clubId: string): Store {
   });
   club.eventReviews ??= [];
   const eventBudgets: Record<string, Record<string, number>> = {
-    skyline: { 'EVT-001': 18000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 5500 },
-    codecraft: { 'EVT-001': 5000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 4500 },
-    canvas: { 'EVT-001': 5000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 4200 },
+    skyline: {
+      'EVT-001': 18000,
+      'EVT-002': 2000,
+      'EVT-003': 1200,
+      'EVT-004': 1500,
+      'EVT-WELCOME-2026': 5500,
+    },
+    codecraft: {
+      'EVT-001': 5000,
+      'EVT-002': 2000,
+      'EVT-003': 1200,
+      'EVT-004': 1500,
+      'EVT-WELCOME-2026': 4500,
+    },
+    canvas: {
+      'EVT-001': 5000,
+      'EVT-002': 2000,
+      'EVT-003': 1200,
+      'EVT-004': 1500,
+      'EVT-WELCOME-2026': 4200,
+    },
   };
 
   club.events = club.events.map((event) => ({

@@ -102,6 +102,7 @@ export function ensureCommerceFields(store) {
     ...store,
     promos: Array.isArray(store.promos) ? store.promos : structuredClone(DEFAULT_PROMOS),
     pointLedger: Array.isArray(store.pointLedger) ? store.pointLedger : [],
+    projects: Array.isArray(store.projects) ? store.projects : [],
     pointRules: resolvePointRules(store),
     waitlist: Array.isArray(store.waitlist) ? store.waitlist : [],
     orders: (Array.isArray(store.orders) ? store.orders : []).map((o) => ({
@@ -235,6 +236,25 @@ export function placeOrder(
     throw new CommerceError(409, `Only ${product.stock[sizeKey] || 0} left in ${sizeKey}.`);
 
   let member = isActiveMember(club, actor.email, today);
+  if (joinMembership && !member) {
+    const applicant = club.members.find(
+      (m) =>
+        m.email.toLowerCase() ===
+        String(actor.email || '')
+          .trim()
+          .toLowerCase(),
+    );
+    if (!applicant)
+      throw new CommerceError(
+        409,
+        'Request to join the club first. An administrator must approve you before dues can be paid at checkout.',
+      );
+    if (applicant.joinApproved === false)
+      throw new CommerceError(
+        403,
+        'An administrator must approve your join request before you can pay dues.',
+      );
+  }
   const addingMembership = !member && !!joinMembership;
   const treatedAsMember = !!member || addingMembership;
   const unit = treatedAsMember ? product.memberPrice : product.price;
@@ -301,6 +321,7 @@ export function placeOrder(
               ...m,
               status: 'Active',
               expires: '2027-07-31',
+              joinApproved: true,
               role: m.role === 'Pending' ? 'Volunteer' : m.role,
             }
           : m,
@@ -316,6 +337,7 @@ export function placeOrder(
         joined: today,
         expires: '2027-07-31',
         role: 'Volunteer',
+        joinApproved: true,
         participationPoints: 0,
         volunteerPoints: 0,
         contributionPoints: 0,

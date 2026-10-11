@@ -24,6 +24,19 @@ export type ContextValue = {
 
 export const StoreContext = createContext<ContextValue | null>(null);
 
+const STORAGE_KEY = 'skyline-v4';
+
+/** Reject thin/stale demos so the ~200-member seed reloads after a bump. */
+function richEnough(club: Store): boolean {
+  return (
+    (club.members?.length ?? 0) >= 180 &&
+    (club.tickets?.length ?? 0) >= 80 &&
+    (club.orders?.length ?? 0) >= 20 &&
+    (club.audit?.length ?? 0) >= 12 &&
+    (club.pointLedger?.length ?? 0) >= 20
+  );
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [registry, setRegistry] = useState<Registry>(() => {
     if (cloudMode)
@@ -40,6 +53,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 members: [],
                 transactions: [],
                 tasks: [],
+                projects: [],
                 announcements: [],
                 tickets: [],
                 orders: [],
@@ -55,10 +69,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ),
       };
     try {
-      const saved = localStorage.getItem('skyline-v2');
+      const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as Registry;
-        if (parsed.clubs && organizations.every((o) => parsed.clubs[o.id])) {
+        if (
+          parsed.clubs &&
+          organizations.every((o) => parsed.clubs[o.id] && richEnough(parsed.clubs[o.id]))
+        ) {
           for (const club of Object.values(parsed.clubs))
             club.transactions = club.transactions.map((t) => ({
               ...t,
@@ -98,7 +115,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (cloudMode) return;
     try {
-      localStorage.setItem('skyline-v2', JSON.stringify(registry));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(registry));
     } catch {
       setToastMessage('Your browser could not save changes. Check your storage settings.');
     }

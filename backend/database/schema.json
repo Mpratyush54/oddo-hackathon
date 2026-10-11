@@ -402,6 +402,10 @@
     "ocrQuotaRecord": {
       "type": "object",
       "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
         "pk": {
           "type": "string",
           "const": "OCR_QUOTA#AZURE_F0"
@@ -1266,6 +1270,12 @@
             "$ref": "#/$defs/task"
           }
         },
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/project"
+          }
+        },
         "announcements": {
           "type": "array",
           "items": {
@@ -1440,6 +1450,9 @@
           }
         },
         "duesWaived": {
+          "type": "boolean"
+        },
+        "joinApproved": {
           "type": "boolean"
         },
         "enrollmentSource": {
@@ -1864,6 +1877,12 @@
         "assigneeId": {
           "$ref": "#/$defs/__schema0"
         },
+        "projectId": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "eventId": {
+          "$ref": "#/$defs/__schema0"
+        },
         "due": {
           "$ref": "#/$defs/__schema12"
         },
@@ -1892,6 +1911,32 @@
         "due",
         "priority",
         "status"
+      ],
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "title": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "description": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "date": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "icon": {
+          "$ref": "#/$defs/__schema11"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description"
       ],
       "additionalProperties": false
     },

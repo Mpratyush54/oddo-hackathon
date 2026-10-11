@@ -3,9 +3,13 @@ import { clubKey } from '../../shared/records.js';
 import { normalizePhone } from '../../../../shared/schemas.js';
 import { createExpenseSchema } from '../finance/finance.schemas.js';
 import { parseRequest } from '../../shared/request-validation.js';
+import { ClubTablesService } from './tables.service.js';
 
 export function createClubsController({ repo, domain, checkReceipt }) {
+  const tables = new ClubTablesService({ domain });
   return {
+    listTable: async (req, res) =>
+      res.json(await tables.list(req.params.clubId, req.params.table, req.auth.user, req.query)),
     getState: async (req, res) => {
       const { clubId } = req.params,
         role = await domain.roleFor(req.auth.user, clubId),

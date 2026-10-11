@@ -1117,24 +1117,54 @@ strong {
 }
 .finance-overview {
   padding: 22px 22px 0;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
+}
+.finance-overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.finance-overview-head > div {
+  flex: 1 1 auto;
+  min-width: min(100%, 12rem);
+}
+.finance-overview-head h2 {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.45px;
+  line-height: 1.25;
+  color: #fff;
+  margin: 0;
+}
+.finance-overview-head p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #ffffff9c;
 }
 .finance-overview .card-heading {
   margin-bottom: 16px;
 }
 .finance-overview .card-heading h2 {
-  font-size: 14px;
+  font-size: 22px;
+  line-height: 1.25;
 }
-.finance-overview select {
+.finance-overview select,
+.finance-overview-head select {
+  flex: 0 0 auto;
   font-size: 14px;
-  min-height: 32px;
+  min-height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 8px;
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
-  padding: 4px 10px;
+  padding: 4px 12px;
   width: auto;
-  min-width: 145px;
+  min-width: 9.5rem;
+  max-width: 12rem;
   box-sizing: border-box;
 }
 .finance-overview select option {
@@ -1143,8 +1173,10 @@ strong {
 }
 .chart-summary {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .chart-summary > span:first-child > small {
   display: block;
@@ -1696,6 +1728,59 @@ tbody tr:hover {
   height: 28px;
   border: 1px solid var(--border);
   border-radius: 7px;
+}
+.table-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #d7e0d0);
+  border-radius: 12px;
+  background: #f4f7f1;
+}
+.table-pager-summary {
+  font-size: 13px;
+  color: #5f6f5a;
+  font-weight: 550;
+}
+.table-pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.table-pager-page {
+  font-size: 13px;
+  font-weight: 650;
+  color: #243126;
+  min-width: 5.5rem;
+  text-align: center;
+}
+.table-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c5d2bf;
+  border-radius: 10px;
+  background: #fff;
+  color: #243126;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.table-pager-btn:hover:not(:disabled) {
+  background: #eaf0e5;
+}
+.table-pager-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.receipt-review-queue .table-pager {
+  margin-top: 8px;
 }
 .info-banner {
   margin-top: 24px;
@@ -2607,6 +2692,60 @@ tbody tr:hover {
   gap: 10px;
   flex-wrap: wrap;
 }
+.project-picker {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 18px;
+  scrollbar-width: thin;
+}
+.project-picker-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line, #d7e0d0);
+  background: #fff;
+  color: var(--text, #243126);
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.project-picker-tab em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-muted, #6b7768);
+  background: #eef3ea;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.project-picker-tab.selected {
+  background: #243126;
+  border-color: #243126;
+  color: #f4f7f0;
+}
+.project-picker-tab.selected em {
+  background: #ffffff22;
+  color: #e7efdc;
+}
+.project-picker-tab.project-picker-create {
+  border-style: dashed;
+  color: var(--primary, #0f6b66);
+  background: #f3f7f1;
+}
+.project-picker-tab.project-picker-create:hover {
+  border-color: var(--primary, #0f6b66);
+  background: #e7f0e4;
+}
+.task-card.is-open {
+  border-style: dashed;
+}
+.task-open-label {
+  color: var(--text-muted, #6b7768);
+  font-size: 13px;
+}
 .project-hero {
   padding: 30px;
   display: flex;
@@ -2681,6 +2820,9 @@ tbody tr:hover {
 }
 .project-progress .progress > span {
   background: #b7cba1;
+}
+.project-progress .button {
+  margin-top: 6px;
 }
 .board-toolbar {
   display: flex;
@@ -3962,10 +4104,12 @@ tbody tr:hover {
   .upcoming-item {
     padding: 15px 0;
   }
-  .finance-overview .card-heading h2 {
-    font-size: 17px;
+  .finance-overview .card-heading h2,
+  .finance-overview-head h2 {
+    font-size: 20px;
   }
-  .finance-overview select {
+  .finance-overview select,
+  .finance-overview-head select {
     font-size: 14px;
   }
   .card-heading p {
@@ -4626,10 +4770,12 @@ tbody tr:hover {
   .finance-overview {
     padding: 22px 19px 0;
   }
-  .finance-overview .card-heading h2 {
-    font-size: 14px;
+  .finance-overview .card-heading h2,
+  .finance-overview-head h2 {
+    font-size: 20px;
   }
-  .finance-overview .card-heading p {
+  .finance-overview .card-heading p,
+  .finance-overview-head p {
     font-size: 14px;
   }
   .chart-summary strong {
@@ -4700,9 +4846,15 @@ tbody tr:hover {
   .info-banner {
     padding: 17px;
     gap: 11px;
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
+  .info-banner > .button,
   .info-banner .button {
-    display: none;
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
   }
   .modal {
     padding: 25px;
@@ -5225,17 +5377,23 @@ tbody tr:hover {
   .dashboard-lower {
     grid-template-columns: 1fr;
   }
-  .finance-overview .card-heading h2 {
-    font-size: 16px;
+  .finance-overview .card-heading h2,
+  .finance-overview-head h2 {
+    font-size: 20px;
   }
-  .finance-overview .card-heading p {
+  .finance-overview .card-heading p,
+  .finance-overview-head p {
     font-size: 14px;
   }
-  .finance-overview select {
+  .finance-overview select,
+  .finance-overview-head select {
     font-size: 14px;
+  }
+  .finance-overview-head {
+    flex-wrap: wrap;
   }
   .chart-summary {
-    margin-top: 20px;
+    margin-top: 12px;
   }
   .chart-summary strong {
     font-size: 28px;
@@ -5377,6 +5535,7 @@ tbody tr:hover {
     margin-top: 18px;
     align-items: flex-start;
     padding: 17px;
+    flex-direction: column;
   }
   .info-banner strong {
     font-size: 14px;
@@ -5386,6 +5545,10 @@ tbody tr:hover {
   }
   .info-banner > svg {
     width: 21px;
+  }
+  .info-banner > .button,
+  .info-banner .button {
+    width: 100%;
   }
   .modal {
     padding: 24px;

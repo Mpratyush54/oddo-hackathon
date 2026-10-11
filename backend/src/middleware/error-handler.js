@@ -1,16 +1,18 @@
 export const handleError = (error, req, res, next) => {
+  const validation = error.name === 'DatabaseValidationError';
   const status =
     error.type === 'entity.too.large'
       ? 413
       : error.type === 'entity.parse.failed'
         ? 400
-        : error.status || 503;
+        : error.status || (validation ? 500 : 503);
   if (!error.status && !error.type)
     console.error(
       JSON.stringify({
         type: error.name,
         route: req.path,
         requestId: req.apiGateway?.context?.awsRequestId,
+        ...(validation ? { issues: error.issues?.slice(0, 8) } : {}),
       }),
     );
   res.status(status).json({
@@ -21,6 +23,8 @@ export const handleError = (error, req, res, next) => {
         : 'Invalid JSON.'
       : error.status
         ? error.message
-        : 'The service is temporarily unavailable.',
+        : validation
+          ? 'Club data could not be saved. The API schema is out of date with stored records.'
+          : 'The service is temporarily unavailable.',
   });
 };

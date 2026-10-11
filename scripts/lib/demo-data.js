@@ -11,6 +11,7 @@ export const demoCollections = [
   'orders',
   'transactions',
   'tasks',
+  'projects',
   'promos',
   'pointLedger',
   'announcements',
@@ -164,11 +165,18 @@ export function buildDemoData({ organizations, count = 200, today = '2026-10-11'
       id: taskId,
       title: `Demo ${['Set up venue', 'Register guests', 'Plan activity', 'Prepare poster'][i % 4]} ${i + 1}`,
       description: 'Sample task for the demo dataset.',
+      projectId: identifier('PROJECT', i),
       assignee: name,
       assigneeId: userId,
       due: eventDate,
       priority: ['Low', 'Medium', 'High'][i % 3],
       status: ['To do', 'In progress', 'Done'][i % 3],
+    });
+    data.projects.push({
+      id: identifier('PROJECT', i),
+      title: `Demo project ${i + 1}`,
+      description: 'Sample club project.',
+      date: eventDate,
     });
     data.promos.push({
       id: identifier('PROMO', i),
@@ -348,4 +356,49 @@ export function mergeDemoData(current, demo) {
     data[collection] = [...rows, ...demo[collection].filter((r) => !existing.has(r.id))];
   }
   return data;
+}
+
+/** Top up populated workspaces without duplicating tables that already have enough rows. */
+export function topUpDemoData(currentClubs, source, count = 200) {
+  const demo = structuredClone(source);
+  const parents = new Set(['members', 'events', 'products']);
+  for (const collection of demoCollections) {
+    if (parents.has(collection)) continue;
+    const total = Object.values(currentClubs).reduce(
+      (n, data) => n + (data[collection]?.length || 0),
+      0,
+    );
+    const candidates = Object.values(demo.clubs)
+      .flatMap((data) => data[collection])
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const keep = new Set(candidates.slice(0, Math.max(0, count - total)).map((row) => row.id));
+    for (const data of Object.values(demo.clubs))
+      data[collection] = data[collection].filter((row) => keep.has(row.id));
+  }
+  for (const [clubId, data] of Object.entries(demo.clubs)) {
+    const original = source.clubs[clubId];
+    const ensure = (collection, id) => {
+      if (!id || data[collection].some((row) => row.id === id)) return;
+      const row = original[collection].find((row) => row.id === id);
+      if (row) data[collection].push(structuredClone(row));
+    };
+    for (const entry of data.pointLedger) ensure('tasks', entry.taskId);
+    for (const task of data.tasks) ensure('projects', task.projectId);
+    for (const delivery of data.deliveries) ensure('announcements', delivery.announcementId);
+    for (const transaction of data.transactions) {
+      ensure('orders', transaction.orderId);
+      ensure('tickets', transaction.ticketId);
+    }
+    for (const member of data.members) {
+      for (const [kind, field] of [
+        ['participation', 'participationPoints'],
+        ['volunteer', 'volunteerPoints'],
+        ['contribution', 'contributionPoints'],
+      ])
+        member[field] = data.pointLedger
+          .filter((entry) => entry.memberId === member.id && entry.kind === kind)
+          .reduce((sum, entry) => sum + entry.points, 0);
+    }
+  }
+  return demo;
 }

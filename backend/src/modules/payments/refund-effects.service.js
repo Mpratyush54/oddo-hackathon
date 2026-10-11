@@ -16,7 +16,34 @@ export class RefundEffectsService {
       return null;
     return member;
   }
+  ensurePaidEntities(data, payment) {
+    // Recover purchase rows from the payment snapshot if club STATE was reseeded.
+    if (
+      payment.action?.type === 'tickets.book' &&
+      payment.result?.ticket &&
+      !data.tickets.some(
+        (t) => t.id === payment.result.ticket.id || t.paymentId === payment.paymentId,
+      )
+    ) {
+      data.tickets.unshift({ ...payment.result.ticket });
+      const event = data.events.find((e) => e.id === payment.result.ticket.eventId);
+      if (event && payment.result.ticket.status !== 'Cancelled')
+        event.sold = Math.min(event.capacity, Number(event.sold || 0) + 1);
+    }
+    const paidOrders = []
+      .concat(payment.result?.order || [], payment.result?.orders || [])
+      .filter(Boolean);
+    for (const order of paidOrders) {
+      if (
+        !order.id ||
+        data.orders.some((o) => o.id === order.id || o.paymentId === payment.paymentId)
+      )
+        continue;
+      data.orders.unshift({ ...order });
+    }
+  }
   eligible(data, payment) {
+    this.ensurePaidEntities(data, payment);
     const tickets = data.tickets.filter((t) => t.paymentId === payment.paymentId);
     const orders = data.orders.filter((o) => o.paymentId === payment.paymentId);
     if (payment.action.type === 'tickets.book' && !tickets.length)

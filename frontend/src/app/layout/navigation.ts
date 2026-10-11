@@ -13,7 +13,6 @@ export const operational: NavItem[] = [
     to: '/app/tasks',
     label: 'Projects & tasks',
     icon: 'PanelsTopLeft',
-    permission: 'manage_tasks',
   },
   { to: '/app/finance', label: 'Finances', icon: 'Wallet', permission: 'view_finance' },
   { to: '/app/audit', label: 'Activity & audit', icon: 'ShieldCheck', permission: 'audit' },

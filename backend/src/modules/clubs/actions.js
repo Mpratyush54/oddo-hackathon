@@ -12,6 +12,7 @@ import { TaskService } from '../tasks/tasks.service.js';
 const handlers = new Map([
   ['members.add', { Service: MembershipService, method: 'addMember' }],
   ['membership.join', { Service: MembershipService, method: 'join' }],
+  ['membership.approve', { Service: MembershipService, method: 'approve' }],
   ['membership.demo-dues', { Service: MembershipService, method: 'payDemoDues' }],
   ['profile.preferences', { Service: AccountService, method: 'updatePreferences' }],
   ['notifications.read', { Service: AccountService, method: 'readNotifications' }],
@@ -36,6 +37,8 @@ const handlers = new Map([
   ['events.save', { Service: EventService, method: 'save' }],
   ['reviews.create', { Service: EventService, method: 'createReview' }],
   ['tasks.save', { Service: TaskService, method: 'save' }],
+  ['tasks.claim', { Service: TaskService, method: 'claim' }],
+  ['projects.save', { Service: TaskService, method: 'saveProject' }],
 ]);
 
 export function applyAction(input, action, user, role, now = dateToday(), context = {}) {

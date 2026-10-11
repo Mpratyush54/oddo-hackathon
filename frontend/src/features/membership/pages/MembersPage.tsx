@@ -12,12 +12,14 @@ import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { SearchField } from '../../../shared/ui/SearchField';
 import { StatCard } from '../../../shared/ui/StatCard';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { formValues } from '../../../shared/ui/formValues';
 import { Revealed } from '../../../shared/components/PageMotion';
 import { date, exportCSV, money, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { Member } from '../../../shared/types/domain';
 import { backendPost, cloudMode } from '../../../shared/api/client';
+import { useServerTable } from '../../../shared/hooks/useServerTable';
 
 export function MembersPage() {
   const { data, update, toast, applyServerPatch, selectedClub } = useStore();
@@ -27,7 +29,6 @@ export function MembersPage() {
     [sort, setSort] = useState('name'),
     [compact, setCompact] = useState(false),
     [viewMode, setViewMode] = useState<'directory' | 'table'>('directory'),
-    [page, setPage] = useState(1),
     [selected, setSelected] = useState<string[]>([]),
     [detail, setDetail] = useState<Member | null>(null);
   const [adding, setAdding] = useState(params.get('create') === 'true');
@@ -45,10 +46,49 @@ export function MembersPage() {
     .sort((a, b) =>
       sort === 'name' ? a.name.localeCompare(b.name) : b.joined.localeCompare(a.joined),
     );
-  const pages = Math.max(1, Math.ceil(filtered.length / 8));
-  const currentPage = Math.min(page, pages);
-  const visible = filtered.slice((currentPage - 1) * 8, currentPage * 8);
+  const membersTable = useServerTable<Member>({
+    clubId: selectedClub,
+    table: 'members',
+    localRows: filtered,
+    query: search,
+    status,
+    limit: 5,
+  });
+  const visible = membersTable.rows;
+  const awaitingApproval = (member: Member) => member.joinApproved === false;
+
+  const approveJoin = async (member: Member) => {
+    if (cloudMode) {
+      try {
+        const result = await backendPost<{ state: import('../../../shared/types/domain').Store }>(
+          `/clubs/${encodeURIComponent(selectedClub)}/actions`,
+          {
+            type: 'membership.approve',
+            args: { memberId: member.id },
+            idempotencyKey: crypto.randomUUID(),
+          },
+        );
+        applyServerPatch(selectedClub, result.state);
+        toast(`${member.name} is approved. They can pay ₹500 dues from My card.`);
+        setDetail(null);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Could not approve this request.');
+      }
+      return;
+    }
+    update((d) => ({
+      ...d,
+      members: d.members.map((m) => (m.id === member.id ? { ...m, joinApproved: true } : m)),
+    }));
+    toast(`${member.name} is approved. They can pay dues next.`);
+    setDetail(null);
+  };
+
   const activate = (member: Member) => {
+    if (awaitingApproval(member)) {
+      toast('Approve their join request first, then they can pay dues.');
+      return;
+    }
     if (cloudMode) {
       toast('Ask the member to pay through Membership, or waive dues in User management.');
       return;
@@ -56,7 +96,9 @@ export function MembersPage() {
     update((d) => ({
       ...d,
       members: d.members.map((m) =>
-        m.id === member.id ? { ...m, status: 'Active', expires: '2027-07-31' } : m,
+        m.id === member.id
+          ? { ...m, status: 'Active', expires: '2027-07-31', joinApproved: true }
+          : m,
       ),
       transactions: [
         {
@@ -199,24 +241,14 @@ export function MembersPage() {
                 <button
                   key={s}
                   className={status === s ? 'selected' : ''}
-                  onClick={() => {
-                    setStatus(s);
-                    setPage(1);
-                  }}
+                  onClick={() => setStatus(s)}
                 >
                   {s}
                 </button>
               ))}
             </div>
             <div className="table-tools">
-              <SearchField
-                value={search}
-                onChange={(v) => {
-                  setSearch(v);
-                  setPage(1);
-                }}
-                placeholder="Find a member..."
-              />
+              <SearchField value={search} onChange={setSearch} placeholder="Find a member..." />
               <div className="segmented member-view-segmented">
                 <button
                   className={viewMode === 'directory' ? 'selected' : ''}
@@ -286,10 +318,16 @@ export function MembersPage() {
                     <Avatar name={m.name} index={i} />
                     <Badge
                       tone={
-                        m.status === 'Active' ? 'green' : m.status === 'Pending' ? 'gold' : 'purple'
+                        m.joinApproved === false
+                          ? 'gold'
+                          : m.status === 'Active'
+                            ? 'green'
+                            : m.status === 'Pending'
+                              ? 'gold'
+                              : 'purple'
                       }
                     >
-                      {m.status}
+                      {m.joinApproved === false ? 'Awaiting approval' : m.status}
                     </Badge>
                   </div>
                   <div className="member-card-body">
@@ -384,7 +422,17 @@ export function MembersPage() {
                       </td>
                       <td>{m.course}</td>
                       <td>
-                        <Badge tone={m.status === 'Active' ? 'green' : 'gold'}>{m.status}</Badge>
+                        <Badge
+                          tone={
+                            m.joinApproved === false
+                              ? 'gold'
+                              : m.status === 'Active'
+                                ? 'green'
+                                : 'gold'
+                          }
+                        >
+                          {m.joinApproved === false ? 'Awaiting approval' : m.status}
+                        </Badge>
                       </td>
                       <td>
                         {date(m.expires, { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -413,33 +461,15 @@ export function MembersPage() {
               description="Try another name or adjust your filters."
             />
           )}
-          <div className="table-footer">
-            <span>
-              Showing {filtered.length ? (currentPage - 1) * 8 + 1 : 0}–
-              {Math.min(currentPage * 8, filtered.length)} of {filtered.length} members
-            </span>
-            <div className="pagination">
-              <button
-                className="icon-button"
-                disabled={currentPage === 1}
-                onClick={() => setPage(currentPage - 1)}
-                aria-label="Previous page"
-              >
-                <Icon name="ChevronLeft" size={16} />
-              </button>
-              <span>
-                {currentPage} / {pages}
-              </span>
-              <button
-                className="icon-button"
-                disabled={currentPage === pages}
-                onClick={() => setPage(currentPage + 1)}
-                aria-label="Next page"
-              >
-                <Icon name="ChevronRight" size={16} />
-              </button>
-            </div>
-          </div>
+          <TablePager
+            page={membersTable.page}
+            pages={membersTable.pages}
+            total={membersTable.total}
+            limit={membersTable.limit}
+            label="members"
+            loading={membersTable.loading}
+            onPageChange={membersTable.setPage}
+          />
         </section>
       </Revealed>
       <div className="info-banner">
@@ -533,7 +563,13 @@ export function MembersPage() {
             <Avatar name={detail.name} />
             <h3>{detail.name}</h3>
             <p>{detail.email}</p>
-            <Badge tone={detail.status === 'Active' ? 'green' : 'gold'}>{detail.status}</Badge>
+            <Badge
+              tone={
+                awaitingApproval(detail) ? 'gold' : detail.status === 'Active' ? 'green' : 'gold'
+              }
+            >
+              {awaitingApproval(detail) ? 'Awaiting approval' : detail.status}
+            </Badge>
           </div>
           <dl className="detail-list">
             <div>
@@ -565,6 +601,15 @@ export function MembersPage() {
             <div
               style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}
             >
+              {awaitingApproval(detail) && (
+                <Button
+                  icon="UserCheck"
+                  className="full-width"
+                  onClick={() => void approveJoin(detail)}
+                >
+                  Approve join request
+                </Button>
+              )}
               {detail.status === 'Expiring' && (
                 <Button
                   variant="secondary"
@@ -577,14 +622,17 @@ export function MembersPage() {
                   Send renewal reminder
                 </Button>
               )}
-              <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
-                {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
-              </Button>
+              {!awaitingApproval(detail) && (
+                <Button icon="BadgeCheck" className="full-width" onClick={() => activate(detail)}>
+                  {detail.status === 'Expiring' ? 'Record renewal' : 'Record dues'} · ₹500
+                </Button>
+              )}
             </div>
           )}
           <p className="form-note">
-            Dues received in person can be recorded here. Members can use their ID to verify
-            membership at events.
+            {awaitingApproval(detail)
+              ? 'Approve this student first. After approval they can pay ₹500 dues from My card.'
+              : 'Dues received in person can be recorded here. Members can use their ID to verify membership at events.'}
           </p>
         </Modal>
       )}

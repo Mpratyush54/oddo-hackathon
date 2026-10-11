@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { HttpError, clubKey, timestamp } from '../../shared/records.js';
 import { requireRole } from '../../shared/authorization.js';
-import { parseRequest } from '../../shared/request-validation.js';
+import { paginate, parseRequest } from '../../shared/request-validation.js';
 import {
   startReceiptCheckSchema,
   receiptClearanceSchema,
@@ -215,13 +215,20 @@ export class ReceiptChecksService {
     await this.repo.atomic([versioned(updated, record.version)]);
     return this.view(await this.repo.get(record.pk, record.sk));
   }
-  async list(clubId, user) {
+  async list(clubId, user, query = {}) {
     requireRole(await this.domain.roleFor(user, clubId), ['admin', 'treasurer']);
     await this.domain.load(clubId);
+    const rows = (await this.repo.list(clubKey(clubId), 'RECEIPT#'))
+      .filter((record) => record.status === 'NeedsReview')
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+      .map((record) => this.view(record));
+    const page = paginate(rows, query);
     return {
-      receipts: (await this.repo.list(clubKey(clubId), 'RECEIPT#'))
-        .filter((record) => record.status === 'NeedsReview')
-        .map((record) => this.view(record)),
+      receipts: page.items,
+      page: page.page,
+      limit: page.limit,
+      total: page.total,
+      pages: page.pages,
     };
   }
   async clear(clubId, id, input, user) {

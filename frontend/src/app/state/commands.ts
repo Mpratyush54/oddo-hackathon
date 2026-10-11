@@ -72,6 +72,10 @@ export function actionFromChange(
       args: { title: income.title, category: income.category, amount: income.amount },
     };
   }
+  const project =
+    added(before.projects || [], after.projects || []) ||
+    changed(before.projects || [], after.projects || []);
+  if (project) return { type: 'projects.save', args: { project } };
   const task = added(before.tasks, after.tasks) || changed(before.tasks, after.tasks);
   if (task) return { type: 'tasks.save', args: { task } };
   const event = added(before.events, after.events) || changed(before.events, after.events);

@@ -43,6 +43,7 @@ export const receiptUseSchema = z.strictObject({
   createdAt: instant,
 });
 export const ocrQuotaSchema = z.strictObject({
+  schemaVersion: z.literal(1).optional(),
   pk: z.literal('OCR_QUOTA#AZURE_F0'),
   sk: z.string().refine((value) => z.iso.date().safeParse(value + '-01').success),
   version: z.number().int().nonnegative(),

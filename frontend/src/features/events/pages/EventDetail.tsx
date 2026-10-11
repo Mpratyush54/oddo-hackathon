@@ -184,6 +184,15 @@ export function EventDetail() {
                 Check in guests
               </LinkButton>
             )}
+            {can('manage_tasks') && (
+              <LinkButton
+                to={`/app/tasks?project=${event.id}&create=true`}
+                icon="ListPlus"
+                variant="secondary"
+              >
+                Create task
+              </LinkButton>
+            )}
             {ticketAction}
           </>
         }

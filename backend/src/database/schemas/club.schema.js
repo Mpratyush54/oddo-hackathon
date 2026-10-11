@@ -36,6 +36,8 @@ export const memberSchema = z.strictObject({
   preferences: preferences.optional(),
   readNotificationIds: z.array(id).max(100).optional(),
   duesWaived: z.boolean().optional(),
+  /** false = awaiting admin approval before dues; missing/true = approved (legacy seed). */
+  joinApproved: z.boolean().optional(),
   enrollmentSource: text.optional(),
 });
 export const eventSchema = z.strictObject({
@@ -133,9 +135,18 @@ export const taskSchema = z.strictObject({
   description: text,
   assignee: text,
   assigneeId: id.optional(),
+  projectId: id.optional(),
+  eventId: id.optional(),
   due: date,
   priority: z.enum(['Low', 'Medium', 'High']),
   status: z.enum(['To do', 'In progress', 'Done']),
+});
+export const projectSchema = z.strictObject({
+  id,
+  title: text,
+  description: text,
+  date: date.optional(),
+  icon: text.optional(),
 });
 export const promoSchema = z.strictObject({
   id,
@@ -268,6 +279,7 @@ export const clubDataSchema = z.strictObject({
   orders: z.array(orderSchema),
   transactions: z.array(transactionSchema),
   tasks: z.array(taskSchema),
+  projects: z.array(projectSchema).optional(),
   announcements: z.array(announcementSchema),
   notifications: z.array(notificationSchema),
   deliveries: z.array(deliverySchema),

@@ -9,10 +9,13 @@ export function FinanceChart({
 }) {
   const max = Math.max(...values.flatMap((v) => [v.income, v.expense]), 1000);
   const width = 600,
-    height = 170;
+    height = 178;
+  const left = 44;
+  const right = 580;
+  const span = right - left;
   const points = (key: 'income' | 'expense') =>
     values.map((v, i) => [
-      30 + (i * 540) / Math.max(values.length - 1, 1),
+      left + (i * span) / Math.max(values.length - 1, 1),
       150 - (v[key] / max) * 125,
     ]);
   const curve = (key: 'income' | 'expense') => {
@@ -42,13 +45,13 @@ export function FinanceChart({
         </defs>
         {[25, 66, 108, 150].map((y, i) => (
           <g key={y}>
-            <line x1="30" x2="575" y1={y} y2={y} className="chart-grid" />
-            <text x="0" y={y + 4} className="chart-label">
+            <line x1={left} x2={right} y1={y} y2={y} className="chart-grid" />
+            <text x={left - 8} y={y + 4} textAnchor="end" className="chart-label">
               {Math.round((max * (3 - i)) / 3 / 1000)}k
             </text>
           </g>
         ))}
-        <path d={`${curve('income')} L570,150 L30,150 Z`} fill="url(#chart-fill)" />
+        <path d={`${curve('income')} L${right},150 L${left},150 Z`} fill="url(#chart-fill)" />
         <path d={curve('income')} className="chart-income" fill="none" strokeWidth="3" />
         <path
           d={curve('expense')}
@@ -70,8 +73,8 @@ export function FinanceChart({
               </title>
             </circle>
             <text
-              x={30 + (i * 540) / Math.max(values.length - 1, 1)}
-              y="169"
+              x={left + (i * span) / Math.max(values.length - 1, 1)}
+              y="172"
               textAnchor="middle"
               className="chart-label"
             >

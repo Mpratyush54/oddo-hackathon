@@ -2,7 +2,7 @@ import { PaymentsService } from './payments.service.js';
 export function registerPaymentsRoutes(app, dependencies) {
   const payments = new PaymentsService(dependencies);
   app.get('/api/clubs/:clubId/refunds', async (req, res) =>
-    res.json(await payments.refunds.list(req.params.clubId, req.auth.user)),
+    res.json(await payments.refunds.list(req.params.clubId, req.auth.user, req.query)),
   );
   app.post('/api/clubs/:clubId/refunds', async (req, res) =>
     res.json(await payments.refunds.request(req.params.clubId, req.body, req.auth.user)),

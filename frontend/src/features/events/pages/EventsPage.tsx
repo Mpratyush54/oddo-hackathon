@@ -11,17 +11,19 @@ import { Modal } from '../../../shared/ui/Modal';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Progress } from '../../../shared/ui/Progress';
 import { SearchField } from '../../../shared/ui/SearchField';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { formValues } from '../../../shared/ui/formValues';
 import { date, money, today, uid } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
+import { useServerTable } from '../../../shared/hooks/useServerTable';
 import { eventEnd, eventStart } from '../utils/event-time';
 import '../../finance/styles/finance.css';
 import type { ClubEvent } from '../../../shared/types/domain';
 
 export function EventsPage() {
   const { data, update, toast } = useStore();
-  const { can } = useSession();
+  const { can, clubId } = useSession();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState(params.get('create') === 'true'),
     [search, setSearch] = useState(''),
@@ -41,6 +43,14 @@ export function EventsPage() {
     .sort((a, b) =>
       sort === 'date' ? a.date.localeCompare(b.date) : a.title.localeCompare(b.title),
     );
+  const eventsTable = useServerTable<ClubEvent>({
+    clubId,
+    table: 'events',
+    localRows: events,
+    query: search,
+    category: category === 'All events' ? '' : category,
+    limit: 5,
+  });
   return (
     <>
       <PageHeader
@@ -174,7 +184,7 @@ export function EventsPage() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((e) => (
+                {eventsTable.rows.map((e) => (
                   <tr key={e.id}>
                     <td>
                       <strong>{e.title}</strong>
@@ -204,6 +214,15 @@ export function EventsPage() {
               </tbody>
             </table>
           </div>
+          <TablePager
+            page={eventsTable.page}
+            pages={eventsTable.pages}
+            total={eventsTable.total}
+            limit={eventsTable.limit}
+            label="events"
+            loading={eventsTable.loading}
+            onPageChange={eventsTable.setPage}
+          />
         </section>
       )}
       {!events.length && (

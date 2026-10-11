@@ -26,6 +26,7 @@ test('member pricing requires active unexpired membership and survives every lat
       user,
     );
     if (activation === 'paid') {
+      await approveMember(f);
       const dues = await f.start('membership.demo-dues', {});
       await f.service.verify(dues.verify, user);
     } else {
@@ -441,13 +442,14 @@ test('concurrent callback and signed webhook fulfill atomically once, including 
   );
 });
 test('merchandise including membership bundle records captured test payment and server discount', async () => {
-  const f = await fixture(),
-    { verify } = await f.start('orders', {
-      productId: 'product',
-      size: 'M',
-      quantity: 1,
-      joinMembership: true,
-    });
+  const f = await fixture();
+  await approveMember(f);
+  const { verify } = await f.start('orders', {
+    productId: 'product',
+    size: 'M',
+    quantity: 1,
+    joinMembership: true,
+  });
   const result = await f.service.verify(verify, user);
   assert.equal(result.total, 900);
   assert.equal(result.state.products[0].stock.M, 0);
@@ -461,6 +463,8 @@ test('membership checkout only pays the current member and blocks direct simulat
     { type: 'membership.join', args: {}, idempotencyKey: crypto.randomUUID() },
     user,
   );
+  await assert.rejects(f.start('membership.demo-dues', {}), (error) => error.status === 403);
+  await approveMember(f);
   await assert.rejects(
     f.domain.execute(
       'skyline',
@@ -473,10 +477,7 @@ test('membership checkout only pays the current member and blocks direct simulat
   assert.equal((await f.service.verify(verify, user)).state.members[0].status, 'Active');
 
   // Renewal > 7 days before expiry is blocked
-  await assert.rejects(
-    f.start('membership.demo-dues', {}),
-    (error) => error.status === 409,
-  );
+  await assert.rejects(f.start('membership.demo-dues', {}), (error) => error.status === 409);
 
   // Renewal within 1 week of expiry is allowed and extends membership
   const clubState = await f.repo.get(clubKey('skyline'), 'STATE');
@@ -588,6 +589,24 @@ test('HTTP webhook accepts only correctly signed raw JSON without browser header
 const staff = { id: 'refund-admin', name: 'Refund Admin', email: 'refund-admin@example.test' };
 async function allowReviewer(f, clubId = 'skyline', role = 'admin') {
   await f.repo.put({ pk: 'USER#' + staff.id, sk: 'ACCESS#' + clubId, clubId, role });
+}
+async function approveMember(f) {
+  if (!(await f.domain.load('skyline')).data.members.some((member) => member.userId === user.id))
+    await f.domain.execute(
+      'skyline',
+      { type: 'membership.join', args: {}, idempotencyKey: crypto.randomUUID() },
+      user,
+    );
+  await allowReviewer(f);
+  await f.domain.execute(
+    'skyline',
+    {
+      type: 'membership.approve',
+      args: { memberId: user.id },
+      idempotencyKey: crypto.randomUUID(),
+    },
+    staff,
+  );
 }
 async function purchased(f, type, args) {
   const checkout = await f.start(type, args);
@@ -722,13 +741,14 @@ test('refund rejection requires explanation and leaves purchase unchanged; resub
   assert.equal((await f.domain.load('skyline')).data.tickets[0].refundPending, undefined);
 });
 test('bundle refund restores stock, membership and contribution points without partial cancellation', async () => {
-  const f = await fixture(),
-    checkout = await purchased(f, 'orders', {
-      productId: 'product',
-      size: 'M',
-      quantity: 1,
-      joinMembership: true,
-    });
+  const f = await fixture();
+  await approveMember(f);
+  const checkout = await purchased(f, 'orders', {
+    productId: 'product',
+    size: 'M',
+    quantity: 1,
+    joinMembership: true,
+  });
   await allowReviewer(f);
   let data = (await f.domain.load('skyline')).data;
   assert.equal(data.members[0].membershipPaymentId, checkout.payment.id);
@@ -768,6 +788,7 @@ test('membership refund failure restores entitlement; staff retry uses a new key
     { type: 'membership.join', args: {}, idempotencyKey: crypto.randomUUID() },
     user,
   );
+  await approveMember(f);
   const checkout = await purchased(f, 'membership.demo-dues', {});
   await f.service.refunds.request(
     'skyline',

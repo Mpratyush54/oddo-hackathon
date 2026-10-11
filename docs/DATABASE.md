@@ -51,7 +51,7 @@ HTTP input schemas are separate from these persistence schemas. Each feature dec
 
 A business update commits STATE with `version = previous + 1`, an immutable AUDIT row and a REQUEST row in a single DynamoDB transaction. A version condition prevents lost updates; unique audit/request conditions prevent duplicate writes. Conflicts retry from current data. Validation failures issue no writes.
 
-The current pilot stores business entities inside one aggregate per club and caps its JSON payload at 300 KB before the DynamoDB item limit. Large clubs require a future schema migration to individual entity records; this refactor preserves the running application's aggregate transaction model and existing data.
+The current pilot stores business entities inside one aggregate per club and caps its JSON payload at 370 KB before the DynamoDB 400 KB item limit. Demo top-ups stop at 350 KB to leave room for operations. Large clubs require a future schema migration to individual entity records; this refactor preserves the running application's aggregate transaction model and existing data.
 
 ## Inspect and validate
 

@@ -11,3 +11,4 @@ export const addMemberSchema = z.object({
 });
 export const joinMembershipSchema = z.object({ course: z.string().max(100).optional() });
 export const payDemoDuesSchema = z.object({ memberId: entityId.optional() });
+export const approveMembershipSchema = z.object({ memberId: entityId });

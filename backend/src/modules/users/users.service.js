@@ -1,4 +1,11 @@
-import { HttpError, clubKey, recordId, timestamp, dateToday } from '../../shared/records.js';
+import {
+  HttpError,
+  clubKey,
+  recordId,
+  timestamp,
+  dateToday,
+  MAX_CLUB_DATA_BYTES,
+} from '../../shared/records.js';
 import { requireRole } from '../../shared/authorization.js';
 import { accountKey } from '../auth/password.js';
 import { visibleState } from '../clubs/club.views.js';
@@ -96,6 +103,8 @@ export class UsersService {
           duesWaived: ['Active', 'Expiring'].includes(input.status)
             ? true
             : previous?.duesWaived || false,
+          joinApproved:
+            ['Active', 'Expiring', 'Pending'].includes(input.status) || previous?.joinApproved,
         };
         if (index < 0) data.members.push(member);
         else data.members[index] = member;
@@ -114,7 +123,7 @@ export class UsersService {
           : `${user.name} updated ${target.name}: ${input.role}, ${input.status}, expires ${input.expires} (complimentary activation).`,
       };
       data.audit = [audit, ...(data.audit || [])].slice(0, 100);
-      if (Buffer.byteLength(JSON.stringify(data)) > 300000)
+      if (Buffer.byteLength(JSON.stringify(data)) > MAX_CLUB_DATA_BYTES)
         throw new HttpError(409, 'Club data limit reached.');
       if (
         await this.repo.atomic([

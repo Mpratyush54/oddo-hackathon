@@ -1523,33 +1523,49 @@ td.numeric {
 /* Stream 2-Column Grid */
 .brief-stream-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
   gap: 20px;
   margin-bottom: 24px;
+  align-items: start;
 }
 
 .brief-sidebar-stack {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 .brief-finance-card {
-  min-height: 480px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .brief-activity-card,
 .brief-upcoming-card {
   padding: 20px;
+  min-width: 0;
 }
 
 .brief-finance-card select,
-.finance-overview select {
+.finance-overview select,
+.finance-overview-head select {
   width: auto !important;
-  min-width: 148px !important;
-  max-width: 200px !important;
+  min-width: 9.5rem !important;
+  max-width: 12rem !important;
   padding: 5px 12px !important;
   box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+@media (max-width: 1100px) {
+  .brief-stream-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-overview-head {
+    flex-wrap: wrap;
+  }
 }

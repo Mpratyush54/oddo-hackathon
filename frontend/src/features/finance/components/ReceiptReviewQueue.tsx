@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { backendPost, backendRequest } from '../../../shared/api/client';
 import { Button } from '../../../shared/ui/Button';
 import { Modal } from '../../../shared/ui/Modal';
 import { Field } from '../../../shared/ui/Field';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { money } from '../../../shared/utils/format';
 import type { ReceiptCheck } from './ReceiptCheckPanel';
+
+const PAGE_SIZE = 5;
+
+type ReceiptPage = {
+  receipts: ReceiptCheck[];
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+};
 
 export function ReceiptReviewQueue({
   clubId,
@@ -15,37 +26,48 @@ export function ReceiptReviewQueue({
   userId: string;
   canClear: boolean;
 }) {
-  const [rows, setRows] = useState<ReceiptCheck[]>([]),
-    [selected, setSelected] = useState<ReceiptCheck | null>(null);
-  const [reason, setReason] = useState(''),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
-  const load = async () => {
-    try {
-      const result = await backendRequest<{ receipts: ReceiptCheck[] }>(
-        `/clubs/${clubId}/receipts/checks`,
-      );
-      setRows(result.receipts);
-      setError('');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Receipt queue unavailable.');
-    }
-  };
+  const [rows, setRows] = useState<ReceiptCheck[]>([]);
+  const [selected, setSelected] = useState<ReceiptCheck | null>(null);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(
+    async (nextPage = 1) => {
+      setLoading(true);
+      try {
+        let result = await backendRequest<ReceiptPage>(
+          `/clubs/${clubId}/receipts/checks?page=${nextPage}&limit=${PAGE_SIZE}`,
+        );
+        if (!result.receipts.length && result.page > 1) {
+          result = await backendRequest<ReceiptPage>(
+            `/clubs/${clubId}/receipts/checks?page=${result.page - 1}&limit=${PAGE_SIZE}`,
+          );
+        }
+        setRows(result.receipts || []);
+        setPage(result.page || 1);
+        setTotal(result.total ?? result.receipts?.length ?? 0);
+        setPages(result.pages || 1);
+        setError('');
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Receipt queue unavailable.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [clubId],
+  );
+
   useEffect(() => {
     setRows([]);
     setSelected(null);
-    let active = true;
-    backendRequest<{ receipts: ReceiptCheck[] }>(`/clubs/${clubId}/receipts/checks`)
-      .then((result) => {
-        if (active) setRows(result.receipts);
-      })
-      .catch((error) => {
-        if (active) setError(error.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [clubId]);
+    void load(1);
+  }, [clubId, load]);
+
   const openFile = async (receipt: ReceiptCheck) => {
     const popup = window.open('about:blank', '_blank');
     if (popup) popup.opener = null;
@@ -60,11 +82,12 @@ export function ReceiptReviewQueue({
       setError(error instanceof Error ? error.message : 'Receipt unavailable.');
     }
   };
+
   return (
     <section className="card receipt-review-queue">
       <div className="table-toolbar">
-        <h3>Receipts awaiting clearance ({rows.length})</h3>
-        <Button variant="secondary" onClick={load}>
+        <h3>Receipts awaiting clearance ({total})</h3>
+        <Button variant="secondary" onClick={() => void load(page)} disabled={loading}>
           Refresh checks
         </Button>
       </div>
@@ -102,6 +125,18 @@ export function ReceiptReviewQueue({
           )}
         </div>
       ))}
+      {!rows.length && !error && !loading && (
+        <p className="form-note">No receipts are waiting for clearance right now.</p>
+      )}
+      <TablePager
+        page={page}
+        pages={pages}
+        total={total}
+        limit={PAGE_SIZE}
+        label="receipts"
+        loading={loading}
+        onPageChange={(next) => void load(next)}
+      />
       {selected && (
         <Modal
           title="Receipt clearance"
@@ -143,7 +178,7 @@ export function ReceiptReviewQueue({
                   reason,
                 });
                 setSelected(null);
-                await load();
+                await load(page);
               } catch (error) {
                 setError(error instanceof Error ? error.message : 'Clearance failed.');
               } finally {

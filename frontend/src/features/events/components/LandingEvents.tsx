@@ -12,6 +12,15 @@ const defaultEventImages = [
   'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85',
 ];
 
+const localImageFallback =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700">
+      <rect width="900" height="700" fill="#1a3832"/>
+      <text x="450" y="360" fill="#e8f0ea" font-family="Georgia,serif" font-size="42" text-anchor="middle">skyline.</text>
+    </svg>`,
+  );
+
 /** Public discovery starts with events, before asking a visitor to create a session. */
 export function LandingEvents() {
   const { allClubs, organizations } = useStore();
@@ -46,9 +55,7 @@ export function LandingEvents() {
       <div className="landing-event-grid">
         {events.map(({ club, event }, i) => {
           const hasMemberPrice =
-            event.price > 0 &&
-            event.memberPrice !== undefined &&
-            event.memberPrice < event.price;
+            event.price > 0 && event.memberPrice !== undefined && event.memberPrice < event.price;
           const priceLabel =
             event.price > 0
               ? hasMemberPrice
@@ -73,11 +80,18 @@ export function LandingEvents() {
                     src={eventImg}
                     alt={event.title}
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
-                      const fallback = defaultEventImages[i % defaultEventImages.length];
-                      if (e.currentTarget.src !== fallback) {
-                        e.currentTarget.src = fallback;
+                      const img = e.currentTarget;
+                      const tried = Number(img.dataset.fallbackTries || '0');
+                      if (tried >= defaultEventImages.length) {
+                        img.src = localImageFallback;
+                        return;
                       }
+                      img.dataset.fallbackTries = String(tried + 1);
+                      img.src =
+                        defaultEventImages[(i + tried + 1) % defaultEventImages.length] ||
+                        localImageFallback;
                     }}
                   />
                   <span>{date(event.date, { month: 'short', day: 'numeric' })}</span>

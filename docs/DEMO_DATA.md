@@ -15,6 +15,8 @@ npm run seed:aws                # Read-only plan, counts and size checks
 npm run seed:aws -- --apply      # Append records to the existing AWS workspace
 ```
 
-The script checks every record with the runtime Zod schemas and rejects oversized club data before writing. Seeded club records remain below the 300 KB application guard and DynamoDB item limit. An ignored `.aws-build/demo-backup-*.json` stores the original club aggregates. Existing standalone demo records are inserted conditionally; aggregate writes use version checks. Re-running does not duplicate rows, overwrite edits or reset real records. GitHub deployments do not automatically reseed the database.
+The script checks every record with the runtime Zod schemas and rejects oversized club data before writing. Seeded club records stop at 350 KB, below the 370 KB application guard and DynamoDB 400 KB item limit. An ignored `.aws-build/demo-backup-*.json` stores the original club aggregates. Existing standalone demo records are inserted conditionally; aggregate writes use version checks. Re-running does not duplicate rows, overwrite edits or reset real records. GitHub deployments do not automatically reseed the database.
+
+For an already populated workspace, use `npm run seed:aws -- --top-up` to preview a plan and add `--apply` to execute it. It adds only the history needed to reach at least 200 rows per collection across all three clubs, plus linked parent rows. Existing demo and real users remain intact. Projects are included. The original full seeding mode is intended for an empty workspace; it refuses oversized populated aggregates.
 
 Authentication sessions, tokens, quota counters and provider delivery receipts are created by real actions, rather than fabricated to make their operational tables larger.

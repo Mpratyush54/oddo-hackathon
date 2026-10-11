@@ -1323,7 +1323,7 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   Interactive preview
                 </button>
               </div>
-              <div className="shop-modal-media">
+              <div className={`shop-modal-media${preview ? ' is-interactive' : ''}`}>
                 {preview ? (
                   <GarmentPreview kind={product.type} color={color} onColorChange={setColor} />
                 ) : (

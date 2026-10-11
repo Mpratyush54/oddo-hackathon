@@ -6,15 +6,18 @@ import { Empty } from '../../../shared/ui/Empty';
 import { Icon } from '../../../shared/ui/Icon';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { SearchField } from '../../../shared/ui/SearchField';
+import { TablePager } from '../../../shared/ui/TablePager';
 import { exportCSV } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
 import { cloudMode } from '../../../shared/api/client';
+import { useServerTable } from '../../../shared/hooks/useServerTable';
+import { useSession } from '../../auth/session';
 import '../../../app/layout/workspace.css';
-
-const PAGE_SIZE = 10;
+import type { AuditEntry } from '../../../shared/types/domain';
 
 export const actionLabels: Record<string, string> = {
-  'membership.join': 'Joined club',
+  'membership.join': 'Requested club join',
+  'membership.approve': 'Approved join request',
   'membership.demo-dues': 'Paid membership dues',
   'users.update': 'Updated user',
   'users.remove': 'Removed user',
@@ -37,16 +40,15 @@ const rangeMs: Record<string, number | null> = {
 
 export function AuditPage() {
   const { data } = useStore();
+  const { clubId } = useSession();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get('q') || '');
   const [action, setAction] = useState('All');
   const [entity, setEntity] = useState('All');
   const [range, setRange] = useState('All');
-  const [page, setPage] = useState(1);
   const urlQuery = params.get('q') || '';
   useEffect(() => {
     setQuery(urlQuery);
-    setPage(1);
   }, [urlQuery]);
 
   const actionOptions = useMemo(() => {
@@ -66,7 +68,8 @@ export function AuditPage() {
     return [...data.audit]
       .filter((a) => {
         const label = actionLabels[a.action] || a.action;
-        const hay = `${a.actor} ${a.detail} ${a.action} ${label} ${a.entity} ${a.entityId}`.toLowerCase();
+        const hay =
+          `${a.actor} ${a.detail} ${a.action} ${label} ${a.entity} ${a.entityId}`.toLowerCase();
         if (needle && !hay.includes(needle)) return false;
         if (action !== 'All' && a.action !== action) return false;
         if (entity !== 'All' && a.entity !== entity) return false;
@@ -79,11 +82,18 @@ export function AuditPage() {
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [data.audit, query, action, entity, range]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pages);
-  const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const auditTable = useServerTable<AuditEntry>({
+    clubId,
+    table: 'audit',
+    localRows: filtered,
+    query,
+    action,
+    entity,
+    limit: 5,
+  });
+  const visible = auditTable.rows;
 
-  const resetPage = () => setPage(1);
+  const resetPage = () => auditTable.setPage(1);
 
   return (
     <>
@@ -240,7 +250,11 @@ export function AuditPage() {
         </div>
         {!filtered.length && (
           <Empty
-            title={query || action !== 'All' || entity !== 'All' || range !== 'All' ? 'No matching activity' : 'The next action starts the story'}
+            title={
+              query || action !== 'All' || entity !== 'All' || range !== 'All'
+                ? 'No matching activity'
+                : 'The next action starts the story'
+            }
             description={
               query || action !== 'All' || entity !== 'All' || range !== 'All'
                 ? 'Try another search term or clear the filters.'
@@ -248,33 +262,15 @@ export function AuditPage() {
             }
           />
         )}
-        <div className="table-footer">
-          <span>
-            Showing {filtered.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–
-            {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} actions
-          </span>
-          <div className="pagination">
-            <button
-              className="icon-button"
-              disabled={currentPage === 1}
-              onClick={() => setPage(currentPage - 1)}
-              aria-label="Previous page"
-            >
-              <Icon name="ChevronLeft" size={16} />
-            </button>
-            <span>
-              {currentPage} / {pages}
-            </span>
-            <button
-              className="icon-button"
-              disabled={currentPage === pages}
-              onClick={() => setPage(currentPage + 1)}
-              aria-label="Next page"
-            >
-              <Icon name="ChevronRight" size={16} />
-            </button>
-          </div>
-        </div>
+        <TablePager
+          page={auditTable.page}
+          pages={auditTable.pages}
+          total={auditTable.total}
+          limit={auditTable.limit}
+          label="actions"
+          loading={auditTable.loading}
+          onPageChange={auditTable.setPage}
+        />
       </section>
     </>
   );

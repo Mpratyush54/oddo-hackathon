@@ -255,10 +255,33 @@ export function RoleDashboard() {
           <p>
             {membershipActive
               ? 'Your pass is active. Explore student workshops, merchandise perks, and campus socials.'
-              : personal.member
-                ? 'Your enrollment is saved. Membership benefits become available when your dues are recorded.'
-                : 'Join this club to receive your campus membership pass.'}
+              : personal.member?.joinApproved === false
+                ? 'Your join request is with an administrator. Your membership card appears after approval and payment.'
+                : personal.member
+                  ? 'You are approved. Pay dues to unlock your membership card and member rates.'
+                  : 'Request to join, get admin approval, then pay dues — your card is issued after that.'}
           </p>
+          {!personal.member && (
+            <div className="member-pass-cta" style={{ margin: '14px 0 6px' }}>
+              <LinkButton to="/app/my-card" icon="UserRoundPlus">
+                Request to join
+              </LinkButton>
+            </div>
+          )}
+          {!!personal.member && personal.member.joinApproved === false && (
+            <div className="member-pass-cta" style={{ margin: '14px 0 6px' }}>
+              <LinkButton to="/app/my-card" icon="Clock3" variant="secondary">
+                Awaiting admin approval
+              </LinkButton>
+            </div>
+          )}
+          {!!personal.member && personal.member.joinApproved !== false && !membershipActive && (
+            <div className="member-pass-cta" style={{ margin: '14px 0 6px' }}>
+              <LinkButton to="/app/my-card" icon="BadgeCheck">
+                Pay dues · ₹500
+              </LinkButton>
+            </div>
+          )}
           <div className="member-pass-pills">
             <span className="member-pass-pill">
               <Icon name="Ticket" size={15} /> {personal.tickets.length} Booked Events
@@ -272,9 +295,11 @@ export function RoleDashboard() {
             </span>
           </div>
         </div>
-        <div className="member-pass-card-widget">
-          <MemberPreview />
-        </div>
+        {membershipActive ? (
+          <div className="member-pass-card-widget">
+            <MemberPreview />
+          </div>
+        ) : null}
       </section>
 
       <div className="portal-columns" style={{ marginTop: '24px' }}>

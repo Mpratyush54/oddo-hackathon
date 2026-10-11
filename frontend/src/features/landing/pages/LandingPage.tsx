@@ -72,20 +72,43 @@ const defaultProductFallbackImages = [
   'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85',
 ];
 
+/** Always-available placeholder when remote Unsplash hotlinks fail. */
+const localImageFallback =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#1a3832"/><stop offset="100%" stop-color="#2f6f57"/>
+      </linearGradient></defs>
+      <rect width="900" height="700" fill="url(#g)"/>
+      <text x="450" y="360" fill="#e8f0ea" font-family="Georgia,serif" font-size="42" text-anchor="middle">skyline.</text>
+    </svg>`,
+  );
+
+function swapBrokenImage(img: HTMLImageElement, candidates: string[], startIndex: number) {
+  const tried = Number(img.dataset.fallbackTries || '0');
+  if (tried >= candidates.length) {
+    if (img.src !== localImageFallback) img.src = localImageFallback;
+    return;
+  }
+  img.dataset.fallbackTries = String(tried + 1);
+  const next = candidates[(startIndex + tried + 1) % candidates.length];
+  if (next && img.src !== next) img.src = next;
+  else if (img.src !== localImageFallback) img.src = localImageFallback;
+}
+
 export function LandingPage() {
   const { allClubs, organizations } = useStore();
   const afterRef = useRef<HTMLDivElement>(null);
 
   const merchandiseItems = (
-    allClubs.skyline?.products?.length
-      ? allClubs.skyline.products
-      : (seed.products || [])
+    allClubs.skyline?.products?.length ? allClubs.skyline.products : seed.products || []
   ).slice(0, 3);
 
   const announcementItems = (
     allClubs.skyline?.announcements?.length
       ? allClubs.skyline.announcements
-      : (seed.announcements || [])
+      : seed.announcements || []
   ).slice(0, 3);
   const mosaic = [
     ...organizations.flatMap((org) =>
@@ -133,12 +156,8 @@ export function LandingPage() {
                   alt=""
                   loading="eager"
                   decoding="async"
-                  onError={(e) => {
-                    const fallback = defaultMosaicImages[i % defaultMosaicImages.length];
-                    if (e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => swapBrokenImage(e.currentTarget, defaultMosaicImages, i)}
                 />
                 <div className="landing-mosaic-meta">
                   <span className="tl">{card.club}</span>
@@ -207,10 +226,7 @@ export function LandingPage() {
                 aria-hidden={copyIndex > 0 ? 'true' : undefined}
               >
                 {Array.from({ length: 3 }).map((_, repeatIndex) => (
-                  <span
-                    key={repeatIndex}
-                    className="portal-proof-segment"
-                  >
+                  <span key={repeatIndex} className="portal-proof-segment">
                     <span className="ticker-label">ONE CONNECTED CAMPUS.</span>
                     {organizations.map((c) => (
                       <span key={`${c.id}-${repeatIndex}`} className="ticker-item">
@@ -258,13 +274,10 @@ export function LandingPage() {
                         src={prodImg}
                         alt={prod.name}
                         loading="lazy"
-                        onError={(e) => {
-                          const fallback =
-                            defaultProductFallbackImages[i % defaultProductFallbackImages.length];
-                          if (e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
-                          }
-                        }}
+                        referrerPolicy="no-referrer"
+                        onError={(e) =>
+                          swapBrokenImage(e.currentTarget, defaultProductFallbackImages, i)
+                        }
                       />
                       <span>{prod.type}</span>
                       <span
