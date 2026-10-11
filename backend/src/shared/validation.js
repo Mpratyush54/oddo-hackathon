@@ -23,4 +23,10 @@ export function openEvent(event) {
     throw new HttpError(409, 'This event has ended.');
 }
 
-export const ownMember = (data, user) => data.members.find((m) => m.userId === user.id);
+export const ownMember = (data, user) =>
+  data.members.find(
+    (m) =>
+      m.userId === user?.id ||
+      m.id === user?.id ||
+      (m.email && user?.email && m.email.toLowerCase() === user.email.toLowerCase()),
+  );

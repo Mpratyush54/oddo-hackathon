@@ -6,7 +6,12 @@ import '../../landing/styles/landing.css';
 export function usePersonal() {
   const { data } = useStore();
   const { user } = useSession();
-  const member = data.members.find((m) => m.email.toLowerCase() === user.email.toLowerCase());
+  const member = data.members.find(
+    (m) =>
+      (m.email && user.email && m.email.toLowerCase() === user.email.toLowerCase()) ||
+      (m.userId && user.id && m.userId === user.id) ||
+      (m.id && user.id && m.id === user.id),
+  );
   return {
     data,
     user,

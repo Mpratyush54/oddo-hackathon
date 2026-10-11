@@ -1,5 +1,5 @@
 import { renewingSoon } from '../../../../shared/reminders.js';
-import { today } from '../../shared/utils/format';
+import { date, today } from '../../shared/utils/format';
 import { hasActiveMembership } from '../../../../shared/membership.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -514,6 +514,25 @@ export default function Workspace() {
     navigate(role === 'college' ? '/app/club-summary' : '/app');
     toast(`Workspace switched to ${clubs.find((c) => c.id === id)?.name}.`);
   };
+  const isClubStaffOrAdmin = ['admin', 'treasurer', 'organizer', 'college'].includes(role);
+  const currentMember = data.members.find(
+    (m) =>
+      (m.email && user.email && m.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+      (m.userId && user.id && m.userId === user.id) ||
+      (m.id && user.id && m.id === user.id),
+  );
+  const isExistingMember = Boolean(currentMember);
+  const showJoinBanner = cloudMode && !isClubStaffOrAdmin && !isExistingMember;
+
+  const expiryTime = currentMember?.expires
+    ? new Date(`${currentMember.expires}T23:59:59+05:30`).getTime()
+    : 0;
+  const nowTime = new Date(`${today}T00:00:00+05:30`).getTime();
+  const daysUntilExpiry = currentMember?.expires
+    ? Math.ceil((expiryTime - nowTime) / (1000 * 60 * 60 * 24))
+    : 0;
+  const showRenewBanner =
+    !!currentMember && hasActiveMembership(currentMember, today) && daysUntilExpiry <= 7;
   return (
     <div className={`app-shell workspace-v2 ${navOpen ? 'navigation-open' : ''}`} ref={wrapper}>
       <a href="#main-content" className="skip-link">
@@ -844,7 +863,31 @@ export default function Workspace() {
           </div>
         </header>
         <main id="main-content" className="content" key={`${clubId}:${role}`}>
-          {cloudMode && role !== 'college' && !data.members.some((m) => m.email === user.email) && (
+          {showRenewBanner && (
+            <div className="info-banner renewal-banner">
+              <Icon name="RefreshCw" />
+              <div>
+                <strong>Renew your club membership</strong>
+                <p>
+                  Your membership expires{' '}
+                  {daysUntilExpiry <= 0
+                    ? 'today'
+                    : `in ${daysUntilExpiry} ${daysUntilExpiry === 1 ? 'day' : 'days'}`}{' '}
+                  ({currentMember?.expires ? date(currentMember.expires) : ''}). Renew now to keep
+                  your member prices, ticket discounts, and card active.
+                </p>
+              </div>
+              <Button
+                icon="RefreshCw"
+                onClick={() => {
+                  navigate('/app/my-card');
+                }}
+              >
+                Renew membership
+              </Button>
+            </div>
+          )}
+          {showJoinBanner && (
             <div className="info-banner">
               <Icon name="UsersRound" />
               <div>

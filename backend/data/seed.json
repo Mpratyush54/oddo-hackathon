@@ -47,9 +47,9 @@
           "memberPrice": 500,
           "capacity": 60,
           "sold": 0,
+          "budget": 18000,
           "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
-          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
-          "budget": 18000
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-002",
@@ -62,9 +62,9 @@
           "memberPrice": 0,
           "capacity": 80,
           "sold": 0,
+          "budget": 2000,
           "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
-          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
-          "budget": 2000
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-003",
@@ -77,9 +77,9 @@
           "memberPrice": 0,
           "capacity": 40,
           "sold": 0,
+          "budget": 1200,
           "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
-          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1200
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-004",
@@ -92,9 +92,9 @@
           "memberPrice": 150,
           "capacity": 18,
           "sold": 0,
+          "budget": 1500,
           "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
-          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1500
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85"
         }
       ],
       "transactions": [],
@@ -215,9 +215,9 @@
           "memberPrice": 500,
           "capacity": 60,
           "sold": 0,
+          "budget": 5000,
           "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
-          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
-          "budget": 18000
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-002",
@@ -230,9 +230,9 @@
           "memberPrice": 0,
           "capacity": 80,
           "sold": 0,
+          "budget": 2000,
           "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
-          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
-          "budget": 2000
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-003",
@@ -245,9 +245,9 @@
           "memberPrice": 0,
           "capacity": 40,
           "sold": 0,
+          "budget": 1200,
           "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
-          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1200
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-004",
@@ -260,9 +260,9 @@
           "memberPrice": 150,
           "capacity": 12,
           "sold": 0,
+          "budget": 1500,
           "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
-          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1500
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85"
         }
       ],
       "transactions": [],
@@ -383,9 +383,9 @@
           "memberPrice": 500,
           "capacity": 60,
           "sold": 0,
+          "budget": 5000,
           "description": "An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.",
-          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85",
-          "budget": 18000
+          "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-002",
@@ -398,9 +398,9 @@
           "memberPrice": 0,
           "capacity": 80,
           "sold": 0,
+          "budget": 2000,
           "description": "Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.",
-          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85",
-          "budget": 2000
+          "image": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-003",
@@ -413,9 +413,9 @@
           "memberPrice": 0,
           "capacity": 40,
           "sold": 0,
+          "budget": 1200,
           "description": "Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.",
-          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1200
+          "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85"
         },
         {
           "id": "EVT-004",
@@ -428,9 +428,9 @@
           "memberPrice": 150,
           "capacity": 12,
           "sold": 0,
+          "budget": 1500,
           "description": "A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.",
-          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85",
-          "budget": 1500
+          "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85"
         }
       ],
       "transactions": [],

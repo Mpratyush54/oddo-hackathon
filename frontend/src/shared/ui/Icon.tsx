@@ -77,10 +77,12 @@ import {
   X,
   Clock3,
   Paperclip,
+  RefreshCw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const icons: Record<string, LucideIcon> = {
+  RefreshCw,
   ArrowDownLeft,
   ArrowDownUp,
   ArrowLeft,

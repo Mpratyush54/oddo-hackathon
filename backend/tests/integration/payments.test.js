@@ -471,6 +471,22 @@ test('membership checkout only pays the current member and blocks direct simulat
   );
   const { verify } = await f.start('membership.demo-dues', {});
   assert.equal((await f.service.verify(verify, user)).state.members[0].status, 'Active');
+
+  // Renewal > 7 days before expiry is blocked
+  await assert.rejects(
+    f.start('membership.demo-dues', {}),
+    (error) => error.status === 409,
+  );
+
+  // Renewal within 1 week of expiry is allowed and extends membership
+  const clubState = await f.repo.get(clubKey('skyline'), 'STATE');
+  clubState.data.members[0].expires = '2026-10-15';
+  await f.repo.put(clubState);
+
+  const renew = await f.start('membership.demo-dues', {});
+  const renewedResult = await f.service.verify(renew.verify, user);
+  assert.equal(renewedResult.state.members[0].status, 'Active');
+  assert.equal(renewedResult.state.members[0].expires, '2027-07-31');
 });
 
 test('a product delisted during checkout is refunded rather than fulfilled', async () => {

@@ -63,10 +63,27 @@ export function PublicNav({ className = '' }: { className?: string }) {
 
 export function PublicFooter() {
   return (
-    <footer className="portal-public-footer">
-      <Logo />
-      <span>Made for student communities. Built to bring people together.</span>
-      <Link to="/clubs">Find your club →</Link>
+    <footer className="portal-public-footer" aria-label="Site footer">
+      <div className="portal-public-footer-top">
+        <div className="portal-public-footer-brand">
+          <Logo />
+          <span>Made for student communities. Built to bring people together.</span>
+        </div>
+        <nav className="portal-public-footer-links" aria-label="Footer links">
+          <Link to="/events">Events</Link>
+          <Link to="/clubs">Clubs</Link>
+          <Link to="/shop">Shop</Link>
+          <Link to="/login">Login</Link>
+        </nav>
+      </div>
+      <div className="portal-public-footer-bottom">
+        <span className="portal-public-footer-contact">
+          Contact: <a href="mailto:support@skyline.campus">support@skyline.campus</a>
+        </span>
+        <span className="portal-public-footer-copy">
+          © 2026 Skyline Student Association. All rights reserved.
+        </span>
+      </div>
     </footer>
   );
 }
