@@ -1,4 +1,4 @@
-import type { Member, Ticket, Organization, Store } from '../../shared/types/domain';
+import type { Member, Ticket, Organization, Store, Transaction } from '../../shared/types/domain';
 import { today, date } from '../../shared/utils/format';
 
 export const seed: Store = {
@@ -138,6 +138,7 @@ export const seed: Store = {
       memberPrice: 500,
       capacity: 180,
       sold: 126,
+      budget: 18000,
       description:
         'An evening to remember. Join your Skyline community for live music, a three-course dinner, and a celebration of everything we have built together. Dress up, bring a friend, and make some memories.',
       image:
@@ -154,6 +155,7 @@ export const seed: Store = {
       memberPrice: 0,
       capacity: 120,
       sold: 48,
+      budget: 2000,
       description:
         'Good bakes for a great cause. Our student-led bake sale supports the campus community fund. Come for the cookies, stay for the conversation.',
       image:
@@ -170,6 +172,7 @@ export const seed: Store = {
       memberPrice: 0,
       capacity: 40,
       sold: 28,
+      budget: 1200,
       description:
         'Our monthly community catch-up. Share ideas for the next semester, meet the committee, and enjoy a coffee on us. Everyone is welcome.',
       image:
@@ -186,6 +189,7 @@ export const seed: Store = {
       memberPrice: 150,
       capacity: 60,
       sold: 18,
+      budget: 1500,
       description:
         'A hands-on design thinking workshop for curious minds. Turn an idea into a prototype with mentors from across campus. No experience needed.',
       image:
@@ -209,6 +213,7 @@ export const seed: Store = {
       date: '2026-08-22',
       status: 'Completed',
       receipt: 'welcome-week.pdf',
+      eventId: 'EVT-WELCOME-2026',
     },
     {
       id: 'TX-003',
@@ -234,6 +239,7 @@ export const seed: Store = {
       amount: 7600,
       date: '2026-09-18',
       status: 'Completed',
+      eventId: 'EVT-002',
     },
     {
       id: 'TX-006',
@@ -242,6 +248,7 @@ export const seed: Store = {
       amount: 18500,
       date: '2026-10-02',
       status: 'Completed',
+      eventId: 'EVT-001',
     },
     {
       id: 'TX-007',
@@ -251,6 +258,7 @@ export const seed: Store = {
       date: '2026-10-03',
       status: 'Completed',
       receipt: 'venue-deposit.pdf',
+      eventId: 'EVT-001',
     },
     {
       id: 'TX-008',
@@ -262,21 +270,71 @@ export const seed: Store = {
     },
     {
       id: 'TX-009',
-      title: 'Bake sale supplies · Aisha',
+      title: 'Bake sale supplies & packaging · Aisha',
       category: 'Expenses',
       amount: -1250,
       date: '2026-10-09',
-      status: 'Pending',
+      status: 'Completed',
       receipt: 'supplies.jpg',
+      eventId: 'EVT-002',
     },
     {
       id: 'TX-010',
-      title: 'Poster printing · Jordan',
+      title: 'Poster printing & banners · Jordan',
       category: 'Expenses',
       amount: -850,
       date: '2026-10-10',
       status: 'Pending',
       receipt: 'posters.pdf',
+      eventId: 'EVT-001',
+    },
+    {
+      id: 'TX-011',
+      title: 'Welcome week · orientation activity grant',
+      category: 'Fundraiser',
+      amount: 5000,
+      date: '2026-08-18',
+      status: 'Completed',
+      eventId: 'EVT-WELCOME-2026',
+    },
+    {
+      id: 'TX-012',
+      title: 'Bake sale table display & napkins · Aisha',
+      category: 'Expenses',
+      amount: -350,
+      date: '2026-10-10',
+      status: 'Pending',
+      receipt: 'supplies.jpg',
+      eventId: 'EVT-002',
+    },
+    {
+      id: 'TX-013',
+      title: 'Library Café · coffee & refreshments tab',
+      category: 'Expenses',
+      amount: -820,
+      date: '2026-10-10',
+      status: 'Completed',
+      receipt: 'cafe-receipt.pdf',
+      eventId: 'EVT-003',
+    },
+    {
+      id: 'TX-014',
+      title: 'Student Activities Board · meetup coffee grant',
+      category: 'Fundraiser',
+      amount: 900,
+      date: '2026-10-08',
+      status: 'Completed',
+      eventId: 'EVT-003',
+    },
+    {
+      id: 'TX-015',
+      title: 'Prototyping materials & workshop kits',
+      category: 'Expenses',
+      amount: -1150,
+      date: '2026-10-08',
+      status: 'Completed',
+      receipt: 'workshop-supplies.pdf',
+      eventId: 'EVT-004',
     },
   ],
   tasks: [
@@ -560,11 +618,13 @@ export function makeClub(id: string): Store {
   }
   const counts =
     id === 'skyline' ? [26, 18, 12, 18] : id === 'codecraft' ? [8, 6, 9, 12] : [7, 9, 6, 12];
+  const budgets =
+    id === 'skyline' ? [18000, 2000, 1200, 1500] : [5000, 2000, 1200, 1500];
   club.events = club.events.map((e, i) => ({
     ...e,
     capacity: [60, 80, 40, counts[3]][i],
     sold: counts[i],
-    budget: [18000, 2000, 1200, 1500][i],
+    budget: budgets[i],
     title:
       id === 'skyline'
         ? e.title
@@ -598,27 +658,73 @@ export function makeClub(id: string): Store {
     amount: i < 6 ? 499 : 999,
     date: i < 6 ? '2026-09-05' : '2026-10-08',
   }));
-  club.transactions = club.transactions.map((t) => ({
-    ...t,
-    amount:
-      t.id === 'TX-001'
-        ? club.members.filter((m) => m.status !== 'Pending' && m.status !== 'Expired').length * 500
-        : t.id === 'TX-003'
-          ? club.orders.filter((o) => o.productId === 'PROD-002').reduce((s, o) => s + o.amount, 0)
-          : t.id === 'TX-006'
-            ? club.tickets.filter((t) => t.eventId === 'EVT-001').reduce((s, t) => s + t.amount, 0)
-            : t.id === 'TX-008'
-              ? club.orders
-                  .filter((o) => o.productId === 'PROD-001')
-                  .reduce((s, o) => s + o.amount, 0)
-              : t.amount,
-    eventId: ['TX-006', 'TX-007'].includes(t.id)
-      ? 'EVT-001'
-      : ['TX-005', 'TX-009'].includes(t.id)
-        ? 'EVT-002'
-        : undefined,
-    createdBy: t.id === 'TX-009' ? 'MEM-005' : t.id === 'TX-010' ? 'MEM-003' : 'MEM-002',
-  }));
+  club.transactions = club.transactions.map((t) => {
+    let amount = t.amount;
+    let title = t.title;
+
+    if (t.id === 'TX-001') {
+      amount = club.members.filter((m) => m.status !== 'Pending' && m.status !== 'Expired').length * 500;
+    } else if (t.id === 'TX-003') {
+      amount = club.orders.filter((o) => o.productId === 'PROD-002').reduce((s, o) => s + o.amount, 0);
+    } else if (t.id === 'TX-006') {
+      amount = club.tickets.filter((ticket) => ticket.eventId === 'EVT-001').reduce((s, ticket) => s + ticket.amount, 0);
+      title = `${club.events[0].title} · ticket sales`;
+    } else if (t.id === 'TX-007') {
+      amount = id === 'skyline' ? -15000 : id === 'codecraft' ? -3800 : -3500;
+      title = `${club.events[0].title} · venue deposit`;
+    } else if (t.id === 'TX-008') {
+      amount = club.orders.filter((o) => o.productId === 'PROD-001').reduce((s, o) => s + o.amount, 0);
+    } else if (t.id === 'TX-010') {
+      amount = id === 'skyline' ? -850 : id === 'codecraft' ? -650 : -600;
+      title = `${club.events[0].title} · promotional posters & banners`;
+    } else if (t.id === 'TX-005') {
+      amount = id === 'skyline' ? 7600 : id === 'codecraft' ? 5400 : 6200;
+      title = `${club.events[1].title} · community fundraiser`;
+    } else if (t.id === 'TX-009') {
+      amount = id === 'skyline' ? -1250 : id === 'codecraft' ? -1100 : -1150;
+      title = `${club.events[1].title} · supplies & materials`;
+    } else if (t.id === 'TX-012') {
+      amount = id === 'skyline' ? -350 : id === 'codecraft' ? -300 : -280;
+      title = `${club.events[1].title} · volunteer expense receipt`;
+    } else if (t.id === 'TX-013') {
+      amount = id === 'skyline' ? -820 : id === 'codecraft' ? -750 : -680;
+      title = `${club.events[2].title} · refreshments & space tab`;
+    } else if (t.id === 'TX-014') {
+      amount = id === 'skyline' ? 900 : id === 'codecraft' ? 800 : 750;
+      title = `${club.events[2].title} · activity board meetup grant`;
+    } else if (t.id === 'TX-015') {
+      amount = id === 'skyline' ? -1150 : id === 'codecraft' ? -1100 : -1050;
+      title = `${club.events[3].title} · workshop kits & supplies`;
+    } else if (t.id === 'TX-002') {
+      amount = id === 'skyline' ? -4800 : id === 'codecraft' ? -3600 : -3400;
+      title = 'Welcome week · supplies & materials';
+    } else if (t.id === 'TX-011') {
+      amount = id === 'skyline' ? 5000 : id === 'codecraft' ? 4000 : 3800;
+      title = 'Welcome week · orientation activity grant';
+    }
+
+    return {
+      ...t,
+      title,
+      amount,
+      eventId: ['TX-006', 'TX-007', 'TX-010'].includes(t.id)
+        ? 'EVT-001'
+        : ['TX-005', 'TX-009', 'TX-012'].includes(t.id)
+          ? 'EVT-002'
+          : ['TX-013', 'TX-014'].includes(t.id)
+            ? 'EVT-003'
+            : t.id === 'TX-015'
+              ? 'EVT-004'
+              : ['TX-002', 'TX-011'].includes(t.id)
+                ? 'EVT-WELCOME-2026'
+                : undefined,
+      createdBy: ['TX-009', 'TX-012'].includes(t.id)
+        ? 'MEM-005'
+        : ['TX-010', 'TX-013', 'TX-015'].includes(t.id)
+          ? 'MEM-003'
+          : 'MEM-002',
+    };
+  });
   club.events
     .filter((e) => e.id !== 'EVT-001')
     .forEach((e) => {
@@ -755,6 +861,17 @@ export function enrichEventHistory(club: Store, clubId: string): Store {
       : event;
   });
   club.eventReviews ??= [];
+  const eventBudgets: Record<string, Record<string, number>> = {
+    skyline: { 'EVT-001': 18000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 5500 },
+    codecraft: { 'EVT-001': 5000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 4500 },
+    canvas: { 'EVT-001': 5000, 'EVT-002': 2000, 'EVT-003': 1200, 'EVT-004': 1500, 'EVT-WELCOME-2026': 4200 },
+  };
+
+  club.events = club.events.map((event) => ({
+    ...event,
+    budget: eventBudgets[clubId]?.[event.id] ?? event.budget ?? 1500,
+  }));
+
   if (!club.events.some((event) => event.id === 'EVT-WELCOME-2026')) {
     club.events.push({
       id: 'EVT-WELCOME-2026',
@@ -767,11 +884,12 @@ export function enrichEventHistory(club: Store, clubId: string): Store {
       price: 0,
       memberPrice: 0,
       capacity: 80,
-      sold: 0,
+      sold: clubId === 'skyline' ? 68 : clubId === 'codecraft' ? 54 : 50,
+      budget: eventBudgets[clubId]?.['EVT-WELCOME-2026'] ?? 5500,
       description:
         'An afternoon of introductions, campus conversations and finding your next team. This completed demo event shows how an event stays useful after the doors close.',
       recap:
-        'The welcome-week programme has finished. This sample archive is ready for the organizing team to add its highlights, photographs and attendee feedback. No attendance or reviews have been invented.',
+        'The welcome-week programme has finished. This sample archive is ready for the organizing team to add its highlights, photographs and attendee feedback.',
       image:
         'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1200&q=85',
       gallery: [
@@ -780,6 +898,116 @@ export function enrichEventHistory(club: Store, clubId: string): Store {
         'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1200&q=85',
       ],
     });
+  } else {
+    const welcomeEvent = club.events.find((e) => e.id === 'EVT-WELCOME-2026')!;
+    if (!welcomeEvent.budget) {
+      welcomeEvent.budget = eventBudgets[clubId]?.['EVT-WELCOME-2026'] ?? 5500;
+    }
+    if (!welcomeEvent.sold) {
+      welcomeEvent.sold = clubId === 'skyline' ? 68 : clubId === 'codecraft' ? 54 : 50;
+    }
   }
+
+  // Ensure Welcome week tickets exist so fill and check-in rates are realistic
+  if (!club.tickets.some((t) => t.eventId === 'EVT-WELCOME-2026')) {
+    const welcomeEvent = club.events.find((e) => e.id === 'EVT-WELCOME-2026');
+    if (welcomeEvent && welcomeEvent.sold > 0) {
+      club.tickets.push(
+        ...Array.from({ length: welcomeEvent.sold }, (_, i): Ticket => {
+          const m = club.members[i % Math.max(1, club.members.length)] || club.members[0];
+          return {
+            id: `${clubId.toUpperCase()}-WELCOME-${String(i + 1).padStart(3, '0')}`,
+            eventId: 'EVT-WELCOME-2026',
+            name: m?.name || `Student ${i + 1}`,
+            email: m?.email || `student${i + 1}@skyline.edu`,
+            member: true,
+            checkedIn: i < Math.round(welcomeEvent.sold * 0.91),
+            amount: 0,
+            status: 'Confirmed',
+          };
+        }),
+      );
+    }
+  }
+
+  // Ensure all events have their linked transactions present even if loaded from older localStorage
+  const txDefs: Transaction[] = [
+    {
+      id: 'TX-002',
+      title: 'Welcome week supplies & materials',
+      category: 'Expenses',
+      amount: clubId === 'skyline' ? -4800 : clubId === 'codecraft' ? -3600 : -3400,
+      date: '2026-08-22',
+      status: 'Completed',
+      receipt: 'welcome-week.pdf',
+      eventId: 'EVT-WELCOME-2026',
+      createdBy: 'MEM-002',
+    },
+    {
+      id: 'TX-011',
+      title: 'Welcome week · orientation activity grant',
+      category: 'Fundraiser',
+      amount: clubId === 'skyline' ? 5000 : clubId === 'codecraft' ? 4000 : 3800,
+      date: '2026-08-18',
+      status: 'Completed',
+      eventId: 'EVT-WELCOME-2026',
+      createdBy: 'MEM-002',
+    },
+    {
+      id: 'TX-013',
+      title: `${club.events.find((e) => e.id === 'EVT-003')?.title || 'Ideas & iced coffee'} · refreshments & space tab`,
+      category: 'Expenses',
+      amount: clubId === 'skyline' ? -820 : clubId === 'codecraft' ? -750 : -680,
+      date: '2026-10-10',
+      status: 'Completed',
+      receipt: 'cafe-receipt.pdf',
+      eventId: 'EVT-003',
+      createdBy: 'MEM-003',
+    },
+    {
+      id: 'TX-014',
+      title: `${club.events.find((e) => e.id === 'EVT-003')?.title || 'Ideas & iced coffee'} · meetup coffee grant`,
+      category: 'Fundraiser',
+      amount: clubId === 'skyline' ? 900 : clubId === 'codecraft' ? 800 : 750,
+      date: '2026-10-08',
+      status: 'Completed',
+      eventId: 'EVT-003',
+      createdBy: 'MEM-002',
+    },
+    {
+      id: 'TX-015',
+      title: `${club.events.find((e) => e.id === 'EVT-004')?.title || 'Workshop'} · workshop kits & prototyping materials`,
+      category: 'Expenses',
+      amount: clubId === 'skyline' ? -1150 : clubId === 'codecraft' ? -1100 : -1050,
+      date: '2026-10-08',
+      status: 'Completed',
+      receipt: 'workshop-supplies.pdf',
+      eventId: 'EVT-004',
+      createdBy: 'MEM-003',
+    },
+  ];
+
+  for (const def of txDefs) {
+    const existing = club.transactions.find((t) => t.id === def.id);
+    if (!existing) {
+      club.transactions.push(def);
+    } else {
+      existing.eventId ??= def.eventId;
+      if (def.id === 'TX-002' && (!existing.eventId || existing.eventId !== 'EVT-WELCOME-2026')) {
+        existing.eventId = 'EVT-WELCOME-2026';
+      }
+    }
+  }
+
+  const tx9 = club.transactions.find((t) => t.id === 'TX-009');
+  if (tx9) {
+    tx9.status = 'Completed';
+    tx9.eventId ??= 'EVT-002';
+  }
+  const tx10 = club.transactions.find((t) => t.id === 'TX-010');
+  if (tx10) {
+    tx10.eventId ??= 'EVT-001';
+  }
+
   return club;
 }
