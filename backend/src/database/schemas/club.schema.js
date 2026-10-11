@@ -87,6 +87,8 @@ export const ticketSchema = z.strictObject({
 });
 export const orderStatusSchema = z.enum(['Placed', 'Ready for pickup', 'Picked up', 'Cancelled']);
 export const orderSchema = z.strictObject({
+  pointsRedeemed: count.optional(),
+  pointsDiscount: nonnegative.optional(),
   refundPending: z.boolean().optional(),
   paymentId: id.optional(),
   id,
@@ -150,6 +152,8 @@ export const promoSchema = z.strictObject({
   productId: id.optional(),
 });
 export const pointRulesSchema = z.strictObject({
+  redemptionEnabled: z.boolean().optional(),
+  redemptionValuePaise: count.min(1).max(100000).optional(),
   checkInEnabled: z.boolean(),
   checkInPoints: count.max(500),
   merchEnabled: z.boolean(),
@@ -160,7 +164,7 @@ export const pointRulesSchema = z.strictObject({
 export const pointSchema = z.strictObject({
   id,
   memberId: id,
-  kind: z.enum(['participation', 'volunteer', 'contribution']),
+  kind: z.enum(['participation', 'volunteer', 'contribution', 'redemption']),
   points: z.number().int(),
   reversed: z.boolean().optional(),
   reason: text,

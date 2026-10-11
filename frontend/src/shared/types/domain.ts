@@ -97,7 +97,7 @@ export type PromoCode = {
 export type PointEntry = {
   id: string;
   memberId: string;
-  kind: 'participation' | 'volunteer' | 'contribution';
+  kind: 'participation' | 'volunteer' | 'contribution' | 'redemption';
   points: number;
   reason: string;
   date: string;
@@ -108,6 +108,8 @@ export type PointEntry = {
 
 /** Club-configurable basis for automatic contribution points. */
 export type PointRules = {
+  redemptionEnabled?: boolean;
+  redemptionValuePaise?: number;
   checkInEnabled: boolean;
   checkInPoints: number;
   merchEnabled: boolean;
@@ -146,6 +148,8 @@ export type Ticket = {
 export type OrderStatus = 'Placed' | 'Ready for pickup' | 'Picked up' | 'Cancelled';
 
 export type Order = {
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   refundPending?: boolean;
   paymentId?: string;
   id: string;

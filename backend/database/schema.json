@@ -669,6 +669,12 @@
                 "args": {
                   "type": "object",
                   "properties": {
+                    "pointsToRedeem": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
                     "productId": {
                       "$ref": "#/$defs/__schema8"
                     },
@@ -764,6 +770,25 @@
         },
         "refundId": {
           "$ref": "#/$defs/__schema0"
+        },
+        "pointsQuote": {
+          "type": "object",
+          "properties": {
+            "pointsRedeemed": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "valuePaise": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "pointsRedeemed",
+            "valuePaise"
+          ]
         },
         "membershipBefore": {
           "anyOf": [
@@ -1670,6 +1695,12 @@
     "order": {
       "type": "object",
       "properties": {
+        "pointsRedeemed": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "pointsDiscount": {
+          "$ref": "#/$defs/__schema13"
+        },
         "refundPending": {
           "type": "boolean"
         },
@@ -2244,7 +2275,8 @@
           "enum": [
             "participation",
             "volunteer",
-            "contribution"
+            "contribution",
+            "redemption"
           ]
         },
         "points": {
@@ -2341,6 +2373,15 @@
     "pointRules": {
       "type": "object",
       "properties": {
+        "redemptionEnabled": {
+          "type": "boolean"
+        },
+        "redemptionValuePaise": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "$ref": "#/$defs/__schema3"
+        },
         "checkInEnabled": {
           "type": "boolean"
         },

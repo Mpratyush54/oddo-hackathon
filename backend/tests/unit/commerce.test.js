@@ -11,7 +11,10 @@ import {
   updateProduct,
   deleteProduct,
   MEMBERSHIP_FEE,
+  savePointRules,
+  updateOrderStatus,
 } from '../../src/modules/commerce/commerce.domain.js';
+import { availablePoints } from '../../../shared/points.js';
 
 const baseStore = () =>
   ensureCommerceFields({
@@ -114,6 +117,81 @@ const baseStore = () =>
     promos: undefined,
     pointLedger: [],
   });
+
+test('admin redemption rate applies after coupons; wallet and earned scores stay separate', () => {
+  const store = baseStore();
+  store.members[0].participationPoints = 5000;
+  Object.assign(
+    store,
+    savePointRules(store, {
+      rules: { ...store.pointRules, redemptionValuePaise: 25 },
+      actor: { name: 'Admin' },
+    }).patch,
+  );
+  const quote = quotePromo(store, {
+    code: 'WELCOME10',
+    productId: 'PROD-001',
+    quantity: 1,
+    pointsToRedeem: 5000,
+    email: 'aisha@skyline.edu',
+  });
+  assert.equal(quote.promoDiscount, 100);
+  assert.equal(quote.pointsRedeemed, 3596);
+  assert.equal(quote.pointsDiscount, 899);
+  const result = placeOrder(store, {
+    productId: 'PROD-001',
+    size: 'S',
+    quantity: 1,
+    promoCode: 'WELCOME10',
+    pointsToRedeem: 5000,
+    actor: { name: 'Aisha', email: 'aisha@skyline.edu' },
+  });
+  assert.equal(result.total, 0);
+  assert.equal(result.patch.members[0].participationPoints, 5000);
+  assert.equal(result.patch.members[0].contributionPoints, 0);
+  assert.equal(availablePoints(result.patch.members[0], result.patch.pointLedger), 1404);
+  const cancelled = updateOrderStatus(
+    { ...store, ...result.patch },
+    { orderId: result.order.id, status: 'Cancelled', actor: { name: 'Admin' } },
+  );
+  assert.equal(availablePoints(result.patch.members[0], cancelled.patch.pointLedger), 5000);
+  assert.equal(cancelled.patch.products[0].stock.S, 8);
+  assert.deepEqual(
+    updateOrderStatus(
+      { ...store, ...cancelled.patch },
+      { orderId: result.order.id, status: 'Cancelled' },
+    ).patch,
+    {},
+  );
+});
+
+test('redemption rejects insufficient balances, disabled rules and invalid quantities, excludes joining fees', () => {
+  const store = baseStore();
+  const args = {
+    productId: 'PROD-001',
+    quantity: 1,
+    email: 'aisha@skyline.edu',
+    pointsToRedeem: 1,
+  };
+  assert.throws(() => quotePromo(store, args), /points available/);
+  store.members[0].participationPoints = 10;
+  store.pointRules.redemptionEnabled = false;
+  assert.throws(() => quotePromo(store, args), /disabled/);
+  store.pointRules.redemptionEnabled = true;
+  for (const pointsToRedeem of [-1, 0.5, '1', 1000001])
+    assert.throws(() => quotePromo(store, { ...args, pointsToRedeem }));
+  store.members[1].volunteerPoints = 2000;
+  const order = placeOrder(store, {
+    productId: 'PROD-001',
+    size: 'S',
+    quantity: 1,
+    joinMembership: true,
+    pointsToRedeem: 2000,
+    actor: { name: 'Guest', email: 'guest@skyline.edu' },
+  });
+  assert.equal(order.total, 500);
+  assert.equal(order.pointsRedeemed, 999);
+});
 
 test('cancelTicket auto-promotes the oldest waitlist entry', () => {
   const result = cancelTicket(baseStore(), { ticketId: 'SKY-1', actor: { id: 'MEM-005' } });
@@ -222,6 +300,9 @@ test('deleteProduct removes product from collection with audit record', () => {
     productId: 'PROD-001',
     actor: { name: 'Alex Morgan' },
   });
-  assert.equal(result.patch.products.some((p) => p.id === 'PROD-001'), false);
+  assert.equal(
+    result.patch.products.some((p) => p.id === 'PROD-001'),
+    false,
+  );
   assert.match(result.patch.audit[0].detail, /Deleted The everyday hoodie/);
 });

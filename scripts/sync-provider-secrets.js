@@ -57,7 +57,10 @@ const prior = await aws(['secretsmanager', 'get-secret-value', '--secret-id', se
 const secrets = JSON.parse(prior.SecretString);
 const changed = [];
 for (const field of fields)
-  if (process.env[field]?.trim()) {
+  if (
+    process.env[field]?.trim() ||
+    (field === 'META_TEMPLATE_FIELDS' && Object.hasOwn(process.env, field))
+  ) {
     secrets[field] = process.env[field].trim();
     changed.push(field);
   }

@@ -1,5 +1,6 @@
 /** Pure commerce calculations shared by the authenticated services and demo API. */
 import { hasActiveMembership } from '../../../../shared/membership.js';
+import { availablePoints, pointsDiscount } from '../../../../shared/points.js';
 import { parseRequest } from '../../shared/request-validation.js';
 import {
   quoteRequestSchema,
@@ -9,12 +10,15 @@ import {
   updateProductSchema,
   deleteProductSchema,
   awardPointsSchema,
+  pointRulesSchema,
 } from './commerce.schemas.js';
 
 export const MEMBERSHIP_FEE = 500;
 export const DEMO_TODAY = '2026-10-10';
 
 export const DEFAULT_POINT_RULES = {
+  redemptionEnabled: true,
+  redemptionValuePaise: 100,
   checkInEnabled: true,
   checkInPoints: 10,
   merchEnabled: true,
@@ -128,14 +132,18 @@ function findPromo(store, code) {
 
 export function quotePromo(
   store,
-  { code, productId, quantity, joinMembership, email, today = DEMO_TODAY },
+  { code, productId, quantity, joinMembership, pointsToRedeem, email, today = DEMO_TODAY },
 ) {
-  ({ code, productId, quantity, joinMembership } = parseRequest(quoteRequestSchema, {
-    code,
-    productId,
-    quantity: Number(quantity),
-    joinMembership,
-  }));
+  ({ code, productId, quantity, joinMembership, pointsToRedeem } = parseRequest(
+    quoteRequestSchema,
+    {
+      code,
+      productId,
+      quantity: Number(quantity),
+      joinMembership,
+      pointsToRedeem,
+    },
+  ));
   const club = ensureCommerceFields(store);
   const product = club.products.find((p) => p.id === productId);
   if (!product) throw new CommerceError(404, 'Product not found.');
@@ -145,24 +153,45 @@ export function quotePromo(
   const unit = treatedAsMember ? product.memberPrice : product.price;
   const subtotal = unit * qty;
   const promo = findPromo(club, code);
-  if (!promo) throw new CommerceError(400, 'That promo code is not valid.');
-  if (promo.productId && promo.productId !== productId)
+  if (code && !promo) throw new CommerceError(400, 'That promo code is not valid.');
+  if (promo?.productId && promo.productId !== productId)
     throw new CommerceError(400, 'This coupon is for a different piece in the shop.');
-  if (promo.maxRedemptions != null && promo.redemptions >= promo.maxRedemptions)
+  if (promo?.maxRedemptions != null && promo.redemptions >= promo.maxRedemptions)
     throw new CommerceError(400, 'This promo code has reached its redemption limit.');
-  if (promo.memberOnly && !treatedAsMember)
+  if (promo?.memberOnly && !treatedAsMember)
     throw new CommerceError(400, 'This promo is for active members. Join membership to use it.');
-  if (promo.minSubtotal && subtotal < promo.minSubtotal)
+  if (promo?.minSubtotal && subtotal < promo.minSubtotal)
     throw new CommerceError(400, `Spend at least ₹${promo.minSubtotal} before this promo applies.`);
-  const discount =
-    promo.type === 'percent'
+  const discount = !promo
+    ? 0
+    : promo.type === 'percent'
       ? Math.min(subtotal, Math.round((subtotal * promo.value) / 100))
       : Math.min(subtotal, promo.value);
+  const walletMember = club.members.find(
+    (m) => m.email.toLowerCase() === String(email || '').toLowerCase(),
+  );
+  const balance = availablePoints(walletMember, club.pointLedger);
+  const rules = resolvePointRules(club);
+  if (pointsToRedeem && !rules.redemptionEnabled)
+    throw new CommerceError(409, 'Points redemption is disabled by this club.');
+  if (pointsToRedeem > balance)
+    throw new CommerceError(
+      409,
+      `You have ${balance} points available. Refresh your balance and try again.`,
+    );
+  const redemption = pointsDiscount(
+    subtotal - discount,
+    pointsToRedeem,
+    rules.redemptionValuePaise,
+  );
   return {
+    ...redemption,
+    availablePoints: balance,
+    redemptionValuePaise: rules.redemptionValuePaise,
     discount,
     promoDiscount: discount,
-    code: promo.code,
-    description: promo.description,
+    code: promo?.code || '',
+    description: promo?.description || '',
     subtotal,
     unitPrice: unit,
   };
@@ -175,19 +204,24 @@ export function placeOrder(
     size,
     quantity,
     promoCode,
+    pointsToRedeem,
     joinMembership,
     actor,
     idempotencyKey,
     today = DEMO_TODAY,
   },
 ) {
-  ({ productId, size, quantity, promoCode, joinMembership } = parseRequest(orderRequestSchema, {
-    productId,
-    size,
-    quantity: Number(quantity),
-    promoCode,
-    joinMembership,
-  }));
+  ({ productId, size, quantity, promoCode, joinMembership, pointsToRedeem } = parseRequest(
+    orderRequestSchema,
+    {
+      productId,
+      size,
+      quantity: Number(quantity),
+      promoCode,
+      pointsToRedeem,
+      joinMembership,
+    },
+  ));
   if (!actor?.email || !actor?.name)
     throw new CommerceError(400, 'Signed-in buyer details required.');
   const club = ensureCommerceFields(store);
@@ -204,31 +238,33 @@ export function placeOrder(
   const addingMembership = !member && !!joinMembership;
   const treatedAsMember = !!member || addingMembership;
   const unit = treatedAsMember ? product.memberPrice : product.price;
-  let subtotal = unit * qty;
-  let promoDiscount = 0;
-  let promo = null;
-  if (promoCode) {
-    const quoted = quotePromo(club, {
-      code: promoCode,
-      productId,
-      quantity: qty,
-      joinMembership: addingMembership,
-      email: actor.email,
-      today,
-    });
-    promoDiscount = quoted.discount;
-    promo = findPromo(club, promoCode);
-  }
+  const subtotal = unit * qty;
+  const quoted = quotePromo(club, {
+    code: promoCode,
+    productId,
+    quantity: qty,
+    joinMembership: addingMembership,
+    email: actor.email,
+    pointsToRedeem,
+    today,
+  });
+  const promoDiscount = quoted.discount;
+  const promo = findPromo(club, promoCode);
+  const merchandiseTotal =
+    Math.max(0, Math.round((subtotal - promoDiscount - quoted.pointsDiscount) * 100)) / 100;
   const membershipFee = addingMembership ? MEMBERSHIP_FEE : 0;
-  const total = Math.max(0, subtotal - promoDiscount) + membershipFee;
+  const total = merchandiseTotal + membershipFee;
   const orderIds = Array.from({ length: qty }, () => uid('ORD'));
-  const orders = orderIds.map((id) => ({
+  const split = (value, index) => Math.floor(value / qty) + (index < value % qty ? 1 : 0);
+  const orders = orderIds.map((id, index) => ({
     id,
     productId,
     name: actor.name,
     email: actor.email,
     size: sizeKey,
-    amount: Math.round((Math.max(0, subtotal - promoDiscount) / qty) * 100) / 100 || 0,
+    amount: split(Math.round(merchandiseTotal * 100), index) / 100,
+    pointsRedeemed: split(quoted.pointsRedeemed, index),
+    pointsDiscount: (split(quoted.pointsRedeemed, index) * quoted.redemptionValuePaise) / 100,
     date: today,
     promoCode: promo?.code,
     status: 'Placed',
@@ -240,6 +276,20 @@ export function placeOrder(
   const notifications = [...(club.notifications || [])];
   const audit = [...(club.audit || [])];
   let pointLedger = [...club.pointLedger];
+  const walletMember = club.members.find(
+    (m) => m.email.toLowerCase() === actor.email.toLowerCase(),
+  );
+  for (const order of orders.filter((o) => o.pointsRedeemed > 0)) {
+    pointLedger.unshift({
+      id: uid('PTS'),
+      memberId: walletMember.id,
+      kind: 'redemption',
+      points: -order.pointsRedeemed,
+      orderId: order.id,
+      date: today,
+      reason: `Points used · ${product.name}`,
+    });
+  }
   let promos = club.promos;
 
   if (addingMembership) {
@@ -306,7 +356,7 @@ export function placeOrder(
     id: uid('TX'),
     title: `${product.name} · ${actor.name}${qty > 1 ? ` ×${qty}` : ''}${promo ? ` · ${promo.code}` : ''}`,
     category: 'Merchandise',
-    amount: Math.max(0, subtotal - promoDiscount),
+    amount: merchandiseTotal,
     date: today,
     status: 'Completed',
     createdBy: actor.id || member?.id,
@@ -316,9 +366,7 @@ export function placeOrder(
   const rules = resolvePointRules(club);
   const rupeesPerPoint = Math.max(1, Number(rules.merchRupeesPerPoint) || 100);
   const contributionEarn =
-    rules.merchEnabled === false
-      ? 0
-      : Math.floor(Math.max(0, subtotal - promoDiscount) / rupeesPerPoint);
+    rules.merchEnabled === false ? 0 : Math.floor(merchandiseTotal / rupeesPerPoint);
   if (member && contributionEarn > 0) {
     const mid = member.id;
     members = members.map((m) =>
@@ -365,9 +413,31 @@ export function placeOrder(
     order: orders[0],
     discount: promoDiscount,
     promoDiscount,
+    pointsDiscount: quoted.pointsDiscount,
+    pointsRedeemed: quoted.pointsRedeemed,
+    redemptionValuePaise: quoted.redemptionValuePaise,
     membershipFee,
     memberPriceApplied: treatedAsMember,
   };
+}
+
+export function restoreOrderPoints(data, orderIds, reason, today = DEMO_TODAY) {
+  const ids = new Set(orderIds);
+  const spent = (data.pointLedger || []).filter(
+    (entry) =>
+      entry.kind === 'redemption' && entry.points < 0 && !entry.reversed && ids.has(entry.orderId),
+  );
+  for (const entry of spent) {
+    entry.reversed = true;
+    data.pointLedger.unshift({
+      ...entry,
+      id: uid('PTS'),
+      points: -entry.points,
+      reversed: false,
+      reason,
+      date: today,
+    });
+  }
 }
 
 export function updateOrderStatus(store, { orderId, status, actor }) {
@@ -375,6 +445,24 @@ export function updateOrderStatus(store, { orderId, status, actor }) {
   const order = club.orders.find((o) => o.id === orderId);
   if (!order) throw new CommerceError(404, 'Order not found.');
   if (order.status === status) return { patch: {} };
+  if (order.status === 'Cancelled')
+    throw new CommerceError(409, 'A cancelled order cannot be reopened.');
+  if (status === 'Cancelled') {
+    if (order.status === 'Picked up')
+      throw new CommerceError(409, 'Picked-up orders cannot be cancelled.');
+    const product = club.products.find((p) => p.id === order.productId);
+    if (product)
+      product.stock = {
+        ...product.stock,
+        [order.size]: (product.stock[order.size] || 0) + (order.quantity || 1),
+      };
+    restoreOrderPoints(
+      club,
+      [order.id],
+      'Points returned · order cancelled',
+      new Date().toISOString().slice(0, 10),
+    );
+  }
   const orders = club.orders.map((o) => (o.id === orderId ? { ...o, status } : o));
   const auditEntry = {
     id: uid('AUD'),
@@ -388,6 +476,8 @@ export function updateOrderStatus(store, { orderId, status, actor }) {
   return {
     patch: {
       orders,
+      products: club.products,
+      pointLedger: club.pointLedger,
       audit: [auditEntry, ...(club.audit || [])].slice(0, 500),
     },
   };
@@ -737,14 +827,7 @@ export function checkInWithPoints(store, { ticketId, actor, today = DEMO_TODAY }
 export function savePointRules(store, { rules, actor }) {
   const club = ensureCommerceFields(store);
   if (!actor?.name) throw new CommerceError(400, 'Staff actor required.');
-  const next = {
-    checkInEnabled: rules.checkInEnabled !== false,
-    checkInPoints: Math.min(500, Math.max(0, Number(rules.checkInPoints) || 0)),
-    merchEnabled: rules.merchEnabled !== false,
-    merchRupeesPerPoint: Math.min(10000, Math.max(1, Number(rules.merchRupeesPerPoint) || 100)),
-    taskEnabled: rules.taskEnabled !== false,
-    taskDonePoints: Math.min(500, Math.max(0, Number(rules.taskDonePoints) || 0)),
-  };
+  const next = parseRequest(pointRulesSchema, { ...DEFAULT_POINT_RULES, ...rules });
   const auditEntry = {
     id: uid('AUD'),
     actor: actor.name,
@@ -752,7 +835,7 @@ export function savePointRules(store, { rules, actor }) {
     entity: 'pointRules',
     entityId: 'club',
     date: new Date().toISOString(),
-    detail: `Check-in ${next.checkInEnabled ? next.checkInPoints + ' pts' : 'off'}; merch 1/${next.merchRupeesPerPoint}; tasks ${next.taskEnabled ? next.taskDonePoints + ' pts' : 'off'}`,
+    detail: `Check-in ${next.checkInEnabled ? next.checkInPoints + ' pts' : 'off'}; merch 1/${next.merchRupeesPerPoint}; tasks ${next.taskEnabled ? next.taskDonePoints + ' pts' : 'off'}; redemption ${next.redemptionEnabled ? '₹' + next.redemptionValuePaise / 100 + '/point' : 'off'}`,
   };
   return {
     patch: {

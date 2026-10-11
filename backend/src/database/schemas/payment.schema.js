@@ -27,6 +27,12 @@ export const paymentRecordSchema = z.strictObject({
   orderId: id.optional(),
   paymentId: id.optional(),
   refundId: id.optional(),
+  pointsQuote: z
+    .object({
+      pointsRedeemed: z.number().int().positive(),
+      valuePaise: z.number().int().positive(),
+    })
+    .optional(),
   membershipBefore: z
     .object({
       status: z.enum(['Active', 'Pending', 'Expiring', 'Expired']),

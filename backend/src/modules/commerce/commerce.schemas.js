@@ -4,12 +4,19 @@ import { entityId, requiredText, moneyAmount } from '../../shared/request-valida
 
 export const quoteRequestSchema = z.object({
   productId: entityId,
-  code: z.string().trim().toUpperCase().pipe(promoCodeSchema),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .pipe(z.union([promoCodeSchema, z.literal('')]))
+    .default(''),
+  pointsToRedeem: z.number().int().min(0).max(1000000).default(0),
   quantity: z.number().int().min(1).max(10),
   joinMembership: z.boolean().default(false),
 });
 
 export const orderRequestSchema = z.object({
+  pointsToRedeem: z.number().int().min(0).max(1000000).default(0),
   productId: entityId,
   size: requiredText(20),
   quantity: z.number().int().min(1).max(10),
@@ -83,9 +90,7 @@ export const updateProductSchema = z
     color: z.string().trim().min(1).max(40).optional(),
     price: moneyAmount.optional(),
     memberPrice: moneyAmount.optional(),
-    stock: z
-      .record(z.string().trim().min(1).max(20), z.number().int().min(0).max(5000))
-      .optional(),
+    stock: z.record(z.string().trim().min(1).max(20), z.number().int().min(0).max(5000)).optional(),
     image: z
       .string()
       .trim()
@@ -143,6 +148,8 @@ export const awardPointsSchema = z.object({
   taskId: entityId.optional(),
 });
 export const pointRulesSchema = z.object({
+  redemptionEnabled: z.boolean().default(true),
+  redemptionValuePaise: z.number().int().min(1).max(100000).default(100),
   checkInEnabled: z.boolean(),
   checkInPoints: z.number().int().min(0).max(500),
   merchEnabled: z.boolean(),

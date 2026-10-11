@@ -6,7 +6,8 @@ export class WhatsAppService {
   async send(member, message) {
     const allowlist = String(this.env.META_TEST_RECIPIENTS || '')
       .split(',')
-      .map(normalizePhone);
+      .map(normalizePhone)
+      .filter(Boolean);
     if (!member.whatsappOptIn || !allowlist.includes(normalizePhone(member.phone)))
       return {
         status: 'Failed',

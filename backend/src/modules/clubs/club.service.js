@@ -144,6 +144,9 @@ export function createDomain({
         if (
           payment &&
           (payment.amount !== amount ||
+            (payment.pointsQuote &&
+              (payment.pointsQuote.pointsRedeemed !== result.pointsRedeemed ||
+                payment.pointsQuote.valuePaise !== result.redemptionValuePaise)) ||
             payment.userId !== user.id ||
             payment.clubId !== clubId ||
             payment.status !== 'Created')

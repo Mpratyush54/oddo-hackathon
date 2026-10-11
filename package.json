@@ -19,7 +19,8 @@
     "test": "npm run test:api && node --test scripts/event-utils.test.js && npm run db:schema:check && npm run db:validate",
     "db:schema": "node scripts/generate-db-schema.js",
     "db:schema:check": "node scripts/generate-db-schema.js --check",
-    "db:validate": "node scripts/validate-database.js"
+    "db:validate": "node scripts/validate-database.js",
+    "seed:aws": "node scripts/seed-demo-data.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1149.0",

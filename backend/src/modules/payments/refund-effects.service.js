@@ -1,5 +1,5 @@
 import { HttpError, dateToday, recordId, timestamp } from '../../shared/records.js';
-import { cancelTicket } from '../commerce/commerce.domain.js';
+import { cancelTicket, restoreOrderPoints } from '../commerce/commerce.domain.js';
 import { openEvent } from '../../shared/validation.js';
 
 export class RefundEffectsService {
@@ -102,7 +102,11 @@ export class RefundEffectsService {
       }
       const orderIds = new Set(orders.map((o) => o.id));
       const entries = (data.pointLedger || []).filter(
-        (entry) => orderIds.has(entry.orderId) && !entry.reversed && entry.points > 0,
+        (entry) =>
+          orderIds.has(entry.orderId) &&
+          entry.kind === 'contribution' &&
+          !entry.reversed &&
+          entry.points > 0,
       );
       for (const entry of entries) {
         const member = data.members.find((m) => m.id === entry.memberId);
@@ -118,6 +122,12 @@ export class RefundEffectsService {
           date: dateToday(),
         });
       }
+      restoreOrderPoints(
+        data,
+        [...orderIds],
+        `Points returned · refund ${refund.providerRefundId}`,
+        dateToday(),
+      );
       const member = data.members.find((m) => m.userId === payment.userId && m.refundPending);
       if (member && refund.membershipLocked) {
         delete member.membershipPaymentId;

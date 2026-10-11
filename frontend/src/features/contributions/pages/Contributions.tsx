@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { promoCodeSchema } from '../../../../../shared/schemas.js';
+import { availablePoints } from '../../../../../shared/points.js';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { CardHeader } from '../../../shared/ui/CardHeader';
@@ -22,6 +23,8 @@ import '../../shop/styles/shop.css';
 type PatchReply = { patch: Partial<Store> };
 
 const DEFAULT_POINT_RULES: PointRules = {
+  redemptionEnabled: true,
+  redemptionValuePaise: 100,
   checkInEnabled: true,
   checkInPoints: 10,
   merchEnabled: true,
@@ -115,6 +118,18 @@ export function ContributionsPage() {
           }
         />
         <div className="point-rules-grid">
+          <article className="point-rule-tile">
+            <Icon name="ShoppingBag" size={20} />
+            <div>
+              <strong>Spend your points</strong>
+              <p>
+                {availablePoints(me, ledger)} points available.{' '}
+                {pointRules.redemptionEnabled
+                  ? `Each point saves ${money((pointRules.redemptionValuePaise ?? 100) / 100)} on merchandise after coupons.`
+                  : 'Redemption is currently disabled by the club.'}
+              </p>
+            </div>
+          </article>
           <article className={`point-rule-tile ${pointRules.checkInEnabled ? '' : 'is-off'}`}>
             <Icon name="Ticket" size={20} />
             <div>
@@ -211,7 +226,10 @@ export function ContributionsPage() {
                   <div className="timeline-item-content">
                     <div className="timeline-item-header">
                       <strong>{entry.reason}</strong>
-                      <span className="points-award-pill">+{entry.points} pts</span>
+                      <span className="points-award-pill">
+                        {entry.points > 0 ? '+' : ''}
+                        {entry.points} pts
+                      </span>
                     </div>
                     <div className="timeline-item-footer">
                       <Badge
@@ -533,6 +551,36 @@ export function ContributionsPage() {
                     setRuleDraft((r) => ({
                       ...r,
                       merchRupeesPerPoint: Math.max(1, Number(e.target.value) || 1),
+                    }))
+                  }
+                />
+              </Field>
+              <label className="point-rule-switch">
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.redemptionEnabled ?? true}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({ ...r, redemptionEnabled: e.target.checked }))
+                  }
+                />
+                <span>
+                  <strong>Redeem points for merchandise</strong>
+                  <small>Apply after coupons. Membership fees remain payable separately.</small>
+                </span>
+              </label>
+              <Field label="Rupees discount per redeemed point">
+                <input
+                  type="number"
+                  min={0.01}
+                  max={1000}
+                  step={0.01}
+                  required
+                  disabled={ruleDraft.redemptionEnabled === false}
+                  value={(ruleDraft.redemptionValuePaise ?? 100) / 100}
+                  onChange={(e) =>
+                    setRuleDraft((r) => ({
+                      ...r,
+                      redemptionValuePaise: Math.round(Number(e.target.value) * 100),
                     }))
                   }
                 />

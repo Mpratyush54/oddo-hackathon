@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import { createApp } from '../../src/app.js';
 import { once } from 'node:events';
 import { hasActiveMembership } from '../../../shared/membership.js';
+import { availablePoints } from '../../../shared/points.js';
+import { DEFAULT_POINT_RULES } from '../../src/modules/commerce/commerce.domain.js';
 
 test('member pricing requires active unexpired membership and survives every later purchase', async () => {
   for (const activation of ['paid', 'approved']) {
@@ -92,6 +94,143 @@ test('Razorpay refund retries send identical payload and provider idempotency he
 });
 
 const user = { id: 'test-user', name: 'Test User', email: 'test@example.test' };
+async function pointWallet(f, balance = 300, valuePaise = 100) {
+  const state = await f.domain.load('skyline');
+  state.data.members = [
+    {
+      ...user,
+      userId: user.id,
+      course: 'QA',
+      joined: '2026-10-11',
+      role: 'Volunteer',
+      status: 'Active',
+      expires: '2099-01-01',
+      participationPoints: balance,
+      volunteerPoints: 0,
+      contributionPoints: 0,
+    },
+  ];
+  state.data.pointLedger = [];
+  state.data.products[0].stock.M = 5;
+  state.data.pointRules = {
+    ...DEFAULT_POINT_RULES,
+    ...state.data.pointRules,
+    redemptionEnabled: true,
+    redemptionValuePaise: valuePaise,
+  };
+  await f.repo.put(state);
+}
+
+test('paid points checkout uses admin rate after coupon, deducts once, refunds restore once', async () => {
+  const f = await fixture();
+  await pointWallet(f, 300, 50);
+  const checkout = await f.start('orders', {
+    productId: 'product',
+    size: 'M',
+    quantity: 1,
+    promoCode: 'WELCOME10',
+    pointsToRedeem: 200,
+  });
+  assert.equal(checkout.order.amount, 26000);
+  let data = (await f.domain.load('skyline')).data;
+  assert.equal(
+    availablePoints(data.members[0], data.pointLedger),
+    300,
+    'opening checkout never spends points',
+  );
+  await f.service.verify(checkout.verify, user);
+  await f.service.verify(checkout.verify, user);
+  data = (await f.domain.load('skyline')).data;
+  assert.equal(data.members[0].participationPoints, 300);
+  assert.equal(availablePoints(data.members[0], data.pointLedger), 102);
+  assert.equal(data.pointLedger.filter((p) => p.kind === 'redemption').length, 1);
+  await allowReviewer(f);
+  await f.service.refunds.request(
+    'skyline',
+    { paymentId: checkout.payment.id, reason: 'Return this merchandise please.' },
+    user,
+  );
+  assert.equal(
+    availablePoints(
+      (await f.domain.load('skyline')).data.members[0],
+      (await f.domain.load('skyline')).data.pointLedger,
+    ),
+    102,
+  );
+  await f.service.refunds.review('skyline', checkout.payment.id, { decision: 'approve' }, staff);
+  await f.service.refunds.refresh('skyline', checkout.payment.id, user);
+  data = (await f.domain.load('skyline')).data;
+  assert.equal(availablePoints(data.members[0], data.pointLedger), 300);
+  assert.equal(data.members[0].participationPoints, 300);
+  assert.equal(data.members[0].contributionPoints, 0);
+  assert.equal(f.refunds(), 1);
+  assert.equal(data.products[0].stock.M, 5);
+});
+
+test('competing checkouts cannot double spend; captured loser is refunded', async () => {
+  const f = await fixture();
+  await pointWallet(f);
+  const args = { productId: 'product', size: 'M', quantity: 1, pointsToRedeem: 300 };
+  const first = await f.start('orders', args),
+    second = await f.start('orders', args);
+  await Promise.allSettled([
+    f.service.verify(first.verify, user),
+    f.service.verify(second.verify, user),
+  ]);
+  const data = (await f.domain.load('skyline')).data;
+  assert.equal(data.orders.length, 1);
+  assert.equal(data.pointLedger.filter((p) => p.kind === 'redemption').length, 1);
+  assert.equal(availablePoints(data.members[0], data.pointLedger), 1);
+  assert.equal(f.refunds(), 1);
+});
+
+test('points can cover all merchandise with no gateway charge and durable replay', async () => {
+  const f = await fixture();
+  await pointWallet(f, 500);
+  const input = {
+    clubId: 'skyline',
+    action: {
+      type: 'orders',
+      args: { productId: 'product', size: 'M', quantity: 1, pointsToRedeem: 500 },
+    },
+    idempotencyKey: crypto.randomUUID(),
+  };
+  const first = await f.service.create(input, user);
+  assert.equal(first.status, 'Fulfilled');
+  assert.equal(first.total, 0);
+  assert.equal(first.pointsRedeemed, 400);
+  const repeat = await f.service.create(input, user);
+  assert.equal(repeat.order.id, first.order.id);
+  assert.equal(f.orders(), 0);
+  const data = (await f.domain.load('skyline')).data;
+  assert.equal(availablePoints(data.members[0], data.pointLedger), 100);
+  assert.equal(data.orders.length, 1);
+});
+
+test('an admin rate change during payment cannot silently spend more points at the same cash price', async () => {
+  const f = await fixture();
+  await pointWallet(f, 1000);
+  let state = await f.domain.load('skyline');
+  state.data.members[0].status = 'Pending';
+  await f.repo.put(state);
+  const checkout = await f.start('orders', {
+    productId: 'product',
+    size: 'M',
+    quantity: 1,
+    joinMembership: true,
+    pointsToRedeem: 1000,
+  });
+  assert.equal(checkout.order.amount, 50000);
+  state = await f.domain.load('skyline');
+  state.data.pointRules.redemptionValuePaise = 50;
+  await f.repo.put(state);
+  const result = await f.service.verify(checkout.verify, user);
+  assert.equal(result.status, 'Refunded');
+  state = await f.domain.load('skyline');
+  assert.equal(state.data.orders.length, 0);
+  assert.equal(availablePoints(state.data.members[0], state.data.pointLedger), 1000);
+  assert.equal(f.refunds(), 1);
+});
 const env = {
   RAZORPAY_KEY_ID: 'rzp_test_fixture',
   RAZORPAY_KEY_SECRET: 'fixture-secret',

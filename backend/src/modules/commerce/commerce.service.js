@@ -36,6 +36,7 @@ export class CommerceService extends ClubActionService {
       size: input.size,
       quantity: input.quantity,
       promoCode: input.promoCode,
+      pointsToRedeem: input.pointsToRedeem,
       joinMembership: input.joinMembership === true,
       actor: this.actor,
       today: this.now,

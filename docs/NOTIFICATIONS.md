@@ -40,6 +40,8 @@ Callback URL: `https://f23vxl3ad5.execute-api.ap-south-1.amazonaws.com/api/webho
 
 ## Browser notifications
 
+For the current test sender, `.env` uses Meta's `hello_world`, `en_US`, zero body parameters, and an empty `META_TEMPLATE_FIELDS`. This tests connectivity only: its fixed greeting cannot carry announcement or reminder content. The pending `msg` template must be approved and mapped before sending customized reminders. Sends remain restricted to consenting members whose saved phone matches `META_TEST_RECIPIENTS`; demo users have no phones and all outbound preferences disabled.
+
 Generate VAPID keys once with `node scripts/setup-browser-push.js`, then sync provider secrets. Keep the private key server-side and stable; rotating keys requires browser subscriptions to be recreated. The public key is safe to expose. The Profile page offers Enable, Disable and Send test notification. Permission is requested only after clicking Enable.
 
 Browser subscriptions are associated with the signed-in account and device, validated with Zod, and disabled on sign-out. A device changing accounts cannot keep receiving the earlier account's push. Expired subscriptions are disabled when the provider returns 404/410. Only new, unread notifications since enabling the device are pushed. Browser/device permissions and OS settings affect display; an accepted push is not proof of an OS notification. HTTPS is required outside localhost; supported iOS installations need the website added to the Home Screen.

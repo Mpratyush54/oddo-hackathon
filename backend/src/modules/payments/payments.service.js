@@ -87,6 +87,14 @@ export class PaymentsService {
       fingerprint,
       amount,
       currency: 'INR',
+      ...(result.pointsRedeemed > 0
+        ? {
+            pointsQuote: {
+              pointsRedeemed: result.pointsRedeemed,
+              valuePaise: result.redemptionValuePaise,
+            },
+          }
+        : {}),
       mode: 'test',
       status: 'Creating',
       version: 0,

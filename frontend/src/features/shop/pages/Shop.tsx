@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { hasActiveMembership } from '../../../../../shared/membership.js';
+import {
+  availablePoints,
+  pointsDiscount as calculatePointsDiscount,
+} from '../../../../../shared/points.js';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
@@ -46,6 +50,8 @@ type ServerReply = {
   order?: { id: string };
   discount?: number;
   promoDiscount?: number;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   membershipFee?: number;
 };
 const stockPhotos: Record<string, string> = {
@@ -193,6 +199,14 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
     [inventorySize, setInventorySize] = useState(''),
     [delta, setDelta] = useState('1'),
     [inventoryReason, setInventoryReason] = useState('');
+  const [appliedPromoCode, setAppliedPromoCode] = useState('');
+  const [pointsInput, setPointsInput] = useState('');
+  const [appliedPoints, setAppliedPoints] = useState(0);
+  const [pointsMessage, setPointsMessage] = useState('');
+  const walletMember = data.members.find((m) => m.email.toLowerCase() === user.email.toLowerCase());
+  const pointBalance = signedIn ? availablePoints(walletMember, data.pointLedger) : 0;
+  const redemptionEnabled = data.pointRules?.redemptionEnabled !== false;
+  const redemptionValuePaise = data.pointRules?.redemptionValuePaise ?? 100;
   const organization = organizations.find((c) => c.id === selectedClub);
   const clubOrders = data.orders;
   const product = data.products.find((p) => p.id === productId);
@@ -202,8 +216,15 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
       (m) => m.email.toLowerCase() === user.email.toLowerCase() && hasActiveMembership(m, today),
     );
   const unitPrice = product ? (member || joinMembership ? product.memberPrice : product.price) : 0;
+  const pointQuote = calculatePointsDiscount(
+    Math.max(0, unitPrice * quantity - promoDiscount),
+    Math.min(appliedPoints, pointBalance),
+    redemptionValuePaise,
+  );
+  const pointsDiscount = redemptionEnabled ? pointQuote.pointsDiscount : 0;
   const checkoutTotal =
-    Math.max(0, unitPrice * quantity - promoDiscount) + (!member && joinMembership ? 500 : 0);
+    Math.round(Math.max(0, unitPrice * quantity - promoDiscount - pointsDiscount) * 100) / 100 +
+    (!member && joinMembership ? 500 : 0);
   const filtered = data.products
     .filter(
       (p) =>
@@ -262,7 +283,19 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
   useEffect(() => {
     setPromoDiscount(0);
     setPromoMessage('');
-  }, [quantity, joinMembership, promoCode]);
+    setAppliedPromoCode('');
+    setAppliedPoints(0);
+    setPointsInput('');
+    setPointsMessage('');
+  }, [
+    quantity,
+    joinMembership,
+    promoCode,
+    productId,
+    selectedClub,
+    redemptionEnabled,
+    redemptionValuePaise,
+  ]);
   const quotePromo = async () => {
     if (!signedIn) {
       setPromoMessage('Sign in to apply a promo code.');
@@ -284,10 +317,46 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
         },
       });
       setPromoDiscount(reply.discount ?? reply.promoDiscount ?? 0);
+      setAppliedPromoCode(promoCode.trim());
+      setAppliedPoints(0);
+      setPointsMessage('');
       setPromoMessage(`Promo applied: save ${money(reply.discount ?? reply.promoDiscount ?? 0)}.`);
     } catch (error) {
       setPromoDiscount(0);
+      setAppliedPromoCode('');
       setPromoMessage(error instanceof Error ? error.message : 'Could not apply this code.');
+    } finally {
+      setPending(false);
+    }
+  };
+  const applyPoints = async () => {
+    const requested = Number(pointsInput);
+    if (!Number.isInteger(requested) || requested < 1 || requested > pointBalance) {
+      setPointsMessage(`Enter a whole number from 1 to ${pointBalance}.`);
+      return;
+    }
+    setPending(true);
+    try {
+      const reply = await clubRequest<ServerReply>(selectedClub, '/promos/quote', {
+        method: 'POST',
+        snapshot: data,
+        actor: user,
+        body: {
+          productId,
+          quantity,
+          joinMembership,
+          code: appliedPromoCode,
+          pointsToRedeem: requested,
+          email: user.email,
+        },
+      });
+      setAppliedPoints(reply.pointsRedeemed ?? 0);
+      setPointsMessage(
+        `${reply.pointsRedeemed ?? 0} points applied: save ${money(reply.pointsDiscount ?? 0)}.`,
+      );
+    } catch (error) {
+      setAppliedPoints(0);
+      setPointsMessage(error instanceof Error ? error.message : 'Could not apply points.');
     } finally {
       setPending(false);
     }
@@ -321,7 +390,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                 productId,
                 size,
                 quantity,
-                promoCode: promoCode.trim() || undefined,
+                promoCode: appliedPromoCode || undefined,
+                pointsToRedeem: redemptionEnabled ? pointQuote.pointsRedeemed : 0,
                 joinMembership: !member && joinMembership,
               },
             },
@@ -338,7 +408,8 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
               productId,
               size,
               quantity,
-              promoCode: promoCode.trim() || undefined,
+              promoCode: appliedPromoCode || undefined,
+              pointsToRedeem: redemptionEnabled ? pointQuote.pointsRedeemed : 0,
               joinMembership: !member && joinMembership,
               idempotencyKey: crypto.randomUUID(),
             },
@@ -1426,6 +1497,86 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                     </button>
                   ))}
               </div>
+              {signedIn && (
+                <div className="shop-coupon-panel">
+                  <div className="shop-coupon-panel-head">
+                    <Icon name="Sparkles" size={16} />
+                    <strong>Use your points</strong>
+                  </div>
+                  <p>
+                    {pointBalance} points available · 1 point = {money(redemptionValuePaise / 100)}.
+                    Applied after coupons; membership fees are excluded.
+                  </p>
+                  {redemptionEnabled ? (
+                    <>
+                      <div className="shop-promo-input">
+                        <input
+                          aria-label="Points to redeem"
+                          type="number"
+                          min={1}
+                          max={pointBalance}
+                          step={1}
+                          placeholder="Points to use"
+                          value={pointsInput}
+                          disabled={pending || !pointBalance}
+                          onChange={(e) => {
+                            setPointsInput(e.target.value);
+                            setAppliedPoints(0);
+                            setPointsMessage('');
+                          }}
+                        />
+                        <Button
+                          variant="secondary"
+                          disabled={pending || !pointBalance || !pointsInput}
+                          onClick={applyPoints}
+                        >
+                          Apply points
+                        </Button>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        disabled={pending || !pointBalance}
+                        onClick={() => {
+                          setPointsInput(
+                            String(
+                              calculatePointsDiscount(
+                                Math.max(0, unitPrice * quantity - promoDiscount),
+                                pointBalance,
+                                redemptionValuePaise,
+                              ).pointsRedeemed,
+                            ),
+                          );
+                          setAppliedPoints(0);
+                          setPointsMessage('Click Apply points to confirm.');
+                        }}
+                      >
+                        Use maximum
+                      </Button>
+                      {appliedPoints > 0 && (
+                        <Button
+                          variant="secondary"
+                          disabled={pending}
+                          onClick={() => {
+                            setAppliedPoints(0);
+                            setPointsInput('');
+                            setPointsMessage('Points removed.');
+                          }}
+                        >
+                          Remove points
+                        </Button>
+                      )}
+                      {!pointBalance && <p>Earn points from club activities to use them here.</p>}
+                    </>
+                  ) : (
+                    <p>Points redemption is currently disabled by this club.</p>
+                  )}
+                  {pointsMessage && (
+                    <p className="shop-promo-message" role="status">
+                      {pointsMessage}
+                    </p>
+                  )}
+                </div>
+              )}
               {canManageInventory && product && (
                 <div className="shop-coupon-create">
                   <div className="shop-coupon-panel-head">
@@ -1510,6 +1661,12 @@ export function ShopPage({ publicView = false }: { publicView?: boolean }) {
                   <div>
                     <dt>Promo discount</dt>
                     <dd>−{money(promoDiscount)}</dd>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div>
+                    <dt>Points ({pointQuote.pointsRedeemed})</dt>
+                    <dd>−{money(pointsDiscount)}</dd>
                   </div>
                 )}
                 <div>
