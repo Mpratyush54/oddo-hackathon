@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { PageHeader } from '../../../shared/ui/PageHeader';
@@ -94,11 +95,14 @@ export default function CampusCalendar() {
         key={event.id}
         to={`/app/events/${event.id}`}
       >
-        {event.image && (
-          <div className="event-thumb-wrap">
-            <img src={event.image} alt={event.title} className="event-thumb-img" />
-          </div>
-        )}
+        <div className="event-thumb-wrap">
+          <EventPhoto
+            image={event.image}
+            seed={event.id}
+            alt={event.title}
+            className="event-thumb-img"
+          />
+        </div>
         <span className="campus-agenda-time">
           {event.time}
           <small>

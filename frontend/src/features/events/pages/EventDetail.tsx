@@ -5,6 +5,7 @@ import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { PageHeader } from '../../../shared/ui/PageHeader';
@@ -198,7 +199,7 @@ export function EventDetail() {
         }
       />
       <section className="event-detail-hero">
-        <img src={event.image} alt={event.title} />
+        <EventPhoto image={event.image} seed={event.id} alt={event.title} loading="eager" />
         <div className="event-detail-overlay">
           <Badge tone="purple">{event.category}</Badge>
           <h2>

@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { CardHeader } from '../../../shared/ui/CardHeader';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { date, money } from '../../../shared/utils/format';
@@ -72,7 +73,7 @@ export function PublicClub() {
           {data.events.map((e) => (
             <article className="event-card" key={e.id}>
               <Link to={`/e/${club.id}/${e.id}`} className="event-image" aria-label={`View ${e.title}`}>
-                <img src={e.image} alt="" />
+                <EventPhoto image={e.image} seed={e.id} alt="" />
               </Link>
               <div className="event-card-content">
                 <Badge tone={eventPhase(e) === 'past' ? 'gold' : 'teal'}>

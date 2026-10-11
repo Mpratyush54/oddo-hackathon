@@ -3,6 +3,7 @@ import { saveEventSchema, createReviewSchema } from './events.schemas.js';
 import { HttpError, timestamp, recordId } from '../../shared/records.js';
 import { staff, requireRole } from '../../shared/authorization.js';
 import { eventFor } from '../../shared/validation.js';
+import { resolveEventImage } from '../../../../shared/event-images.js';
 
 import { ClubActionService } from '../clubs/club-action.service.js';
 
@@ -16,8 +17,9 @@ export class EventService extends ClubActionService {
     const prior = e.id ? this.data.events.find((x) => x.id === e.id) : null;
     if (e.capacity < (prior?.sold || 0))
       throw new HttpError(409, 'Capacity cannot be lower than bookings.');
+    const id = prior?.id || recordId('EVT');
     const event = {
-      id: prior?.id || recordId('EVT'),
+      id,
       title: e.title,
       description: e.description,
       date: e.date,
@@ -28,7 +30,7 @@ export class EventService extends ClubActionService {
       memberPrice: e.memberPrice,
       capacity: e.capacity,
       sold: prior?.sold || 0,
-      image: e.image || '',
+      image: resolveEventImage(e.image || prior?.image, id),
       budget: e.budget ?? prior?.budget ?? 0,
       recap: e.recap ?? '',
       gallery: e.gallery ?? [],

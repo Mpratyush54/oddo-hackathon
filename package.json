@@ -20,7 +20,8 @@
     "db:schema": "node scripts/generate-db-schema.js",
     "db:schema:check": "node scripts/generate-db-schema.js --check",
     "db:validate": "node scripts/validate-database.js",
-    "seed:aws": "node scripts/seed-demo-data.js"
+    "seed:aws": "node scripts/seed-demo-data.js",
+    "db:seed:demo": "node scripts/seed-demo-db.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1149.0",

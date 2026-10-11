@@ -388,13 +388,15 @@ export function MemberCard() {
                 ? 'Your join request is waiting for an administrator. Payment unlocks after they approve you.'
                 : !member
                   ? 'Join the club first, then activate dues or shop with membership.'
-                  : valid
-                    ? canRenew
-                      ? `Your membership expires in ${daysUntilExpiry} ${daysUntilExpiry === 1 ? 'day' : 'days'} (${member?.expires ? date(member.expires) : ''}). You can renew now.`
-                      : `Your membership is active until ${member?.expires ? date(member.expires) : ''}. Renewal opens 1 week before expiry.`
-                    : member.status === 'Expired'
-                      ? `Your membership expired on ${member?.expires ? date(member.expires) : ''}. Renew now to restore member prices and perks.`
-                      : 'Activate dues for member prices on events and merchandise.'}
+                  : needsDues
+                    ? 'Your request was approved. Pay dues for member prices on events and merchandise.'
+                    : valid
+                      ? canRenew
+                        ? `Your membership expires in ${daysUntilExpiry} ${daysUntilExpiry === 1 ? 'day' : 'days'} (${member?.expires ? date(member.expires) : ''}). You can renew now.`
+                        : `Your membership is active until ${member?.expires ? date(member.expires) : ''}. Renewal opens 1 week before expiry.`
+                      : member.status === 'Expired'
+                        ? `Your membership expired on ${member?.expires ? date(member.expires) : ''}. Renew now to restore member prices and perks.`
+                        : 'Activate dues for member prices on events and merchandise.'}
             </p>
             <div className="member-card-actions">
               {awaitingApproval && <Badge tone="gold">Awaiting admin approval</Badge>}

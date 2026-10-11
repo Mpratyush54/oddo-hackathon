@@ -1,25 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Revealed } from '../../../shared/components/PageMotion';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { date, money } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
-
-const defaultEventImages = [
-  'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=85',
-  'https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=1000&q=85',
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=85',
-  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85',
-];
-
-const localImageFallback =
-  'data:image/svg+xml;charset=utf-8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700">
-      <rect width="900" height="700" fill="#1a3832"/>
-      <text x="450" y="360" fill="#e8f0ea" font-family="Georgia,serif" font-size="42" text-anchor="middle">skyline.</text>
-    </svg>`,
-  );
 
 /** Public discovery starts with events, before asking a visitor to create a session. */
 export function LandingEvents() {
@@ -63,11 +48,6 @@ export function LandingEvents() {
                 : money(event.price)
               : 'Free entry';
 
-          const eventImg =
-            event.image && event.image.startsWith('http')
-              ? event.image
-              : defaultEventImages[i % defaultEventImages.length];
-
           return (
             <Revealed key={`${club.id}-${event.id}`} delay={i * 70} pop>
               <Link
@@ -76,24 +56,7 @@ export function LandingEvents() {
                 aria-label={`View ${event.title}`}
               >
                 <div className="landing-event-image">
-                  <img
-                    src={eventImg}
-                    alt={event.title}
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      const tried = Number(img.dataset.fallbackTries || '0');
-                      if (tried >= defaultEventImages.length) {
-                        img.src = localImageFallback;
-                        return;
-                      }
-                      img.dataset.fallbackTries = String(tried + 1);
-                      img.src =
-                        defaultEventImages[(i + tried + 1) % defaultEventImages.length] ||
-                        localImageFallback;
-                    }}
-                  />
+                  <EventPhoto image={event.image} seed={event.id} alt={event.title} />
                   <span>{date(event.date, { month: 'short', day: 'numeric' })}</span>
                   <span
                     className="landing-event-arrow"

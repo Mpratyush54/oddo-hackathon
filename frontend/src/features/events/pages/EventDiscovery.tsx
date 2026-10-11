@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { LinkButton } from '../../../shared/ui/LinkButton';
 import { Logo } from '../../../shared/ui/Logo';
@@ -88,7 +89,7 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
       </header>
       {featured && (
         <section className="event-spotlight" aria-label="Featured upcoming event">
-          <img src={featured.image} alt={featured.title} />
+          <EventPhoto image={featured.image} seed={featured.id} alt={featured.title} loading="eager" />
           <div>
             <span className="event-spotlight-label">
               <span className="live-dot" />
@@ -216,7 +217,7 @@ export function EventDiscovery({ publicView = false }: { publicView?: boolean })
               className={`event-discovery-card ${past ? 'past-event' : ''}`}
             >
               <Link className="event-discovery-photo" to={href} aria-label={`View ${event.title}`}>
-                <img src={event.image} alt={event.title} loading="lazy" />
+                <EventPhoto image={event.image} seed={event.id} alt={event.title} loading="lazy" />
                 <div className="event-discovery-photo-top">
                   <div className="event-discovery-badges">
                     <Badge tone={categoryTone}>

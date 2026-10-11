@@ -1,10 +1,19 @@
 import { finance } from '../../shared/authorization.js';
 import { ownMember } from '../../shared/validation.js';
 import { matchesAudience } from '../communications/audience.js';
+import { resolveEventImage } from '../../../../shared/event-images.js';
+
+function withEventImages(events) {
+  return (events || []).map((event) => ({
+    ...event,
+    image: resolveEventImage(event.image, event.id),
+  }));
+}
 
 export function visibleState(data, user, role) {
   const copy = structuredClone(data),
     elevated = ['admin', 'organizer', 'treasurer'].includes(role);
+  copy.events = withEventImages(copy.events);
   if (!elevated) {
     const member = ownMember(data, user);
     copy.announcements = copy.announcements.filter(
@@ -62,6 +71,6 @@ export function publicState(data) {
     pointLedger: [],
     profile: { name: '', email: '', role: '' },
     preferences: { email: false, renewals: false, weekly: false },
-    events: data.events.map(({ budget, ...e }) => e),
+    events: withEventImages(data.events).map(({ budget, ...e }) => e),
   };
 }

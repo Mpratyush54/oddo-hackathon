@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Field } from '../../../shared/ui/Field';
 import { FormFooter } from '../../../shared/ui/FormFooter';
 import { Icon } from '../../../shared/ui/Icon';
@@ -14,6 +15,7 @@ import { SearchField } from '../../../shared/ui/SearchField';
 import { TablePager } from '../../../shared/ui/TablePager';
 import { formValues } from '../../../shared/ui/formValues';
 import { date, money, today, uid } from '../../../shared/utils/format';
+import { resolveEventImage } from '../../../../../shared/event-images.js';
 import { useStore } from '../../../app/state/StoreProvider';
 import { useSession } from '../../auth/session';
 import { useServerTable } from '../../../shared/hooks/useServerTable';
@@ -111,7 +113,12 @@ export function EventsPage() {
           {events.map((e) => (
             <article className="event-card" key={e.id}>
               <Link to={`/app/events/${e.id}`} className="event-image">
-                <img src={e.image} alt={`${e.category} event at Skyline`} loading="lazy" />
+                <EventPhoto
+                  image={e.image}
+                  seed={e.id}
+                  alt={`${e.category} event at Skyline`}
+                  loading="lazy"
+                />
                 <div className="event-image-top">
                   <Badge
                     tone={
@@ -261,8 +268,9 @@ export function EventsPage() {
                 toast('Member price should not exceed the standard price.');
                 return;
               }
+              const id = uid('EVT');
               const event: ClubEvent = {
-                id: uid('EVT'),
+                id,
                 title: f.title.trim(),
                 date: f.date,
                 time: f.time,
@@ -276,8 +284,7 @@ export function EventsPage() {
                 sold: 0,
                 budget: Number(f.budget),
                 description: f.description.trim(),
-                image:
-                  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=85',
+                image: resolveEventImage('', id),
               };
               if (eventEnd(event).getTime() <= eventStart(event).getTime()) {
                 toast('The event must end after it starts. Choose a later time or end date.');

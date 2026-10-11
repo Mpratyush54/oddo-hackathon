@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Empty } from '../../../shared/ui/Empty';
+import { EventPhoto } from '../../../shared/ui/EventPhoto';
 import { Icon } from '../../../shared/ui/Icon';
 import { date, today } from '../../../shared/utils/format';
 import { useStore } from '../../../app/state/StoreProvider';
@@ -16,7 +17,7 @@ export function EventList({ limit = 3 }: { limit?: number }) {
     <div className="portal-event-list">
       {events.map((e) => (
         <Link to={`/app/events/${e.id}`} className="portal-event" key={e.id}>
-          <img src={e.image} alt="" />
+          <EventPhoto image={e.image} seed={e.id} alt="" />
           <div>
             <small>
               {date(e.date, { day: 'numeric', month: 'short' })} · {e.time}

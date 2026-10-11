@@ -9,6 +9,7 @@ import { LinkButton } from '../../../shared/ui/LinkButton';
 import { Logo } from '../../../shared/ui/Logo';
 import { Modal } from '../../../shared/ui/Modal';
 import { date, money, uid } from '../../../shared/utils/format';
+import { resolveEventImage } from '../../../../../shared/event-images.js';
 import { useStore } from '../../../app/state/StoreProvider';
 import type { EventReview } from '../../../shared/types/domain';
 import { useSession } from '../../auth/session';
@@ -45,7 +46,15 @@ export default function EventExperience({ publicView = false }: { publicView?: b
   const [readingPhotos, setReadingPhotos] = useState(false);
   const closeEditor = useCallback(() => setEditing(false), []);
   const closeLightbox = useCallback(() => setLightbox(null), []);
-  const images = event ? [...new Set([event.image, ...(event.gallery || [])].filter(Boolean))] : [];
+  const images = event
+    ? [
+        ...new Set(
+          [resolveEventImage(event.image, event.id), ...(event.gallery || []).filter(Boolean)].filter(
+            Boolean,
+          ),
+        ),
+      ]
+    : [];
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
