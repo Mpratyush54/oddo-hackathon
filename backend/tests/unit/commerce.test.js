@@ -213,6 +213,16 @@ test('joinWaitlist rejects when seats remain', () => {
 
 test('quotePromo and placeOrder apply member rates, promos and inventory', () => {
   const store = baseStore();
+  store.audit = [
+    {
+      id: 'AUD-EXISTING',
+      actor: 'Admin',
+      action: 'Created',
+      entity: 'products',
+      date: '2026-10-10',
+      detail: 'Existing audit row',
+    },
+  ];
   const quote = quotePromo(store, {
     code: 'WELCOME10',
     productId: 'PROD-001',
@@ -234,6 +244,7 @@ test('quotePromo and placeOrder apply member rates, promos and inventory', () =>
   assert.equal(order.promoDiscount, quote.discount);
   assert.ok(order.patch.pointLedger[0].points >= 1);
   assert.equal(order.patch.promos.find((p) => p.code === 'WELCOME10').redemptions, 1);
+  assert.equal(order.patch.audit.filter((entry) => entry.id === 'AUD-EXISTING').length, 1);
 });
 
 test('non-member can buy membership at checkout for member pricing', () => {

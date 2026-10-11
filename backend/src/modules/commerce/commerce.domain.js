@@ -425,7 +425,7 @@ export function placeOrder(
     promos,
     pointLedger,
     notifications,
-    audit: [...audit, ...club.audit].slice(0, 500),
+    audit: audit.slice(0, 500),
   };
 
   return {
